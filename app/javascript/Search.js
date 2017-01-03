@@ -24,8 +24,12 @@ function Input(id) {
 
     function installStatusCallbacks() {
         // ime.setKeySetFunc('12key'); 
-        ime.setKeypadPos(467, 206);
-        ime.setWordBoxPos(387, -2);
+        if (deviceYear > 2011)
+            ime.setKeypadPos(467, 187);
+        else {
+            ime.setKeypadPos(467, 210);
+            ime.setWordBoxPos(387, 153);
+        }
         // ime.setKeypadPos(350, 169);
         // ime.setQWERTYPos(215, 169);
     }

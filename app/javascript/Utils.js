@@ -4,8 +4,8 @@ var setClockOffsetTimer = null;
 var checkOffsetCounter = 5;
 var dateOffset = 0;
 var setDateOffsetTimer = null;
-var isTopRowSelected = true;
-var columnCounter = 0;
+var pageIndex = 0;
+var itemIndex = 0;
 var itemCounter = 0;
 var htmlSection = null;
 var items = [];
@@ -18,11 +18,9 @@ var loadingTimer = 0;
 var detailsOnTop = false;
 var dateFormat = 0;
 var imgCounter = 0;
-var MAX_PAGES = 3;
-// reload on 3rd column on last "original page"
-var LOAD_NEXT_COLUMN  = Math.floor((8*(MAX_PAGES-1))/2)+2;
-var LOAD_PRIOR_COLUMN = 2;
-var THUMBS_PER_PAGE   = 8;
+var MAX_PAGES = 2;
+var LOAD_NEXT = 15*MAX_PAGES;
+var THUMBS_PER_PAGE = 15;
 
 function checkSetTmpChannel(location) {
     var tmpChannel = location.match(/[?&]tmp_channel_id=([^&]+)/);
@@ -185,9 +183,8 @@ function setLocation(location, oldPos, skipHistory) {
         if (myLocation && !skipHistory) {
             myHistory.push( {
                     loc: myLocation,
-                    pos: Channel.savePosition({col     : columnCounter,
-                                               top     : isTopRowSelected,
-                                               section : htmlSection
+                    pos: Channel.savePosition({index:   itemIndex,
+                                               section: htmlSection
                                               })
                 }
             );
@@ -217,8 +214,8 @@ function setLocation(location, oldPos, skipHistory) {
     if ((isDetails && !detailsOnTop) || !detailsOnTop) {
         itemSelected = null;
         itemCounter = 0;
-        columnCounter = 0;
-        isTopRowSelected = true;
+        pageIndex = 0;
+        itemIndex = 0;
     }
     resetHtml(oldPos, isDetails);
     loadingStart();
@@ -281,9 +278,8 @@ function resetHtml(oldPos, isDetails) {
     $('#projdetails').html('');
     // Delete and show list
     if ((isDetails && !detailsOnTop) || !detailsOnTop) {
-        $('#topRow').html('');
-        $('#bottomRow').html('');
-        $('.content-holder').css('marginLeft', '0');
+        $('#itemRow').html('');
+        $('.content-holder').css('marginTop', '0');
         items = [];
         thumbsLoaded = [];
         htmlSection = (oldPos) ? oldPos.section : null;
@@ -376,19 +372,17 @@ function setPosition(pos) {
     if (itemSelected) {
         itemSelected.removeClass('selected');
     } else {
-        $('.topitem').eq(0).removeClass('selected');
+        $('.itemlist').eq(0).removeClass('selected');
     }
-    var row = (pos.top) ? $('.topitem') : $('.bottomitem');
-    if (pos.col >= row.length) {
-        Log('Position out of range: ' + pos.col + ' ' + row.length);
-        pos.col = row.length - 1;
+    if (pos.index >= $('.itemlist').length) {
+        Log('Position out of range: ' + pos.index + ' ' + $('.itemlist').length);
+        pos.index = $('.itemlist').length - 1;
     }
-    itemSelected = row.eq(pos.col).addClass('selected');
-    columnCounter    = pos.col;
-    isTopRowSelected = pos.top;
+    itemIndex    = pos.index;
+    itemSelected = $('.itemlist').eq(itemIndex).addClass('selected');
     var newPos = Channel.checkPosition(pos);
     if (newPos == pos)
-        // Log('Position set to '  + columnCounter + ' ' + isTopRowSelected);
+        // Log('Position set to ' + itemIndex);
         Buttons.sscroll();
     else
         setPosition(newPos);
@@ -904,8 +898,8 @@ function loadFinished(status, refresh) {
         if (!refresh)
             contentShow();
     }
-    if (!itemSelected && $('.topitem').eq(0).hasClass('selected'))
-        itemSelected = $('.topitem').eq(0);
+    if (!itemSelected && $('.itemlist').eq(0).hasClass('selected'))
+        itemSelected = $('.itemlist').eq(0);
     preloadItem(itemSelected);
 }
 
@@ -922,11 +916,14 @@ function waitForImages(callback, retries) {
 }
 
 function fixCss() {
-    if (deviceYear >= 2014) {
-        $('#footer-clock').css({'bottom':'21px'});
-        $('.confirmExit').css({'padding':'8px 13px'});
-    } else if (deviceYear > 2011) {
-        $('.confirmExit').css({'padding':'13px','padding-bottom':'7px'});
+
+    if (deviceYear > 2011) {
+        if (deviceYear >= 2014) {
+            $('#footer-clock').css({'bottom':'15px'});
+            $('.confirmExit').css({'padding':'8px 13px'});
+        } else {
+            $('.confirmExit').css({'padding':'13px','padding-bottom':'7px'});
+        }
     }
 }
 
@@ -1068,17 +1065,16 @@ function makeLink(LinkPrefix, Name, Url, UrlParams) {
 function toHtml(Item) {
     // Item.name = '' + (items.length+1)
     items.push(Item);
-    if (items.length <= 8*MAX_PAGES)
+    if (items.length <= 15*MAX_PAGES)
         itemToHtml(Item);
 }
 
 function itemToHtml(Item, OnlyReturn) {
-    var IsTop;
     var html;
     var IsLiveText;
     var Background='';
     var Link = itemToLink(Item);
-    var itemRow = (itemCounter % 2 == 0) ? ' topitem' : ' bottomitem';
+    var itemList='';
     var borderStyle;
     var watched = Item.watched || Item.percentage;
 
@@ -1087,7 +1083,7 @@ function itemToHtml(Item, OnlyReturn) {
             watched = (getCurrentDate()-Item.start)/1000/Item.duration;
             watched = Math.round(watched*100);
             if (!isNaN(watched)) {
-                itemRow += ' running';
+                itemList += ' running';
                 if (watched > 100) watched = 100;
                 if (watched < 3) watched = 3;
             } else {
@@ -1095,17 +1091,12 @@ function itemToHtml(Item, OnlyReturn) {
             }
         }
     }
-    itemRow += (Item.watched) ? ' resumed' : '';
-    if(itemCounter % 2 == 0) {
-	if(itemCounter > 0 || htmlSection){
-	    html = '<div class="scroll-content-item' + itemRow  + '">';
-	}
-	else{
-	    html = '<div class="scroll-content-item selected' + itemRow  + '">';
-	}
+    itemList += ((Item.watched) ? ' resumed' : '') + ' itemlist';
+    if(itemCounter > 0 || htmlSection) {
+	html = '<div class="scroll-content-item' + itemList + '">';
     }
     else{
-	html = '<div class="scroll-content-item' + itemRow  + '">';
+	html = '<div class="scroll-content-item selected' + itemList + '">';
     }
     if ((Item.is_live && Item.is_running) || Item.is_channel) {
         IsLiveText = ' is-live';
@@ -1142,8 +1133,8 @@ function itemToHtml(Item, OnlyReturn) {
     thumbsLoaded[itemsIndex] = 1;
     var itemStart = dateToHuman(Item.start);
     if (Item.is_live && !Item.is_running) {
-	html += '<div class="topoverlay">LIVE';
-	html += '<div class="bottomoverlay">' + itemStart + '</div></div>';
+        html += '<div class="topoverlay">LIVE';
+        html += '<div class="bottomoverlay">' + itemStart + '</div></div>';
     }
     else if (Item.is_live){
 	html += '<div class="topoverlayred">LIVE';
@@ -1167,15 +1158,12 @@ function itemToHtml(Item, OnlyReturn) {
     html += '</div>';
     html += '</div>';
 
-    if (OnlyReturn)
-        return {top:itemCounter++ % 2 == 0, html:html};
+    if (OnlyReturn) {
+        itemCounter++;
+        return {html:html};
+    }
 
-    if(itemCounter % 2 == 0){
-        $('#topRow').append($(html));
-    }
-    else{
-        $('#bottomRow').append($(html));
-    }
+    $('#itemRow').append($(html));
     html = null;
     itemCounter++;
 }
@@ -1184,9 +1172,9 @@ function finaliseHtml() {
     if (htmlSection) {
         loadSection();
     } else {
-        if (items.length > 8*MAX_PAGES) {
-            if (items.length < 8*(MAX_PAGES+1)) {
-                for (var i=8*MAX_PAGES; i<items.length; i++)
+        if (items.length > 15*MAX_PAGES) {
+            if (items.length < 15*(MAX_PAGES+1)) {
+                for (var i=15*MAX_PAGES; i<items.length; i++)
                     itemToHtml(items[i]);
             } else {
                 htmlSection = getInitialSection();
@@ -1206,28 +1194,25 @@ function finaliseHtml() {
 function loadSection(maxIndex) {
     if (!maxIndex) maxIndex = getMaxIndex();
     itemCounter = 0;
-    var topHtml='', bottomHtml='', result;
+    var itemList='', result;
     alert('loading from:' + htmlSection.index + ' to:' + maxIndex);
     for (var i=htmlSection.index; i<items.length && i<maxIndex; i++) {
         result = itemToHtml(items[i], true);
-        if (result.top)
-            topHtml += result.html;
-        else
-            bottomHtml += result.html;
+        itemList += result.html;
     }
-    $('#topRow').html(topHtml);
-    $('#bottomRow').html(bottomHtml);
+    $('#itemRow').html(itemList);
     preloadAdjacentSectionThumbs();
+    fixCss();
     return maxIndex;
 }
 
 function preloadAdjacentSectionThumbs() {
     // First load next section thumbs
-    var startIndex = htmlSection.index+(8*MAX_PAGES);
+    var startIndex = htmlSection.index+(15*MAX_PAGES);
     if (startIndex > items.length)
         // We're at last page - load initial instead.
         startIndex = 0;
-    var endIndex   = startIndex + (8*MAX_PAGES);
+    var endIndex   = startIndex + (15*MAX_PAGES);
     for (var i=startIndex; i < items.length && i < endIndex; i++) {
         // alert('pre-loading 1 index:' + i);
         if (!thumbsLoaded[i]) {
@@ -1242,9 +1227,9 @@ function preloadAdjacentSectionThumbs() {
         // We're at initial page - load last section instead.
         endIndex = items.length-1;
     }
-    startIndex = endIndex - (8*MAX_PAGES);
+    startIndex = endIndex - (15*MAX_PAGES);
     if (endIndex == (items.length-1))
-        startIndex = startIndex - (items.length % 8);
+        startIndex = startIndex - (items.length % 15);
     if (startIndex < 0) startIndex = 0;
     for (var k=endIndex; k >= 0 && k >= startIndex; k--) {
         // alert('pre-loading 2 index:' + k);
@@ -1256,105 +1241,92 @@ function preloadAdjacentSectionThumbs() {
 }
 
 function getInitialSection() {
-    return {index:0, load_next_column:LOAD_NEXT_COLUMN, load_prior_column:-1};
+    return {index:0, load_next:LOAD_NEXT};
 }
 
 function getMaxIndex() {
-    var maxIndex = htmlSection.index+(8*MAX_PAGES);
-    if  (items.length-maxIndex < 8)
+    var maxIndex = htmlSection.index+(15*MAX_PAGES);
+    if  (items.length-maxIndex < 15)
         maxIndex = items.length;
     return maxIndex;
 }
 
 function getNextSection() {
-    if (htmlSection.load_next_column > 0) {
-        // We need to keep 2 pages
-        htmlSection.index = htmlSection.index+(8*(MAX_PAGES-2));
+    if (htmlSection.load_next > 0) {
+        htmlSection.index = htmlSection.index+(15*(MAX_PAGES-1));
     } else {
         htmlSection.index = 0;
     }
     var maxIndex = getMaxIndex();
-    if (htmlSection.load_next_column > 0) {
+    if (htmlSection.load_next > 0) {
         if (maxIndex >= items.length)
-            htmlSection.load_next_column = 0;
-        htmlSection.load_prior_column=LOAD_PRIOR_COLUMN;
-    } else {
-        htmlSection.load_next_column=LOAD_NEXT_COLUMN;
-        htmlSection.load_prior_column=-1;
+            htmlSection.load_next = 0;
+        else
+            htmlSection.load_next = LOAD_NEXT;
     }
     return maxIndex;
 }
-
-function loadNextSection() {
+function loadNextSection(KeepColumn) {
     var maxIndex = getNextSection();
     loadSection(maxIndex);
-    if (htmlSection.load_next_column > 0 ||
-        maxIndex >= items.length) {
-        // Check if we're gonna be on second or first page. Depends on which page we're on now.
-        if (columnCounter >= 4*(MAX_PAGES-1))
-            columnCounter = (columnCounter % 4) + 4;
-        else
-            // We're on second page - we will be on first page now
-            columnCounter = (columnCounter % 4);
+    if (htmlSection.load_next > 0 || maxIndex >= items.length) {
+        itemIndex -= 15;
         Buttons.refresh();
     } else {
-        columnCounter = 0;
+        itemIndex = (KeepColumn) ? itemIndex%5 : 0;
+        htmlSection.load_next=LOAD_NEXT;
     }
     alert('Section itemCounter:' + itemCounter);
     alert(JSON.stringify(htmlSection));
     preloadAdjacentSectionThumbs();
-    if (isTopRowSelected)
-        return itemSelected = $('.topitem').eq(columnCounter).addClass('selected');
-    else
-        return itemSelected = $('.bottomitem').eq(columnCounter).addClass('selected');
+    return itemSelected = $('.itemRow').eq(itemIndex).addClass('selected');
 }
 
-function loadPriorSection() {
-    var maxIndex = htmlSection.index+(8*MAX_PAGES);
-    if (htmlSection.load_prior_column > -1) {
-        // We need to keep 2 pages
-        htmlSection.index = htmlSection.index-(8*(MAX_PAGES-2));
-        maxIndex = htmlSection.index+(8*MAX_PAGES);
+function loadPriorSection(KeepColumn) {
+    var maxIndex;
+    if (htmlSection.index > 0) {
+        // We need to keep 1 page
+        var steps = 15*(MAX_PAGES-1);
+        if (steps > htmlSection.index)
+            steps = htmlSection.index;
+        htmlSection.index = htmlSection.index-steps;
+        itemIndex += steps;
+        maxIndex = htmlSection.index+(15*MAX_PAGES);
+        htmlSection.load_next=LOAD_NEXT;
     } else {
-        htmlSection.index = items.length-(8*MAX_PAGES);
-        htmlSection.index = htmlSection.index - (htmlSection.index % 8);
+        htmlSection.index = items.length-(15*MAX_PAGES);
+        htmlSection.index = htmlSection.index - (htmlSection.index % 15);
         maxIndex = items.length;
-    }
-    if (htmlSection.index < 0) {
-        htmlSection.index = 0;
+        htmlSection.load_next = 0;
+        if(KeepColumn)
+            itemIndex = GetLastRowIndex(itemIndex%5, (maxIndex-1)-htmlSection.index);
+        else
+            itemIndex = (items.length-1)-htmlSection.index;
     }
     loadSection(maxIndex);
-    if (htmlSection.load_prior_column > -1) {
-        // Check if we're gonna be on next last or last page. Depends on which page we're on now.
-        if (columnCounter >= 4)
-            columnCounter = (columnCounter % 4) + (4*(MAX_PAGES-1));
-        else
-            // We're on second page - we will be on next last page
-            columnCounter = (columnCounter % 4) + (4*(MAX_PAGES-2));
-        if (htmlSection.index == 0)
-            htmlSection.load_prior_column = -1;
-        htmlSection.load_next_column=LOAD_NEXT_COLUMN;
+
+    if (htmlSection.load_next)
         Buttons.refresh();
-    } else {
-        columnCounter = $('.topitem').length-1;
-        htmlSection.load_prior_column=LOAD_PRIOR_COLUMN;
-        htmlSection.load_next_column=0;
-    }
+
     alert('Section itemCounter:' + itemCounter);
     alert(JSON.stringify(htmlSection));
     preloadAdjacentSectionThumbs();
-    if (isTopRowSelected  || ((columnCounter+1) > $('.bottomitem').length)) {
-        isTopRowSelected = true;
-        return itemSelected = $('.topitem').eq(columnCounter).addClass('selected');
-    } else
-        return itemSelected = $('.bottomitem').eq(columnCounter).addClass('selected');
+    return itemSelected = $('.itemRow').eq(itemIndex).addClass('selected');
+}
+
+function GetLastRowIndex(column, maxIndex) {
+    var index = maxIndex;
+    var maxColumn = index % 5;
+    if (maxColumn > column)
+        index -= maxColumn-column;
+    return index;
 }
 
 function getVisibleIndex(index) {
     if (!htmlSection)
         return index;
     if (htmlSection && index >= htmlSection.index) {
-        if (htmlSection.load_next_column == 0 || index <= htmlSection.load_next_column) {
+        if (htmlSection.load_next == 0 || index <= htmlSection.load_next) {
             return index - htmlSection.index;
         }
     }
@@ -1363,16 +1335,14 @@ function getVisibleIndex(index) {
 
 function addResumed(index, percentage) {
     index = getVisibleIndex(index);
-    if (index >= 0) {
-        var row = (index % 2 == 0) ? $('.topitem') : $('.bottomitem');
-        $(row).eq(Math.floor(index/2)).addClass('resumed');
+    if (index >=0) {
+        $('.itemlist').eq(index).addClass('resumed');
         $('.scroll-content-item.resumed .scroll-item-border').css({'width':percentage+'%'});
     }
 }
 
 function removeResumed() {
-    $('.topitem').removeClass('resumed');
-    $('.bottomitem').removeClass('resumed');
+    $('.itemlist').removeClass('resumed');
     // Need to reset borderStyle as well...
     $('.scroll-content-item .scroll-item-border').css({'width':'100%'});
 }

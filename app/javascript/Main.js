@@ -2,9 +2,9 @@ var widgetAPI = new Common.API.Widget();
 var pluginAPI = new Common.API.Plugin();
 var MAX_WIDTH   = 1280;
 var MAX_HEIGHT  = 720;
-var LINE_LENGTH = 45;
-var THUMB_WIDTH = 320;
-var THUMB_HEIGHT = 180;
+var LINE_LENGTH = 39;
+var THUMB_WIDTH = 221;
+var THUMB_HEIGHT = 124;
 var DETAILS_THUMB_FACTOR = 800/THUMB_WIDTH;
 // 1280 is a bit slow for background
 var BACKGROUND_THUMB_FACTOR = 960/THUMB_WIDTH;
@@ -31,7 +31,7 @@ Main.onLoad = function(refresh) {
         isEmulator = (model === 'VALENCIA' || model === 'SDK' || !model);
         deviceYear = getDeviceYear();
         if (deviceYear > 2011)
-            LINE_LENGTH = 36;
+            LINE_LENGTH = 33;
         Log('Model:' + model +  ' DeviceYear:' + deviceYear + ' IsEmulator:' + isEmulator + ' curWidget:' + curWidget.name + ' Cookies:' + document.cookie);
         loadingStart();
         Main.setClock();

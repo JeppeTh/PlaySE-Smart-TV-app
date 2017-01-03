@@ -52,12 +52,8 @@ live.refresh = function() {
     var refresh = detailsOnTop;
     var location = getIndexLocation();
     if (location.match(/live.html/)) {
-        var oldPos = {col     : columnCounter,
-                      top     : isTopRowSelected,
-                      section : htmlSection
-                     };
-        $('#topRow').html('');
-        $('#bottomRow').html('');
+        var oldPos = {index: itemIndex, section:htmlSection};
+        $('#itemRow').html('');
         items = [];
         live.loadXml(location, refresh, oldPos);
         // Keep htmlSection
