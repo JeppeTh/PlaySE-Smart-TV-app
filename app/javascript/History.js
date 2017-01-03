@@ -20,7 +20,7 @@ History.checkPosition = function(pos) {
                 htmlSection = getInitialSection();
                 loadSection();
             }
-            return {col:0, top:true, section:htmlSection};
+            return {index:0, section:htmlSection};
         }
     }
     return pos;
@@ -161,8 +161,7 @@ History.findEpisode = function(show, meta, noSelect) {
         items[hits[0]].watched = percentage;
         if (!noSelect) {
             selectItemIndex(hits[0]);
-            myPos = Channel.savePosition({col     : columnCounter,
-                                          top     : isTopRowSelected,
+            myPos = Channel.savePosition({index   : itemIndex,
                                           section : htmlSection
                                          });
         }
@@ -233,10 +232,7 @@ History.decodeMain = function(data, extra) {
         if (History.resume_index >= Shows.length)
             History.resume_index = Shows.length-1;
         selectItemIndex(History.resume_index);
-        myPos = {col     : columnCounter,
-                 top     : isTopRowSelected,
-                 section : htmlSection
-                };
+        myPos = {index:itemIndex, section:htmlSection};
         History.resume_index = null;
     }
     if (extra.cbComplete)
