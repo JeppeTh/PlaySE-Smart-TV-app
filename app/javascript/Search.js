@@ -24,8 +24,8 @@ function Input(id) {
 
     function installStatusCallbacks() {
         // ime.setKeySetFunc('12key'); 
-        ime.setKeypadPos(350, 155);
-        ime.setWordBoxPos(290, -1);
+        ime.setKeypadPos(467, 206);
+        ime.setWordBoxPos(387, -2);
         // ime.setKeypadPos(350, 169);
         // ime.setQWERTYPos(215, 169);
     }
