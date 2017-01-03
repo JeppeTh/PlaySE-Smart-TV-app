@@ -134,7 +134,7 @@ Buttons.getMargin = function() {
     if(columnCounter > 0){
 	xaxis = columnCounter - 1;
     }
-    xaxis = (-xaxis * 262);
+    xaxis = (-xaxis * 350);
     return xaxis;
 };
 
