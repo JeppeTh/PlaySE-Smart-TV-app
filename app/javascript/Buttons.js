@@ -114,32 +114,25 @@ Buttons.restartKeyTimer = function() {
 };
 
 Buttons.sscroll = function(hide) {
-    // alert('Buttons.sscroll:' + itemCounter + ' margin:' + Buttons.getMargin());
+    // alert('Buttons.sscroll:' + itemCounter + ' margin:' + Buttons.getMargin()); 
     preloadItem(itemSelected);
-    animateCallbacked = 0;
     $('.content-holder').animate(
-        {marginLeft: Buttons.getMargin()},
+        {marginTop: Buttons.getMargin()},
         {complete: function() {
-            animateCallbacked = animateCallbacked+1;
-            if (itemCounter && !hide && animateCallbacked == 2 && !$('#content-scroll').is(':visible')) {
-                contentShow();
-            }
-        }
-        }
+             if (itemCounter && !hide && !$('#content-scroll').is(':visible')) {
+                 contentShow();
+             }
+        }}
     );
 };
 
 Buttons.getMargin = function() {
-    var xaxis = 0;
-    if(columnCounter > 0){
-	xaxis = columnCounter - 1;
-    }
-    xaxis = (-xaxis * 350);
-    return xaxis;
+    pageIndex = Math.floor(itemIndex/15);
+    return pageIndex*-615;
 };
 
 Buttons.refresh = function() {
-    $('.content-holder').css({marginLeft: Buttons.getMargin()});
+    $('.content-holder').css({marginTop: Buttons.getMargin()});
 };
 
 Buttons.keyHandleForExit = function() {
@@ -160,69 +153,55 @@ Buttons.keyHandleForExit = function() {
 Buttons.keyHandleForList = function() {
     if (Buttons.checkKey(true) == -1)
         return;
-
-    var topItems = $('.topitem');
-    var bottomItems = $('.bottomitem');
+    
+    var itemList = $('.itemlist');
     var keyCode = event.keyCode;
 
     // Log('Key handled: ' + keyCode + ' lastKey=' + lastKey);
     if (!itemSelected) {
-	itemSelected = topItems.eq(0).addClass('selected');
-	columnCounter = 0;
+	itemSelected = itemList.eq(0).addClass('selected');
+        itemIndex = 0;
     }
     switch(keyCode) {
-    case tvKey.KEY_RIGHT:
-        if (keyHeld) {
-
-            itemSelected = nextInList(topItems, bottomItems, itemSelected, 4-(columnCounter%4));
-        }
-        else {
-            itemSelected = nextInList(topItems, bottomItems, itemSelected, 1);
-        }
+	case tvKey.KEY_RIGHT:
+        itemSelected = nextInList(itemList, itemSelected, 1);
 	break;
 
-    case tvKey.KEY_CH_UP:
-    case tvKey.KEY_PANEL_CH_UP:
-    case tvKey.KEY_FF:
-    case tvKey.KEY_FF_:
-        itemSelected = nextInList(topItems, bottomItems, itemSelected, 4);
+	case tvKey.KEY_CH_UP:
+        case tvKey.KEY_PANEL_CH_UP:
+	case tvKey.KEY_FF:
+        case tvKey.KEY_FF_:
+        itemSelected = nextInList(itemList, itemSelected, 15);
 	break;
 
-    case tvKey.KEY_LEFT:
-        if (keyHeld) {
-            itemSelected = prevInList(topItems, bottomItems, itemSelected, 4-(columnCounter%4));
-        }
-        else {
-            itemSelected = prevInList(topItems, bottomItems, itemSelected, 1);
-        }
+	case tvKey.KEY_LEFT:
+        itemSelected = prevInList(itemList, itemSelected, 1);
 	break;
 
-    case tvKey.KEY_CH_DOWN:
-    case tvKey.KEY_PANEL_CH_DOWN:
-    case tvKey.KEY_RW:
-    case tvKey.KEY_REWIND_:
-        itemSelected = prevInList(topItems, bottomItems, itemSelected, 4);
+        case tvKey.KEY_CH_DOWN:
+        case tvKey.KEY_PANEL_CH_DOWN:
+	case tvKey.KEY_RW:
+        case tvKey.KEY_REWIND_:
+        itemSelected = prevInList(itemList, itemSelected, 15);
 	break;
 
-    case tvKey.KEY_DOWN:
-	if(isTopRowSelected && bottomItems.length > columnCounter){
-            isTopRowSelected = false;
-	    itemSelected.removeClass('selected');
-	    itemSelected = bottomItems.eq(columnCounter).addClass('selected');
-	}
-	break;
+	case tvKey.KEY_DOWN:
+        if (keyHeld)
+            itemSelected = nextInList(itemList, itemSelected, 15);
+        else
+            itemSelected = nextInList(itemList, itemSelected, 5);
+        break;
 
-    case tvKey.KEY_UP:
-	if (!isTopRowSelected) {
-            isTopRowSelected = true;
-	    itemSelected.removeClass('selected');
-            itemSelected = topItems.eq(columnCounter).addClass('selected');
-        }
+	case tvKey.KEY_UP:
+        if (keyHeld)
+            itemSelected = prevInList(itemList, itemSelected, 15);
+        else
+            itemSelected = prevInList(itemList, itemSelected, 5);
 	break;
-    case tvKey.KEY_INFO:
-    case tvKey.KEY_ENTER:
-    case tvKey.KEY_PANEL_ENTER:
-    case tvKey.KEY_PLAY:
+	case tvKey.KEY_INFO:
+	case tvKey.KEY_ENTER:
+	case tvKey.KEY_PANEL_ENTER:
+        case tvKey.KEY_PLAY:
 	var ilink = itemSelected.find('.ilink').attr('href');
         if (ilink != undefined) {
             if (ilink.match('upcoming.html'))
@@ -247,21 +226,20 @@ Buttons.keyHandleForList = function() {
         }
 	break;
 
-    default:
-        this.handleMenuKeys(keyCode);
-        return;
+        default:
+            this.handleMenuKeys(keyCode);
+            return;
 
     }
     this.sscroll();
 };
 
 function skipUpcoming() {
-    if (!myPos && columnCounter==0 && items.length > 0 && items[0].is_upcoming) {
+    if (!myPos && itemIndex==0 && items.length > 0 && items[0].is_upcoming) {
         for (var i=1; i < items.length; i++) {
             if (!items[i].is_upcoming) {
                 selectItemIndex(i);
-                myPos = Channel.savePosition({col     : columnCounter,
-                                              top     : isTopRowSelected,
+                myPos = Channel.savePosition({index   : itemIndex,
                                               section : htmlSection
                                              });
                 break;
@@ -271,147 +249,134 @@ function skipUpcoming() {
 }
 
 function selectItemIndex(i) {
-    columnCounter = Math.floor(i/2);
-    isTopRowSelected = (i % 2 == 0);
-    if (items.length >= 8*(MAX_PAGES+1)) {
+    itemIndex = i;
+    if (items.length >= 15*(MAX_PAGES+1)) {
         htmlSection = getInitialSection();
-        var orgColumnCounter = columnCounter;
-        while (columnCounter >= htmlSection.load_next_column &&
-               htmlSection.load_next_column > 0) {
+        while (itemIndex >= htmlSection.load_next && htmlSection.load_next > 0) {
             getNextSection();
-            columnCounter = orgColumnCounter - htmlSection.index/2;
+            itemIndex = i - htmlSection.index;
         }
     } else
         htmlSection = null;
-    alert('i:' + i + ' col:' + columnCounter + ' top:' + isTopRowSelected + ' htmlSection:' + JSON.stringify(htmlSection));
+    alert('i:' + i + ' itemIndex:' + itemIndex + ' htmlSection:' + JSON.stringify(htmlSection));
 }
 
-function checkLoadNextSection(column, steps, noLoad) {
-    var selected = null;
+function checkLoadNextSection(index, steps, noLoad) {
+    var reloaded = false;
     if (htmlSection) {
-        if (htmlSection.load_next_column != 0) {
-            if ((column+steps) >= htmlSection.load_next_column) {
-                selected = noLoad || loadNextSection();
-            }
-        } else if (column==0 && steps==0) {
-            selected = noLoad || loadNextSection();
+        if (htmlSection.load_next && (index+steps) >= htmlSection.load_next) {
+            !noLoad && loadNextSection();
+            reloaded = true;
+        } else if (index==0 && steps==0) {
+            !noLoad && loadNextSection();
+            reloaded = true;
         }
     }
 
-    if (selected) {
-        if (!noLoad && detailsOnTop)
+    if (!noLoad && reloaded) {
+        if (detailsOnTop)
             refreshSectionInHistory();
-        return {selected: selected,
-                top     : $('.topitem'),
-                bottom  : $('.bottomitem')
-               };
     }
 
-    return null;
+    return reloaded;
 }
 
-function checkLoadPriorSection(column, steps, noLoad) {
-    var selected = null;
+function checkLoadPriorSection(index, steps, noLoad) {
+    var reloaded = false;
 
     if (htmlSection) {
-        if (htmlSection.load_prior_column > -1) {
-            if ((column-steps) < htmlSection.load_prior_column) {
-                selected = noLoad || loadPriorSection();
-            }
-        } else if (steps==0) {
-            selected = noLoad || loadPriorSection();
+        if (index == 0 && steps==0) {
+            !noLoad && loadPriorSection();
+            reloaded = true;
+        } else if (index > 0 && index-steps < 0) {
+            !noLoad && loadPriorSection();
+            reloaded = true;
         }
     }
 
-    if (selected) {
-        if (!noLoad && detailsOnTop)
+    if (!noLoad && reloaded) {
+        if (detailsOnTop)
             refreshSectionInHistory();
-        return {selected: selected,
-                top     : $('.topitem'),
-                bottom  : $('.bottomitem')
-               };
     }
 
-    return null;
+    return reloaded;
 }
 
-function nextInList(topItems, bottomItems, itemSelected, steps) {
-    var nextLoaded = checkLoadNextSection(columnCounter, steps);
-    if (nextLoaded) {
-        itemSelected = nextLoaded.selected;
-        topItems     = nextLoaded.top;
-        bottomItems  = nextLoaded.bottom;
-    }
-    itemSelected.removeClass('selected');
-    var next = itemSelected.next();
-    while(--steps > 0 && next.length > 0){
-        if ((next.next()).length > 0) {
-            columnCounter++;
-            itemSelected = next.addClass('selected');
-            itemSelected.removeClass('selected');
-            next = itemSelected.next();
-        }
-    }
-
-    if (next.length > 0) {
-        columnCounter++;
-	itemSelected = next.addClass('selected');
-    } else if (isTopRowSelected) {
-	itemSelected = topItems.eq(0).addClass('selected');
-	columnCounter = 0;
-        isTopRowSelected = true;
-    } else {
-	itemSelected = bottomItems.eq(0).addClass('selected');
-	columnCounter = 0;
-        isTopRowSelected = false;
-    }
-    nextLoaded = checkLoadNextSection(columnCounter, 0);
-    if (nextLoaded)
-        return nextLoaded.selected;
-    return itemSelected;
-}
-
-function prevInList(topItems, bottomItems, itemSelected, steps) {
-
-    var priorLoaded = checkLoadPriorSection(columnCounter, steps);
-    if (priorLoaded) {
-        itemSelected = priorLoaded.selected;
-        topItems     = priorLoaded.top;
-        bottomItems  = priorLoaded.bottom;
-    }
-
-    itemSelected.removeClass('selected');
-    var prev = itemSelected.prev();
-    while(--steps > 0 && prev.length > 0){
-        if ((prev.prev()).length > 0) {
-            columnCounter--;
-            itemSelected = prev.addClass('selected');
-            itemSelected.removeClass('selected');
-            prev = itemSelected.prev();
-        }
-    }
-
-    if (prev.length > 0) {
-        columnCounter--;
-	itemSelected = prev.addClass('selected');
-    } else {
-        priorLoaded = checkLoadPriorSection(columnCounter, 0);
-        if (priorLoaded) {
-            itemSelected = priorLoaded.selected.removeClass('selected');
-            topItems     = priorLoaded.top;
-            bottomItems  = priorLoaded.bottom;
-        }
-        if (topItems.length > bottomItems.length || isTopRowSelected) {
-	    itemSelected = topItems.last().addClass('selected');
-	    columnCounter = topItems.length - 1;
-            isTopRowSelected = true;
+function nextInList(itemList, itemSelected, steps) {
+    var maxIndex = itemList.length-1;
+    var actualMaxIndex = (htmlSection) ? items.length-1-htmlSection.index : maxIndex;
+    // alert('nextInList itemIndex:' + itemIndex + ' maxIndex:' + maxIndex);
+    if (steps == 1) {
+        if ((itemIndex % 5) == 4 || !(itemSelected.next()).length) {
+            return movePrev(itemSelected, (itemIndex % 5));
         } else {
-	    itemSelected = bottomItems.last().addClass('selected');
-	    columnCounter = bottomItems.length - 1;
-            isTopRowSelected = false;
+            return moveNext(itemSelected, steps);
         }
+    } else if (steps == 5 || steps == 15) {
+        // Next Line
+        if ((itemIndex + steps) <= actualMaxIndex)
+            return moveNext(itemSelected, steps);
+        else if (Math.floor(itemIndex/5) != Math.floor(maxIndex/5))
+            // Not on same line - swith to last item
+            return moveNext(itemSelected, maxIndex-itemIndex);
+        else if (itemIndex > 4) {
+            // We're on same and last line, move to first line instead
+            return moveNext(itemSelected, 0, itemIndex%5);
+        } else
+            return itemSelected;
+    } else {
+        return moveNext(itemSelected, steps);
     }
-    return itemSelected;
+}
+
+function moveNext(itemSelected, steps, newItemIndex) {
+    return moveToItem(itemSelected, steps, newItemIndex);
+}
+
+function moveToItem(itemSelected, steps, newItemIndex) {
+    itemSelected.removeClass('selected');
+    if (htmlSection) {
+        if (htmlSection.load_next==0 && steps==0) {
+            loadNextSection(true);
+        } else if (htmlSection.index==0 && steps==0) {
+            loadPriorSection(true);
+        } else if (htmlSection.load_next && (itemIndex+steps) >= htmlSection.load_next) {
+            loadNextSection();
+        } else if (itemIndex+steps < 0) {
+            loadPriorSection();
+        }
+    } else if (steps == 0 && newItemIndex >= 0)
+        itemIndex = newItemIndex;
+    itemIndex = itemIndex+steps;
+    itemSelected = $('.itemlist').eq(itemIndex);
+    return itemSelected.addClass('selected');
+}
+
+function prevInList(itemList, itemSelected, steps) {
+    // alert("itemIndex:" + itemIndex + " itemList:" + itemList.length);
+    var maxIndex = itemList.length-1;
+    var actualIndex = (htmlSection) ? htmlSection.index+itemIndex : itemIndex;
+    if (steps == 1 && (itemIndex % 5) == 0) {
+        return moveNext(itemSelected, Math.min(4, maxIndex-itemIndex));
+    } else if (steps == 5 || steps == 15) {
+        // Previous Line        
+        if ((actualIndex - steps) >= 0)
+            return movePrev(itemSelected, steps); 
+        else if (maxIndex > 4) {
+            // We're on first line, move to last line instead
+            var newItemIndex = GetLastRowIndex(itemIndex%5, maxIndex);
+            return movePrev(itemSelected, 0, newItemIndex);
+        }
+        else
+            return itemSelected;
+    
+    } else {
+        return movePrev(itemSelected, steps);
+    }
+}
+
+function movePrev(itemSelected, steps, newItemIndex) {
+    return moveToItem(itemSelected, -steps, newItemIndex);
 }
 
 Buttons.keyHandleForDetails = function() {
@@ -889,106 +854,68 @@ Buttons.playItem = function() {
 };
 
 Buttons.findNextItem = function(play, noLoad) {
-    var topItems = $('.topitem');
-    var bottomItems = $('.bottomitem');
+
+    var itemList = $('.itemlist');
+    var tmpItemIndex = itemIndex;
     var tmpItem;
-    var tmpTopSelected = isTopRowSelected;
-    var tmpColumnCounter = columnCounter;
 
     while (true) {
-        if (checkLoadNextSection(tmpColumnCounter, 1, noLoad))
+        if (checkLoadNextSection(tmpItemIndex, 1, noLoad))
             return (noLoad) ? -1 : Buttons.findNextItem(play);
-        // First go down if possible
-        if(tmpTopSelected) {
-            if (bottomItems.length > tmpColumnCounter) {
-                tmpTopSelected = false;
-                tmpItem = bottomItems.eq(tmpColumnCounter);
-            } else if (!play && tmpColumnCounter != 0) {
-                // Start from beginning unless playing
-                tmpItem = topItems.eq(0);
-                tmpColumnCounter = 0;
-            } else {
-                // There is no more item
-                return -1;
-            }
-        } else {
-            // Go Up and right
-            tmpTopSelected = true;
-            tmpItem = topItems.eq(tmpColumnCounter).next();
-            if (tmpItem.length <= 0) {
-                // Start from beginning unless playing
-                if (!play && tmpColumnCounter != 0) {
-                    tmpItem = topItems.eq(0);
-                    tmpColumnCounter = 0;
-                } else {
-                    // There is no more item
-                    return -1;
-                }
-            } else {
-                tmpColumnCounter++;
-            }
+        tmpItemIndex = tmpItemIndex+1;
+        if (tmpItemIndex < itemList.length)
+            tmpItem = itemList.eq(tmpItemIndex);
+        else if (!play) {
+            tmpItemIndex = 0;
+            tmpItem = itemList.eq(tmpItemIndex);
         }
-        if (tmpColumnCounter == 0 && checkLoadNextSection(tmpColumnCounter, 0, noLoad)) {
+        else
+            // There is no more item
+            return -1;
+
+        if (tmpItemIndex == 0 && checkLoadNextSection(tmpItemIndex, 0, noLoad)) {
             if (noLoad) return -1;
-            topItems = $('.topitem');
-            bottomItems = $('.bottomitem');
-            tmpItem = topItems.eq(0);
+            itemList = $('.itemlist');
+            tmpItem = itemList.eq(tmpItemIndex);
         }
-        if (tmpItem.find('.ilink').attr('href') != undefined &&
+
+        if (tmpItem.find('.ilink').attr('href') != undefined && 
             (Buttons.isPlayable(tmpItem.find('.ilink').attr('href')) ||
              (tmpItem.find('.ilink').attr('href').search('(showList|categoryDetail).html\\?') != -1 && !play)) &&
             (!play || tmpItem.html().indexOf('not-yet-available') === -1)) {
-            return {item:tmpItem, top:tmpTopSelected, col:tmpColumnCounter};
+            return {item:tmpItem, index:tmpItemIndex};
         }
     }
 };
 
 Buttons.findPriorItem = function(play, noLoad) {
-    var topItems = $('.topitem');
-    var bottomItems = $('.bottomitem');
+
+    var itemList = $('.itemlist');
+    var tmpItemIndex = itemIndex;
     var tmpItem;
-    var tmpTopSelected = isTopRowSelected;
-    var tmpColumnCounter = columnCounter;
 
     while (true) {
-        if (checkLoadPriorSection(tmpColumnCounter, 1, noLoad))
+        if (checkLoadPriorSection(tmpItemIndex, 1, noLoad))
             return (noLoad) ? -1 : Buttons.findPriorItem(play);
-        // First go up
-        if(!tmpTopSelected) {
-            // Go Up
-            tmpTopSelected = true;
-            tmpItem = topItems.eq(tmpColumnCounter);
-        } else if (tmpColumnCounter == 0) {
-            // At first Item - go to last item unless playing (or the only item).
-            if (!play && topItems.length > 1) {
-                if (checkLoadPriorSection(tmpColumnCounter, 0, noLoad)) {
-                    if (noLoad) return -1;
-                    topItems = $('.topitem');
-                    bottomItems = $('.bottomitem');
-                }
-                if (topItems.length > bottomItems.length) {
-	            tmpItem = topItems.last();
-	            tmpColumnCounter = topItems.length - 1;
-                    tmpTopSelected = true;
-                } else {
-	            tmpItem = bottomItems.last();
-	            tmpColumnCounter = bottomItems.length - 1;
-                    tmpTopSelected = false;
-                }
-            } else {
-                return -1;
+        tmpItemIndex = tmpItemIndex-1;
+        if (tmpItemIndex >= 0)
+            tmpItem = itemList.eq(tmpItemIndex);
+        else if (!play) {
+            if (checkLoadPriorSection(0, 0, noLoad)) {
+                if (noLoad) return -1;
+                itemList = $('.itemlist');
             }
-        } else {
-            // Go left and down
-            tmpColumnCounter--;
-            tmpTopSelected = false;
-            tmpItem = bottomItems.eq(tmpColumnCounter);
+            tmpItemIndex = itemList.length-1;
+            tmpItem = itemList.eq(tmpItemIndex);
         }
-        if (tmpItem.find('.ilink').attr('href') != undefined &&
+        else
+            // There is no more item
+            return -1;
+        if (tmpItem.find('.ilink').attr('href') != undefined && 
             (Buttons.isPlayable(tmpItem.find('.ilink').attr('href')) ||
              (tmpItem.find('.ilink').attr('href').search('(showList|categoryDetail).html\\?') != -1 && !play)) &&
             (!play || tmpItem.html().indexOf('not-yet-available') === -1)) {
-            return {item:tmpItem, top:tmpTopSelected, col:tmpColumnCounter};
+            return {item:tmpItem, index:tmpItemIndex};
         }
     }
 };
@@ -1011,16 +938,14 @@ Buttons.runNextItem = function(direction, play) {
         if (play)
             Player.stopVideo(true);
         itemSelected.removeClass('selected');
-        columnCounter = tmpItem.col;
-        isTopRowSelected = tmpItem.top;
+        itemIndex = tmpItem.index;
         itemSelected = tmpItem.item;
         itemSelected.addClass('selected');
         this.sscroll(true);
         if (detailsOnTop) {
             // refresh History
             var oldPos = myHistory.pop();
-            oldPos.pos.col=tmpItem.col;
-            oldPos.pos.top=tmpItem.top;
+            oldPos.pos.index = tmpItem.index;
             oldPos.pos = Channel.savePosition(oldPos.pos);
             myHistory.push(oldPos);
         }
