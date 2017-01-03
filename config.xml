@@ -22,8 +22,8 @@
 	<dcont itemtype="boolean">y</dcont>
 	<widgetname itemtype="string">Play SE</widgetname>
 	<description itemtype="string">For Swedish Channels</description>
-	<width itemtype="number">960</width>
-	<height itemtype="number">540</height>
+	<width itemtype="number">1280</width>
+	<height itemtype="number">720</height>
 	<author itemtype="group">
 		<name itemtype="string">Kantaris Co.ltd</name>
 		<email itemtype="string">chris@kantaris.net</email>
