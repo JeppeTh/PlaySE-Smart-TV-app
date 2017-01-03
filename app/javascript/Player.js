@@ -1743,7 +1743,7 @@ Player.internalError = function(err) {
 };
 
 Player.GetHelpText = function() {
-    var help = '<table style="margin-bottom:40px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">';
+    var help = '<table style="margin-bottom:53px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">'
     help = InsertHelpRow(help, 'INFO', 'Details');
     help = InsertHelpRow(help, 'RED', 'Repeat');
     help = InsertHelpRow(help, 'GREEN', 'Audio');
@@ -1756,6 +1756,6 @@ Player.GetHelpText = function() {
 };
 
 function InsertHelpRow(Html, Key, Text) {
-    var style =' style="padding:4px;border: 1px solid white;"';
+    var style =' style="padding:5px;border: 2px solid white;"';
     return Html+'<tr><td'+style+'>'+Key+'</td><td'+style+'>'+Text+'</td></tr>';
 }
