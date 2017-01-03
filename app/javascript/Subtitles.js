@@ -434,7 +434,7 @@ Subtitles.getSize = function () {
     if (savedValue) {
         return Number(savedValue);
     } else {
-        return 30;
+        return 40;
     }
 };
 
@@ -443,7 +443,7 @@ Subtitles.getPos = function () {
     if (savedValue) {
         return Number(savedValue);
     } else {
-        return 420;
+        return 560;
     }
 };
 
@@ -486,7 +486,7 @@ Subtitles.move = function (moveUp) {
     if (!subtitlesEnabled) return;
     var oldValue = this.getPos();
     var newValue = (moveUp) ? oldValue-2 : oldValue+2;
-    if (newValue > 300 && newValue < 550) {
+    if (newValue > 400 && newValue < 733) {
         $('#srtId').css('top', newValue); // write value to CSS
         this.savePos(newValue);
         this.showTest();
@@ -497,7 +497,7 @@ Subtitles.size = function(increase) {
     if (!subtitlesEnabled) return;
     var oldValue = this.getSize();
     var newValue = (increase) ? oldValue+1 : oldValue-1;
-    if (newValue > 15 && newValue < 51) {
+    if (newValue > 20 && newValue < 68) {
         $('#srtId').css('font-size', newValue); // write value to CSS
         this.saveSize(newValue);
         this.showTest();

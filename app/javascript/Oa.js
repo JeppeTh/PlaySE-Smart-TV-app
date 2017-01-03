@@ -128,7 +128,7 @@ Oa.getDetailsData = function(url, data) {
             if (data.description)
                 Description = data.description.trim();
             Title = Name;
-            ImgLink = data.thumbnailLarge;
+            ImgLink = data.thumbnailXL;
             if (data.broadcastDate)
                 AirDate = timeToDate(data.broadcastDate);
             else if (data.activateDate)
@@ -182,7 +182,7 @@ Oa.getShowData = function(data) {
         Name = data.programTitle;
         if (!Name || Name.length == 0)
             Name  = data.title;
-        ImgLink = data.thumbnailLarge;
+        ImgLink = data.thumbnailXL;
 	Description = data.summary.trim();
         Genre = [];
         for (var i=0; i < data.tagList.length; i++) {
@@ -264,7 +264,7 @@ Oa.decodeMain = function(data, extra) {
         if (data[i].teaserlist.length)
             categoryToHtml(Name,
                            data[i].teaserlist[0].thumbnailSmall,
-                           data[i].teaserlist[0].thumbnailLarge,
+                           data[i].teaserlist[0].thumbnailXL,
                            Oa.getUrl('main', extra)
                           );
     }
@@ -300,7 +300,7 @@ Oa.decodeCategories = function (data, extra) {
                 Categories.push({name:        Name,
                                  link:        Link+Term,
                                  thumb:       ImgLink,
-                                 large_thumb: ImgLink.replace('small', 'large')
+                                 large_thumb: ImgLink.replace('small', 'extralarge')
                                 });
             }
             Categories.sort(function(a, b){return (a.name > b.name) ? 1 : -1;});
@@ -515,7 +515,7 @@ Oa.decode = function(data, extra, FilterShows) {
                     Shows.push(data[k].tagList[0].term.trim());
                 } else {
                     LinkPrefix = makeCategoryLinkPrefix();
-                    Link       = fixCategoryLink(Name, data[k].thumbnailLarge, Link);
+                    Link       = fixCategoryLink(Name, data[k].thumbnailXL, Link);
                 }
                 toHtml({name:Name,
                         description:Description,

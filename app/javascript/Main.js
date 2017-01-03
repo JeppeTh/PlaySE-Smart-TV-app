@@ -1,12 +1,13 @@
 var widgetAPI = new Common.API.Widget();
 var pluginAPI = new Common.API.Plugin();
-var MAX_WIDTH   = 960;
-var MAX_HEIGHT  = 540;
+var MAX_WIDTH   = 1280;
+var MAX_HEIGHT  = 720;
 var LINE_LENGTH = 45;
-var THUMB_WIDTH = 240;
-var THUMB_HEIGHT = 135;
-var DETAILS_THUMB_FACTOR = 600/THUMB_WIDTH;
-var BACKGROUND_THUMB_FACTOR = MAX_WIDTH/THUMB_WIDTH;
+var THUMB_WIDTH = 320;
+var THUMB_HEIGHT = 180;
+var DETAILS_THUMB_FACTOR = 800/THUMB_WIDTH;
+// 1280 is a bit slow for background
+var BACKGROUND_THUMB_FACTOR = 960/THUMB_WIDTH;
 var recommendedLinks = [];
 var isEmulator = false;
 var deviceYear  = null;
