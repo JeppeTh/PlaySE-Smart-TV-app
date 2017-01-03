@@ -1743,7 +1743,7 @@ Player.internalError = function(err) {
 };
 
 Player.GetHelpText = function() {
-    var help = '<table style="margin-bottom:53px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">'
+    var help = '<table style="margin-bottom:53px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">';
     help = InsertHelpRow(help, 'INFO', 'Details');
     help = InsertHelpRow(help, 'RED', 'Repeat');
     help = InsertHelpRow(help, 'GREEN', 'Audio');
