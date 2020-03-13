@@ -963,7 +963,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
         if (!stream) {
             $('.bottomoverlaybig').html('Not Available!');
         } else {
-            Resolution.getCorrectStream(stream.toHttp(),
+            Resolution.getCorrectStream(stream,
                                         srtUrl,
                                         {useBitrates:true,
                                          license:license,
@@ -1014,7 +1014,7 @@ Tv4.getSrtUrl = function (asset, cb) {
     requestUrl(RedirectIfEmulator(url),
                function(status, data) {
                    try {
-                       srtUrl = JSON.parse(data.responseText)[0].url.toHttp();
+                       srtUrl = JSON.parse(data.responseText)[0].url;
                    } catch (err) {
                        Log('No subtitles: ' + err + ' url:' + url);
                    }

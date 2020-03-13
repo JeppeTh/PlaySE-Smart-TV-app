@@ -5,7 +5,6 @@ var clockTimer;
 var skipTimer;
 var detailsTimer;
 var delayedPlayTimer = 0;
-var pluginAPI = new Common.API.Plugin();
 var fpPlugin;
 var ccTime = 0;
 var resumeTime = 0;
@@ -18,11 +17,10 @@ var detailsUrl;
 var requestedUrl = null;
 var backgroundLoading = false;
 var startup = false;
-var smute = 0;
 var retries = 0;
 var SEPARATOR = '&nbsp;&nbsp;&nbsp;&nbsp;';
 var useSef=true;
-
+var screenSaverTimer=null;
 var Player = {
     plugin : null,
     state : -1,
@@ -61,24 +59,24 @@ var Player = {
 };
 
 Player.setFrontPanelTime = function (hours, mins, secs) {
-    try {
-        if (Player.state == Player.PLAYING)
-            // Log('Setting frontPanelTime');
-            fpPlugin.DisplayVFD_Time(hours, mins, secs);
-    }
-    catch (err) {
-        // Log('setFrontPanelTime failed' + err);
-    }
+    // try {
+    //     if (Player.state == Player.PLAYING)
+    //         // Log('Setting frontPanelTime');
+    //         fpPlugin.DisplayVFD_Time(hours, mins, secs);
+    // }
+    // catch (err) {
+    //     // Log('setFrontPanelTime failed' + err);
+    // }
 
 };
 
 Player.setFrontPanelText = function (text) {
-    try {
-        fpPlugin.DisplayVFD_Show(text);
-    }
-    catch (err) {
-        // Log('setFrontPanelText failed:' + err);
-    }
+    // try {
+    //     fpPlugin.DisplayVFD_Show(text);
+    // }
+    // catch (err) {
+    //     // Log('setFrontPanelText failed:' + err);
+    // }
 };
 
 Player.remove = function() {
@@ -88,13 +86,6 @@ Player.remove = function() {
     }
     Player.disableScreenSaver();
     Player.storeResumeInfo();
-    var mwPlugin = document.getElementById('pluginObjectTVMW');
-
-    if (mwPlugin && (this.originalSource != null) ) {
-        /* Restore original TV source before closing the widget */
-        mwPlugin.SetSource(this.originalSource);
-        Log('Restore source to ' + this.originalSource);
-    }
 };
 
 Player.setVideoURL = function(master, url, srtUrl, extra) {
@@ -122,7 +113,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.component     = videoUrl.match(/\|COMPONENT=([^|]+)/);
     videoData.component     = videoData.component && videoData.component[1];
     videoData.bitrates      = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
-    videoData.url           = videoUrl;
+    videoData.url           = videoUrl.replace(/\|.+/,'');
     videoData.audio_idx     = extra.audio_idx;
     videoData.subtitles_idx = extra.subtitles_idx;
     videoData.use_offset    = extra.use_offset;
@@ -203,18 +194,6 @@ Player.playVideo = function() {
         Player.setFrontPanelText(Player.FRONT_DISPLAY_PLAY);
         Player.disableScreenSaver();
 
-        // Player.plugin.Execute('SetInitialBuffer', 640*1024);
-        // Player.plugin.Execute('SetPendingBuffer', 640*1024);
-        // Player.plugin.Execute('SetTotalBufferSize', 640*1024);
-        if(Audio.plugin.GetUserMute() == 1){
-                $('.muteoverlay').show();
-        	smute = 1;
-        }
-        else{
-            $('.muteoverlay').hide();
-            smute = 0;
-        }
-
         resumeTime = this.getStoredResumeTime();
 
         delayedPlayTimer = 0;
@@ -242,13 +221,6 @@ Player.playVideo = function() {
             }
         );
         this.state = this.PLAYING;
-
-        // work-around for samsung bug. Video player start playing with sound independent of the value of GetUserMute() 
-        // GetUserMute() will continue to have the value of 1 even though sound is playing
-        // so I set SetUserMute(0) to get everything synced up again with what is really happening
-        // once video has started to play I set it to the value that it should be.
-        Audio.plugin.SetUserMute(0);
-       // Audio.showMute();
     }
 };
 
@@ -302,7 +274,8 @@ Player.stopVideo = function(keep_playing) {
     startup = false;
     Subtitles.stop();
     Player.storeResumeInfo();
-    widgetAPI.putInnerHTML(document.getElementById('srtId'), '');
+    $('#video-container').hide();
+    document.getElementById('srtId').innerHTML='';
     $('#srtId').hide();
     Player.hideVideoBackground();
     window.clearTimeout(delayedPlayTimer);
@@ -347,17 +320,22 @@ Player.skipInVideo = function() {
     if (startup) {
         // Can't skip yet...
         skipTimer = -1;
+        Log('skipInVideo during startup');
         return null;
     }
     window.clearTimeout(osdTimer);
-    var timediff = +skipTime - +ccTime;
-    Log('skip: ' + timediff);
-    Player.plugin.skip(timediff);
-    skipTimeInProgress = skipTime;
+    try{
+        Log('skip to: ' + +skipTime);
+        Player.plugin.skip(+skipTime);
+        skipTimeInProgress = skipTime;
+        loadingStart();
+    } catch (err) {
+        Log('skipInVideo failed:' + err);
+    }
 };
 
 Player.skipForward = function(time) {
-    widgetAPI.putInnerHTML(document.getElementById('srtId'), ''); //hide while jumping
+    document.getElementById('srtId').innerHTML=''; //hide while jumping
     var duration = this.GetDuration();
     if(this.skipState == -1) {
         if (((+ccTime + time) > +duration) && (+ccTime <= +duration)) {
@@ -386,7 +364,7 @@ Player.skipLongForwardVideo = function(longMinutes) {
 };
 
 Player.skipBackward = function(time) {
-    widgetAPI.putInnerHTML(document.getElementById('srtId'), ''); //hide subs while jumping
+    document.getElementById('srtId').innerHTML=''; //hide subs while jumping
     window.clearTimeout(skipTimer);
     this.showControls();
     if(this.skipState == -1){
@@ -442,6 +420,8 @@ Player.OnBufferingComplete = function() {
     Log('OnBufferingComplete');
     $('.bottomoverlaybig').html('');
     retries = 0;
+    if (startup)
+        Player.OnRenderingStart();
     if (startup && startup !== true && bufferCompleteCount == 0) {
         // Resuming - wait for next buffering complete
         bufferCompleteCount = bufferCompleteCount + 1;
@@ -564,7 +544,9 @@ Player.setClock = function() {
 };
 
 Player.playbackStarted = function() {
-    // Log('Player.playbackStarted')
+    Player.OnRenderingStart();
+    // Log('Player.playbackStarted');
+    $('#video-container').show();
     if (backgroundLoading) {
         $('#outer').hide();
     }
@@ -653,8 +635,6 @@ Player.SetCurTime = function(time) {
             }
             Player.playbackStarted();
 	    startup = false;
-            // work-around for samsung bug. Mute sound first after the player started.
-	    Audio.setCurrentMode(smute);
             if (videoData.use_offset) {
                 Player.refreshDetailsTimer();
                 if (+Player.startTime != 0) {
@@ -726,6 +706,7 @@ Player.BwToString = function(bw) {
 };
 
 Player.OnStreamInfoReady = function(forced) {
+    try{
     Log('OnStreamInfoReady, forced:' + forced);
     var oldTopOsd = $('.topoverlayresolution').html();
     var resolution = Player.GetResolution();
@@ -737,6 +718,9 @@ Player.OnStreamInfoReady = function(forced) {
     Player.pluginDuration = Player.plugin.getDuration();
     this.setTotalTime();
     Player.updateTopOSD(oldTopOsd);
+    } catch(err) {
+        Log('OnStreamInfoReady error:' + err);
+    }
 };
 
 Player.setTotalTime = function() {
@@ -808,8 +792,9 @@ Player.showHelp = function () {
 };
 
 Player.OnConnectionFailed = function() {
-    Log('OnConnectionFailed'); 
-    Player.checkHls(function(){Player.OnNetworkDisconnected('Connection Failed!');}, 'OnConnectionFailed');
+    Log('OnConnectionFailed');
+    Player.OnNetworkDisconnected('Connection Failed!');
+    // Player.checkHls(function(){Player.OnNetworkDisconnected('Connection Failed!');}, 'OnConnectionFailed');
 };
 
 Player.OnNetworkDisconnected = function(text) {
@@ -864,7 +849,8 @@ Player.OnRenderError = function(number) {
     else {
         Log('Player.OnRenderError:' + number);
         var text = 'Can\'t play this. Error: ' + number;
-        Player.checkHls(function(){Player.PlaybackFailed(text);}, text);
+        Player.PlaybackFailed(text);
+        // Player.checkHls(function(){Player.PlaybackFailed(text);}, text);
     }
 };
 
@@ -1039,17 +1025,8 @@ Player.getRepeatText = function() {
 
 Player.createPlugin = function() {
     if (!Player.plugin) {
-        Player.plugin = SefPlayer;
+        Player.plugin = AvPlayer;
         Player.plugin.create();
-        fpPlugin = document.getElementById('pluginFrontPanel');
-
-        var mwPlugin = document.getElementById('pluginObjectTVMW');
-        if (mwPlugin) {
-            /* Save current TV Source */
-            this.originalSource = mwPlugin.GetSource();
-            /* Set TV source to media player plugin */
-            mwPlugin.SetMediaSource();
-        }
     }
 };
 
@@ -1222,11 +1199,31 @@ Player.refreshDetailsTimer = function() {
 };
 
 Player.enableScreenSaver = function() {
-    pluginAPI.setOnScreenSaver(5*60);
+    $('.screensaver').hide();
+    window.clearTimeout(screenSaverTimer);
+    screenSaverTimer =
+        window.setTimeout(
+            function() {
+                $('.screensaver').show();
+                webapis.appcommon.setScreenSaver(webapis.appcommon.AppCommonScreenSaverState.SCREEN_SAVER_ON);
+            },
+            5*60*1000
+        );
+};
+
+Player.restartScreenSaver = function() {
+    var wasActive = $('.screensaver').is(':visible');
+    // Only restart if enabled
+    if (screenSaverTimer)
+        Player.enableScreenSaver();
+    return wasActive;
 };
 
 Player.disableScreenSaver = function() {
-    pluginAPI.setOffScreenSaver();
+    $('.screensaver').hide();
+    window.clearTimeout(screenSaverTimer);
+    screenSaverTimer = null;
+    webapis.appcommon.setScreenSaver(webapis.appcommon.AppCommonScreenSaverState.SCREEN_SAVER_OFF);
 };
 
 Player.internalError = function(err) {
@@ -1236,18 +1233,18 @@ Player.internalError = function(err) {
 };
 
 Player.GetHelpText = function() {
-    var help = '<table style="margin-bottom:40px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">';
+    var help = '<table style="margin-bottom:80px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">';
     help = InsertHelpRow(help, 'INFO', 'Details');
     help = InsertHelpRow(help, 'RED', 'Repeat');
     help = InsertHelpRow(help, 'YELLOW', 'Subtitles');
     help = InsertHelpRow(help, 'BLUE', 'Aspect');
-    help = InsertHelpRow(help, 'UP/DOWN', 'Subtitles Position/Zoom Level');
+    help = InsertHelpRow(help, 'UP/DOWN', 'Subtitles Position');
     help = InsertHelpRow(help, '2/8', 'Subtitles Size');
     help = InsertHelpRow(help, '4/6', 'Subtitles Distance (if background is used)');
     return help + '</table>';
 };
 
 function InsertHelpRow(Html, Key, Text) {
-    var style =' style="padding:4px;border: 1px solid white;"';
+    var style =' style="padding:8px;border: 2px solid white;"';
     return Html+'<tr><td'+style+'>'+Key+'</td><td'+style+'>'+Text+'</td></tr>';
 }

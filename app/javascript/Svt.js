@@ -143,9 +143,7 @@ Svt.getThumb = function(data, size) {
     else if (size == 'large')
         size = 'wide/' + Math.round(DETAILS_THUMB_FACTOR*THUMB_WIDTH);
     else {
-        // size = 'small/' + THUMB_WIDTH;
-        // Seems 224 is standard and faster...
-        size = 'small/' + 224;
+        size = 'small/' + THUMB_WIDTH;
     }
     return 'https://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed;
 };

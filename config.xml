@@ -1,33 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<widget>
-	<cpname itemtype="string"></cpname>
-	<cplogo itemtype="string"></cplogo>
-	<cpauthjs itemtype="string"></cpauthjs>
-	<ThumbIcon itemtype="string">106.png</ThumbIcon>
-	<BigThumbIcon itemtype="string">115.png</BigThumbIcon>
-	<ListIcon itemtype="string">85.png</ListIcon>
-	<BigListIcon itemtype="string">95.png</BigListIcon>
-	<category itemtype="string">Videos</category>
-	<autoUpdate itemtype="boolean">n</autoUpdate>
-	<ver itemtype="string">0.030</ver>
-	<mgrver itemtype="string"></mgrver>
-	<fullwidget itemtype="boolean">y</fullwidget>
-	<type itemtype="string">user</type>
-        <network itemtype="boolean">y</network>
-        <hubsite itemtype="boolean">n</hubsite>
-	<srcctl itemtype="boolean">y</srcctl>
-	<ticker itemtype="boolean">n</ticker>
-	<childlock itemtype="boolean">n</childlock>
-	<videomute itemtype="boolean">n</videomute>
-	<dcont itemtype="boolean">y</dcont>
-	<widgetname itemtype="string">Play SE</widgetname>
-	<description itemtype="string">For Swedish Channels</description>
-	<width itemtype="number">960</width>
-	<height itemtype="number">540</height>
-	<author itemtype="group">
-		<name itemtype="string">Kantaris Co.ltd</name>
-		<email itemtype="string">chris@kantaris.net</email>
-		<link itemtype="string">http://kantaris.net</link>
-		<organization itemtype="string">Kantaris Co.ltd</organization>
-	</author>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/JeppeTh/PlaySE-Smart-TV-app" version="0.3.0" viewmodes="fullscreen">
+    <access origin="*" subdomains="true"></access>
+    <tizen:application id="vd1XfUivSQ.PlaySE" package="vd1XfUivSQ" required_version="2.1"/>
+    <tizen:category name="http://samsung.com/category/video"/>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+    <feature name="http://tizen.org/feature/tv.inputdevice"/>
+    <feature name="http://tizen.org/feature/network.internet"/>
+    <feature name="http://tizen.org/feature/tv.display"/>
+    <icon src="icon.png"/>
+    <name>PlaySE</name>
+    <tizen:privilege name="http://developer.samsung.com/privilege/widgetdata"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.info"/>
+    <tizen:privilege name="http://tizen.org/privilege/download"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/drminfo"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/drmplay"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.read"/>
+    <tizen:privilege name="http://tizen.org/privilege/filesystem.write"/>
+    <tizen:privilege name="http://tizen.org/privilege/fullscreen"/>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/system"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.window"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/avplay"/>
+    <tizen:privilege name="http://developer.samsung.com/privilege/productinfo"/>
+    <tizen:profile name="tv"/>
+    <tizen:setting screen-orientation="landscape" context-menu="enable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>
