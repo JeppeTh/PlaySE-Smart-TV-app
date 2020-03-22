@@ -1,8 +1,8 @@
 var MAX_WIDTH   = 1920;
 var MAX_HEIGHT  = 1080;
-var LINE_LENGTH = 45;
-var THUMB_WIDTH = 480;
-var THUMB_HEIGHT = 270;
+var LINE_LENGTH = 39;
+var THUMB_WIDTH = 331;
+var THUMB_HEIGHT = 186;
 var DETAILS_THUMB_FACTOR = 1200/THUMB_WIDTH;
 var BACKGROUND_THUMB_FACTOR = MAX_WIDTH/THUMB_WIDTH;
 var HIGHLIGHT_THUMB_WIDTH = 250;
@@ -37,7 +37,7 @@ Main.onLoad = function(refresh) {
         isEmulator = (model === 'VALENCIA' || model === 'SDK' || !model);
         deviceYear = getDeviceYear();
         if (deviceYear > 2011)
-            LINE_LENGTH = 36;
+            LINE_LENGTH = 33;
         Log('Model:' + model +  ' DeviceYear:' + deviceYear + ' IsEmulator:' + isEmulator + ' application:' + tizen.application.getCurrentApplication().appInfo.name + ' Cookies:' + document.cookie + ' version:' + webapis.productinfo.getSmartTVServerVersion() + ' firmware:' + webapis.productinfo.getFirmware() + ' tizen version:' + tizen.systeminfo.getCapabilities().platformVersion);
         loadingStart();
         Main.setClock();
