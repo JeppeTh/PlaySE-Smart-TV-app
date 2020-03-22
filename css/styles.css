@@ -18,7 +18,7 @@ body {
     min-width: 1920px;
     /* for good browsers*/
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 26px;
+    font-size: 28px;
 }
 
 ::-webkit-scrollbar {
@@ -287,14 +287,14 @@ h4 {
 }
 
 .header {
-    height: 124px;
+    height: 75px;
     position: relative;
     width: 100%;
     margin: 0 auto;
 }
 
 .container {
-    height: 1000px;
+    height: 1034px;
     width: 100%;
     color: #7a7e80;
 }
@@ -319,32 +319,30 @@ h4 {
 .socials {
     float: right;
     background: url(../images/social_bg_left.png) left top no-repeat;
-    height: 54px;
-    padding: 0 50px 0 14px;
-    top: 16px;
-    right: 0;
+    height: 28px;
+    top: 2px;
+    right: 2px;
     position: absolute;
 }
 
 .socials p {
     margin: 0;
     display: block;
-    height: 54px;
+    height: 28px;
     background: url(../images/social_bg_right.png) right top no-repeat;
-    padding: 10px 14px 0 0;
 }
 
 .socials a {
     display: block;
     float: left;
-    text-indent: -60000px;
+    text-indent: -45000px;
     height: 28px;
-    margin: 0 10px;
+    margin: 0 8px;
 }
 
 a.social-fb {
     background: url(../images/name.png) 0 0 no-repeat;
-    width: 758px;
+    width: 569px;
     height: 28px;
 }
 
@@ -361,8 +359,8 @@ a.social-twitter:hover {
     float: right;
     font-family: 'Folks-Normal', Arial, sans-serif;
     font-weight: normal;
-    font-size: 24px;
-    margin-top: 80px;
+    font-size: 23px;
+    margin-top: 36px;
     right: 0;
     text-transform: uppercase;
     padding-right: 50px;
@@ -380,6 +378,7 @@ a.social-twitter:hover {
 .topmenu li.root-item {
     display: inline;
     background: url(../images/icon_slash.png) right center no-repeat;
+    margin-top: -2px;
     padding: 0 24px 0 10px;
 }
 
@@ -513,8 +512,8 @@ ul.dropdown .root-item {
 /* slider block */
 
 .slider-body {
-    height: 830px;
-    padding-top: 40px;
+    height: 927px;
+    padding-top: 15px;
     width: 100%;
     position: relative;
 }
@@ -538,35 +537,29 @@ ul.dropdown .root-item {
 
 #content-scroll {
     width: 100%;
-    height: 840px;
+    height: 905px;
     overflow: auto;
-    overflow-y: hidden;
-    -ms-overflow-y: hidden;
-    /*background-color:white;*/
 }
 
 .content-holder {
-    width: 700%;
-    /*width for approx 6 pages*/
-    height: 410px;
-    position: relative;
-    /*background-color:yellow;*/
+    width: 100%;
+    margin-left: 17px;
+    height: auto;
 }
 
 .scroll-content-item {
-    width: 504px;
-    height: 294px;
+    width: 344px;
+    height: 183px;
     float: left;
-    margin: 0 10px;
+    margin: 6px 20px 119px;
     text-align: left;
-    /*background: red;*/
 }
 
 .scroll-item-img {
     position: relative;
-    border: 12px solid #050505;
-    height: 270px;
-    width: 480px;
+    border: 6px solid #050505;
+    height: 186px;
+    width: 331px;
     background: #050505;
     overflow: hidden;
 }
@@ -590,25 +583,9 @@ ul.dropdown .root-item {
     width: 100%;
 }
 
-/*.scroll-content-item.selected .scroll-item-img .img {*/
-
-/*    /\*border:12px solid #58b827;*\/*/
-
-/*    /\*margin-bottom:12px;*\/*/
-
-/*    /\*border:0;*\/*/
-
-/*    /\*max-width:504px;*\/*/
-
-/*    height:294px;*/
-
-/*    /\*width:100%;*\/*/
-
-/*}*/
-
 .scroll-item-border {
-    padding-top: 6px;
-    margin-bottom: 6px;
+    padding-top: 3px;
+    margin-bottom: 3px;
 }
 
 .scroll-content-item.resumed .scroll-item-img {
@@ -616,17 +593,17 @@ ul.dropdown .root-item {
 }
 
 .scroll-content-item.running .scroll-item-border {
-    border-top: 6px solid red;
+    border-top: 3px solid red;
     padding-top: 0;
 }
 
 .scroll-content-item.selected .scroll-item-border {
-    border-top: 6px solid #58b827;
+    border-top: 3px solid #58b827;
     padding-top: 0;
 }
 
 .scroll-content-item.resumed .scroll-item-border {
-    border-top: 6px solid red;
+    border-top: 3px solid red;
     padding-top: 0;
     width: 0%;
 }
@@ -638,7 +615,7 @@ ul.dropdown .root-item {
 }
 
 .scroll-item-name p {
-    font-size: 28px;
+    font-size: 24px;
     font-family: Arial, sans-serif;
 }
 
@@ -652,14 +629,12 @@ ul.dropdown .root-item {
 
 .item-date {
     overflow: hidden;
-    max-height: 44px;
+    max-height: 45px;
     color: #4b5257;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 20px;
-    line-height: 24px;
-    font-weight: bold;
+    font-weight: normal;
     display: block;
-    padding: 0 0;
     text-transform: uppercase;
 }
 
@@ -674,7 +649,7 @@ ul.dropdown .root-item {
 
 .footer-content {
     margin-top: 0;
-    height: 76px;
+    height: 53px;
     color: #5b5e5f;
 }
 
@@ -683,7 +658,7 @@ ul.dropdown .root-item {
     top: 1012px; /*Keyboard pushes it up when using bottom...*/
     left: 40px;
     letter-spacing: -2px;
-    font-size: 32px;
+    font-size: 30px;
 }
 
 .footer-box-l,
@@ -691,9 +666,9 @@ ul.dropdown .root-item {
 .footer-box-r {
     text-align: center;
     float: left;
-    height: 90px;
+    height: 63px;
     overflow: auto;
-    line-height: 86px;
+    line-height: 60px;
 }
 
 .footer-box-l,
@@ -701,7 +676,7 @@ ul.dropdown .root-item {
     overflow: hidden;
     float: left;
     width: auto;
-    height: 76px;
+    height: 57px;
     background: url(../images/middlefooter.png) repeat;
 }
 
@@ -709,22 +684,22 @@ ul.dropdown .root-item {
     overflow: hidden;
     float: left;
     width: 80px;
-    height: 76px;
+    height: 57px;
     background: url(../images/middlefooter.png) repeat;
 }
 
 .footer-left-r {
     float: left;
-    width: 16px;
-    height: 76px;
+    width: 12px;
+    height: 57px;
     background: url(../images/leftfooter.png) no-repeat;
 }
 
 .footer-right-r {
-    margin-right: 10px;
+    margin-right: 8px;
     float: left;
-    width: 16px;
-    height: 76px;
+    width: 12px;
+    height: 57px;
     background: url(../images/rightfooter.png) no-repeat;
 }
 
@@ -741,10 +716,10 @@ ul.dropdown .root-item {
 .footer-box-c {
     margin: 0 6px;
     width: 1140px;
-    height: 98px;
+    height: 68px;
     background: url(../images/footer_box_2.gif) no-repeat;
     text-transform: uppercase;
-    font-size: 22px;
+    font-size: 30px;
     font-weight: normal;
 }
 
@@ -753,9 +728,8 @@ ul.dropdown .root-item {
 .content {
     display: none;
     width: 100%;
-    height: 830px;
-    padding: 20px 0;
-    margin: 0 auto;
+    height: 900px;
+    margin-top: 41px;
     text-align: left;
 }
 
@@ -844,7 +818,6 @@ a.next {
 
 .project-details {
     position: relative;
-    margin-top: 40px;
 }
 
 .project-text {
@@ -868,7 +841,7 @@ a.next {
 
 .project-name {
     width: 600px;
-    height: 700px;
+    height: 827px;
     position: relative;
     padding: 10px 0 0 50px;
     float: left;
@@ -1389,15 +1362,15 @@ small {
 .topoverlayred,
 .bottomoverlayred {
     position: absolute;
-    top: 70%;
+    top: 64%;
     left: 0;
     color: #e0e7ea;
-    font: bold 24px/36px Helvetica, Sans-Serif;
+    font: bold 20px/32px Helvetica, Sans-Serif;
     letter-spacing: -2px;
     background: rgba(0, 0, 0, 0.7);
     vertical-align: middle;
     white-space: nowrap;
-    padding: 0 14px;
+    padding: 0 11px;
 }
 
 .topoverlayred,
@@ -1407,7 +1380,7 @@ small {
 
 .bottomoverlay,
 .bottomoverlayred {
-    top: 36px;
+    top: 32px;
 }
 
 .scroll-item-label {
@@ -1416,9 +1389,9 @@ small {
     height: auto;
     z-index: 1;
     color: white;
-    line-height: 32px;
+    line-height: 27px;
     padding: 0 8px 0 4px;
-    border-radius: 0 0 10px 0;
+    border-radius: 0 0 9px 0;
     background: red;
 }
 
@@ -1604,7 +1577,7 @@ small {
     height: 670px;
     position: fixed;
     width: 100%;
-    top: 124px;
+    top: 63px;
     left: 0;
     display: none;
     z-index: 200;
@@ -1727,7 +1700,7 @@ small {
     height: 250px;
     position: fixed;
     width: 100%;
-    top: 124px;
+    top: 63px;
     left: 0;
     z-index: 200;
     display: none;
@@ -1739,7 +1712,7 @@ small {
     height: 70px;
     position: fixed;
     width: 100%;
-    top: 124px;
+    top: 63px;
     left: 0;
     z-index: 200;
     display: none;
@@ -1761,7 +1734,7 @@ small {
 
 .res-content {
     position: fixed;
-    top: 194px;
+    top: 134px;
     left: 140px;
     text-align: center;
     font-family: 'Folks-Normal', Arial, sans-serif;
@@ -1773,7 +1746,7 @@ small {
 
 .res-live-content {
     position: fixed;
-    top: 250px;
+    top: 190px;
     left: 140px;
     text-align: center;
     font-family: 'Folks-Normal', Arial, sans-serif;
@@ -1785,7 +1758,7 @@ small {
 
 .channel-content {
     position: fixed;
-    top: 306px;
+    top: 246px;
     left: 140px;
     text-align: center;
     font-family: 'Folks-Normal', Arial, sans-serif;
