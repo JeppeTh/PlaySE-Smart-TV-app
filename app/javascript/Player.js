@@ -1803,6 +1803,6 @@ Player.GetHelpText = function() {
 };
 
 function InsertHelpRow(Html, Key, Text) {
-    var style =' style="padding:8px;border: 2px solid white;"';
+    var style =' style="padding:8px;border: 3px solid white;"';
     return Html+'<tr><td'+style+'>'+Key+'</td><td'+style+'>'+Text+'</td></tr>';
 }
