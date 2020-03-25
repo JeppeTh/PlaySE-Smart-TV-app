@@ -287,7 +287,7 @@ h4 {
 }
 
 .header {
-    height: 75px;
+    height: 74px;
     position: relative;
     width: 100%;
     margin: 0 auto;
@@ -512,8 +512,8 @@ ul.dropdown .root-item {
 /* slider block */
 
 .slider-body {
-    height: 927px;
-    padding-top: 15px;
+    height: 899px;
+    padding-top: 21px;
     width: 100%;
     position: relative;
 }
@@ -543,7 +543,7 @@ ul.dropdown .root-item {
 
 .content-holder {
     width: 100%;
-    margin-left: 17px;
+    margin-left: 12px;
     height: auto;
 }
 
@@ -551,7 +551,7 @@ ul.dropdown .root-item {
     width: 344px;
     height: 183px;
     float: left;
-    margin: 6px 20px 119px;
+    margin: 0 18px 125px;
     text-align: left;
 }
 
@@ -609,7 +609,7 @@ ul.dropdown .root-item {
 }
 
 .scroll-item-name {
-    max-height: 96px;
+    max-height: 84px;
     overflow: hidden;
     text-align: left;
 }
@@ -617,6 +617,7 @@ ul.dropdown .root-item {
 .scroll-item-name p {
     font-size: 24px;
     font-family: Arial, sans-serif;
+    margin-bottom: 1px;
 }
 
 .scroll-content-item .scroll-item-name a {
@@ -648,14 +649,14 @@ ul.dropdown .root-item {
 /* footer */
 
 .footer-content {
-    margin-top: 0;
+    margin-top: 20px;
     height: 53px;
     color: #5b5e5f;
 }
 
 #footer-clock {
     position: absolute;
-    top: 1012px; /*Keyboard pushes it up when using bottom...*/
+    top: 1025px; /*Keyboard pushes it up when using bottom...*/
     left: 40px;
     letter-spacing: -2px;
     font-size: 30px;
@@ -728,7 +729,8 @@ ul.dropdown .root-item {
 .content {
     display: none;
     width: 100%;
-    height: 900px;
+    /*margin+height should equal slider-body height+padding*/
+    height: 879px;
     margin-top: 41px;
     text-align: left;
 }
@@ -1362,7 +1364,7 @@ small {
 .topoverlayred,
 .bottomoverlayred {
     position: absolute;
-    top: 64%;
+    top: 62%;
     left: 0;
     color: #e0e7ea;
     font: bold 20px/32px Helvetica, Sans-Serif;
@@ -1420,7 +1422,7 @@ small {
     top: 0;
     height: 100%;
     width: 100%;
-    line-height: 270px;
+    line-height: 186px;
     text-align: center;
     background: none;
 }
@@ -1439,14 +1441,14 @@ small {
     top: 0;
     height: 100%;
     width: 100%;
-    line-height: 270px;
+    line-height: 186px;
     text-align: center;
     background: rgba(0, 0, 0, 0.7);
 }
 
 .upcomingoverlay span {
     color: #e0e7ea;
-    font: bold 34px Helvetica, Sans-Serif;
+    font: bold 28px Helvetica, Sans-Serif;
     letter-spacing: -1px;
     white-space: nowrap;
 }
