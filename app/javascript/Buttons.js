@@ -183,7 +183,7 @@ Buttons.sscroll = function(hide) {
 
 Buttons.getMargin = function() {
     pageIndex = Math.floor(itemIndex/15);
-    return pageIndex*-923;
+    return pageIndex*-924; // 3*(sctoll-content-item height + top/bottom margins)
 };
 
 Buttons.refresh = function() {
