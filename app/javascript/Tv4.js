@@ -1520,10 +1520,12 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
                              Resolution.getCorrectStream(stream,
                                                          srtUrl,
                                                          {previewThumbStream:thumbsUrl,
+                                                          isLive:live,
                                                           license:drm && drm.license,
                                                           customdata:drm && drm.customData,
                                                           use_offset:useOffset,
-                                                          useBitrates:true
+                                                          useBitrates:true,
+                                                          use_vjs:stream.match(/m3u8/)
                                                          });
                          }
                      }
