@@ -1545,6 +1545,7 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                                          use_offset: isLive && use_offset,
                                          useBitrates: true,
                                          live_seek: true,
+                                         use_vjs: !drm && stream.match(/m3u8/),
                                          can_start_over: isLive && !isChannel
                                         };
                        if (isLive) {
