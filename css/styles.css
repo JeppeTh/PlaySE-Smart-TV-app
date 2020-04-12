@@ -1215,6 +1215,17 @@ small {
 
 /*video-overlay*/
 
+#video-container {
+    display:none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width:100%;
+    height:100%;
+    z-index: -2;
+    background:black;
+}
+
 .video-background {
     display: none;
     top: 0;
@@ -1527,7 +1538,7 @@ small {
     left: 0;
     color: #e0e7ea;
     font: bold 60px/120px Helvetica, Sans-Serif;
-    max-width: 98%;
+    max-width: 1880px;
     width: inherit;
     height: inherit;
     white-space: nowrap;
