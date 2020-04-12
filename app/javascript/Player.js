@@ -30,6 +30,11 @@ var screenSaverTimer = null;
 
 var Player = {
     plugin : null,
+    pluginPlayer:0,
+    PLUGIN_AVPLAYER:0,
+    PLUGIN_VIDEOJS:1,
+    pluginToggled:false,
+
     state : -1,
     skipState : -1,
     srtState : -1,
@@ -1517,10 +1522,27 @@ Player.getRepeatText = function() {
     }
 };
 
-Player.createPlugin = function() {
-    if (!Player.plugin) {
+Player.selectPluginPlayer = function() {
+    if (!Player.pluginToggled) {
+        var oldPluginPlayer = Player.pluginPlayer;
+        if (Player.isLive)
+            Player.pluginPlayer = Player.PLUGIN_VIDEOJS;
+        else
+            Player.pluginPlayer = Player.PLUGIN_AVPLAYER;
+        if (Player.plugin && oldPluginPlayer!=Player.pluginPlayer)
+            Player.plugin.remove();
+    }
+    switch (Player.pluginPlayer) {
+    case Player.PLUGIN_AVPLAYER:
         Player.plugin = AvPlayer;
-        Player.plugin.create();
+        break;
+
+    case Player.PLUGIN_VIDEOJS:
+        Player.plugin = VideoJsPlayer;
+        break;
+
+    default:
+        Player.plugin = null;
     }
 };
 
@@ -1557,7 +1579,8 @@ Player.startPlayer = function(url, isLive, start) {
     this.hideDetailedInfo();
     if (Player.plugin)
         Player.plugin.stop();
-    Player.createPlugin();
+    Player.selectPluginPlayer();
+    Player.plugin.create();
     Player.setTopOSDText('');
     $('.currentTime').text('');
     $('.totalTime').text('');
