@@ -1485,7 +1485,8 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
                                                           license:drm && drm.license,
                                                           customdata:drm && drm.customData,
                                                           isLive:live,
-                                                          use_offset:useOffset
+                                                          use_offset:useOffset,
+                                                          use_vjs:stream.match(/m3u8/)
                                                          });
                          }
                      }
