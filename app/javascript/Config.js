@@ -4,10 +4,11 @@ var Config = {
     version  : 3
 };
 
-Config.init = function() {
-    if (this.data)
+Config.init = function(Callback) {
+    if (this.data) {
         // Already done
-        return;
+        return true;
+    }
     this.data = {items:{}};
     // Save storage
     this.data.saveFile = function() {
@@ -131,7 +132,9 @@ Config.init = function() {
     this.initData(function() {
         Config.upgrade();
         Config.test();
+        Callback();
     });
+    return false;
 };
 
 Config.read = function(key) {
