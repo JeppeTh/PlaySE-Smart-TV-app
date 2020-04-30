@@ -956,8 +956,8 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
     var reqUrl = 'https://playback-api.b17g.net/media/' + asset + '?service=tv4&drm=playready' + protocol;
     hlsUrl = hlsUrl || reqUrl.replace(/dash/,'hls');
 
-    // if (isLive)
-    //     reqUrl = reqUrl + '&is_live=true';
+    if (isLive)
+        reqUrl = reqUrl + '&is_live=true';
 
     var cbComplete = function(stream, srtUrl, license, customData, useOffset) {
         if (!stream) {

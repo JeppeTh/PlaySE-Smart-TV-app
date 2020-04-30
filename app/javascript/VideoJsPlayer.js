@@ -1,11 +1,47 @@
 var VideoJsPlayer = {
     player: null,
-    // Seems data isn't loaded until after play for live streams
-    delayed_seek: null,
-    delayed_seek_started:false,
+
+    state:0,
+    STATE_INIT : 0,
+    STATE_WAITING : 1,
+    STATE_STARTED : 2,
+
+    resuming: false,
+    resume_seeking_started:false,
+    split_seek:false,
+    play_called:false,
+
+    aborted:false,
+
     aspectMode: 0,
     ASPECT_AUTO : 0,
-    ASPECT_FULL : 1
+    ASPECT_FULL : 1,
+
+    events: ['ready',
+             'emptied',
+             'sourceset',
+             'loadstart',
+             'loadedmetadata',
+             'loadeddata',
+             'canplay',
+             'canplaythrough',
+             'play',
+             'pause',
+             'playing',
+             'timeupdate',
+             'durationchange',
+             'seeking',
+             'seeked',
+             'stalled',
+             'suspend',
+             'waiting',
+             'ended',
+             // 'progress',
+             'error',
+             'abort',
+             'dispose',
+             'audiotrackchange'
+            ]
 };
 
 VideoJsPlayer.create = function() {
@@ -21,23 +57,32 @@ VideoJsPlayer.create = function() {
     div.style.position = 'absolute';
     document.getElementById('video-container').appendChild(div);
 
-    // alert('body:' + $('body').html());
-
+    var httpOptions = {preload:'auto',
+                       hls:{
+                           limitRenditionByPlayerDimensions:false,
+                           overrideNative:true
+                       },
+                       nativeAudioTracks:false,
+                       nativeVideoTracks:false
+                      };
     VideoJsPlayer.player = videojs('video-player',
                               {
                                   fluid:true,
                                   autoplay:false,
                                   controls:false,
-                                  preload:'auto',
-                                  html5:{
-                                      hls:{overrideNative:true},
-                                      nativeAudioTracks:false,
-                                      nativeVideoTracks:false
-                                  }
+                                  enableSourceset:true,
+                                  html5:httpOptions,
+                                  flash:httpOptions
                               });
 
-    VideoJsPlayer.player.reloadSourceOnError();
+    // VideoJsPlayer.player.reloadSourceOnError();
     // videojs.log.level('all');
+    videojs.log.level('error');
+    videojs.log.history.disable();
+
+    for (var i=0; i < VideoJsPlayer.events.length; i++) {
+        VideoJsPlayer.subscribeEvent(VideoJsPlayer.events[i]);
+    };
 
     // // Get the current player's AudioTrackList object.
     // var audioTrackList = VideoJsPlayer.player.audioTracks();
@@ -47,121 +92,141 @@ VideoJsPlayer.create = function() {
     //     alert('audio change');
     // });
 
-    // Doesn't seem to work...
-    // VideoJsPlayer.player.on('ready', function() {
-    //     VideoJsLog('ready');
-    // });
+    VideoJsPlayer.tech().on('usage', function(e){
+        VideoJsLog('usage:' + e.name);
+    });
 
-    VideoJsPlayer.player.on('loadedmetadata', function() {
-        // Why are levels sometimes empty?
-        VideoJsLog('loadedmetadata, levels:' + VideoJsPlayer.player.qualityLevels().length);
-        var wantedBr = videoData.bitrates && videoData.bitrates.match(/BITRATES=([0-9]+):[0-9]/);
-        wantedBr = wantedBr && +wantedBr[1];
-        var levels = VideoJsPlayer.player.qualityLevels();
-        for (var i=0; wantedBr && i < levels.length; i++) {
-            levels[i].enabled = (levels[i].bitrate == wantedBr);
-        }
-        Player.OnStreamInfoReady(true);
-        VideoJsPlayer.checkDelayedSeek();
+    VideoJsPlayer.player.qualityLevels().on('addqualitylevel', function(event) {
+        VideoJsLog('addqualitylevel: ' + JSON.stringify(event.qualityLevel));
     });
 
     VideoJsPlayer.player.qualityLevels().on('change', function() {
         VideoJsLog('change, selectedIndex:' + VideoJsPlayer.player.qualityLevels().selectedIndex_);
         Player.OnStreamInfoReady(true);
     });
+};
 
-    VideoJsPlayer.player.on('audiotrackchange', function() {
-        alert('audiotrackchange');
+VideoJsPlayer.subscribeEvent = function(Event) {
+    VideoJsPlayer.player.on(Event, function(e) {
+        VideoJsPlayer.On(Event, e);
     });
+};
 
-    VideoJsPlayer.player.on('abort', function(e) {
-        VideoJsLog('abort: ' + JSON.stringify(e));
-    });
+VideoJsPlayer.On = function (Event, e) {
 
-    VideoJsPlayer.player.on('canplay', function() {
-        VideoJsLog('canplay');
-    });
+    if (Event != 'timeupdate')
+        VideoJsLog(Event);
 
-    VideoJsPlayer.player.on('canplaythrough', function() {
-        VideoJsLog('canplaythrough');
-    });
+    if (VideoJsPlayer.aborted)
+        return;
 
-    VideoJsPlayer.player.on('loadstart', function() {
-        VideoJsLog('loadstart');
-    });
+    if (Event == 'loadedmetadata')
+        VideoJsPlayer.metaDataLoaded();
 
-    VideoJsPlayer.player.on('loadeddata', function() {
-        VideoJsLog('loadeddata');
-        // Log('Audiotracks: ' + JSON.stringify(VideoJsPlayer.player.audioTracks()));
-        // Log('DefaultMute: ' + JSON.stringify(VideoJsPlayer.player.defaultMuted()));
-        // Log('Quality: ' + JSON.stringify(VideoJsPlayer.player.getVideoPlaybackQuality()));
-    });
+    if (VideoJsPlayer.state == VideoJsPlayer.STATE_INIT) {
+        if (VideoJsPlayer.player.readyState() > 1) {
+            VideoJsPlayer.state = VideoJsPlayer.STATE_WAITING;
+        } else if (Event == 'stalled') {
+            // retry
+            Log("stalled - retry");
+            VideoJsPlayer.player.play();
+        }
+        return;
+    } else if (VideoJsPlayer.state == VideoJsPlayer.STATE_WAITING) {
+        if (VideoJsPlayer.play_called)
+            VideoJsPlayer.startPlayback();
+        else
+            VideoJsPlayer.player.pause();
+        return;
+    }
 
-    // VideoJsPlayer.player.on('emptied', function() {
-    //     VideoJsLog('emptied');
-    // });
+    switch (Event) {
 
-    VideoJsPlayer.player.on('play', function() {
-        VideoJsLog('play currenttime:' + VideoJsPlayer.player.currentTime());
-    });
-
-    VideoJsPlayer.player.on('playing', function() {
-        VideoJsLog('playing');
-    });
-
-    VideoJsPlayer.player.on('waiting', function(e) {
-        VideoJsLog('waiting');
-    });
-
-    // VideoJsPlayer.player.on('progress', function(e) {
-    //     // Player.OnBufferingProgress(Math.round(VideoJsPlayer.player.bufferedPercent()*100));
-    //     // VideoJsLog('Progress: ' + JSON.stringify(e));
-    // });
-
-    VideoJsPlayer.player.on('error', function(e) {
-        VideoJsLog('Error: ' + JSON.stringify(e));
-        Log('Error: ' + e.code + ' ' + e.message);
-        Log('Error: ' + VideoJsPlayer.player.error.code + ' ' + VideoJsPlayer.player.error.message);
-        Player.PlaybackFailed(e);
-    });
-
-    VideoJsPlayer.player.on('seeking', function() {
-        VideoJsLog('seeking:' + Player.skipState);
-        if (Player.skipState != -1)
+    case 'seeking':
+        if (VideoJsPlayer.resuming || Player.skipState != -1)
             Player.OnBufferingStart();
-    });
+        if (VideoJsPlayer.resuming) {
+            if (VideoJsPlayer.player.currentTime() == 0)
+                VideoJsPlayer.skip(VideoJsPlayer.resuming);
+            else
+                VideoJsPlayer.resume_seeking_started = true;
+        }
+        break;
 
-    VideoJsPlayer.player.on('seeked', function(e) {
-        VideoJsLog('seeked, skipState:' + Player.skipState + ' delayed_seek_started:'  + VideoJsPlayer.delayed_seek_started + ' currentTime:' + VideoJsPlayer.player.currentTime());
+    case 'seeked':
         if (Player.skipState != -1) {
             Player.OnBufferingComplete();
-        } else if (VideoJsPlayer.delayed_seek_started) {
-            VideoJsPlayer.delayed_seek_started = false;
-            VideoJsPlayer.enableTimeUpdate();
         }
-    });
+        if (VideoJsPlayer.resume_seeking_started) {
+            if (VideoJsPlayer.split_seek) {
+                // Seek rest
+                VideoJsPlayer.skip(VideoJsPlayer.resuming, true);
+            } else {
+                VideoJsPlayer.resume_seeking_started = false;
+                VideoJsPlayer.resuming = false;
+                VideoJsPlayer.player.play();
+                Player.OnBufferingComplete();
+            }
+        }
+        break;
 
-    VideoJsPlayer.player.on('stalled', function() {
-        alert('Video stalled');
-    });
+    case 'timeupdate':
+        if (!VideoJsPlayer.resuming && VideoJsPlayer.state==VideoJsPlayer.STATE_STARTED)
+            Player.SetCurTime(VideoJsPlayer.player.currentTime()*1000);
+        break;
 
-    VideoJsPlayer.player.on('suspended', function() {
-        alert('suspended');
-    });
+    case 'abort':
+        VideoJsPlayer.abort(function(){Player.OnConnectionFailed('abort');});
+        break;
 
-    VideoJsPlayer.player.on('ended', function() {
-        VideoJsLog('Video ended');
-        Player.OnRenderingComplete();
-    });
+    case 'error':
+        Log('Error: ' + JSON.stringify(e));
+        for (var k in e) {
+            Log(k + ':' + e[k]);
+        }
+        Log('Error: ' + e.code + ' ' + e.message);
+        Log('Error: ' + VideoJsPlayer.player.error.code + ' ' + VideoJsPlayer.player.error.message);
+        if (e.currentTarget)
+            Log('Error: ' + e.currentTarget.error);
+        VideoJsPlayer.abort(function(){Player.OnRenderError(e);});
+        break;
 
-    VideoJsPlayer.player.tech().on('usage', function(e){
-        VideoJsLog('usage:' + e.name);
-    });
+    case 'ended':
+        VideoJsPlayer.abort(function(){Player.OnRenderingComplete();});
+        break;
 
-    // VideoJsPlayer.player.qualityLevels().on('addqualitylevel', function(event) {
-    //     VideoJsLog('addqualitylevel: ' + JSON.stringify(event.qualityLevel));
-    // });
+    default:
+        break;
+    }
+};
 
+VideoJsPlayer.metaDataLoaded = function() {
+    // Why are levels sometimes empty?
+    VideoJsLog('metaDataLoaded, levels:' + VideoJsPlayer.player.qualityLevels().length);
+    // VideoJsLog('loadedmetadata, levels:' + VideoJsPlayer.tech().hls.representations().length);
+    // Log('media:' + VideoJsPlayer.tech().hls.playlists.media().attributes.BANDWIDTH);
+    // Log('master:' + JSON.stringify(VideoJsPlayer.tech().hls.playlists.master));
+
+
+    // if (VideoJsPlayer.player.qualityLevels().length == 0) {
+    //     // Add manually
+    //     var representations = VideoJsPlayer.tech().hls.representations();
+    //     for (var i=0; i < representations.length; i++)
+    //         VideoJsPlayer.player.qualityLevels().addQualityLevel(representations[i]);
+    //     Log('rep: ' + representations.length + ' new levels:' + VideoJsPlayer.player.qualityLevels().length)
+    // }
+    var wantedBr = videoData.bitrates && videoData.bitrates.match(/BITRATES=([0-9]+):[0-9]/);
+    wantedBr = wantedBr && +wantedBr[1];
+    // var levels = VideoJsPlayer.player.qualityLevels();
+    // for (var i=0; wantedBr && i < levels.length; i++) {
+    //     levels[i].enabled = (levels[i].bitrate == wantedBr);
+    // }
+    var levels = VideoJsPlayer.tech().hls.representations();
+    for (var i=0; wantedBr && i < levels.length; i++) {
+        levels[i].enabled((levels[i].bandwidth == wantedBr));
+    }
+    Player.OnStreamInfoReady(true);
+    VideoJsPlayer.initMetaDataChange();
 };
 
 VideoJsPlayer.remove = function() {
@@ -169,63 +234,71 @@ VideoJsPlayer.remove = function() {
         VideoJsPlayer.player.pause();
         VideoJsPlayer.player.reset();
         VideoJsPlayer.player.dispose();
-        // alert('body:' + $('body').html());
         VideoJsPlayer.player = null;
     }
 };
 
 VideoJsPlayer.load = function(videoData) {
-    VideoJsPlayer.delayed_seek = null;
-    VideoJsPlayer.delayed_seek_started = false;
+    videojs.log.history.clear();
+    VideoJsPlayer.state = VideoJsPlayer.STATE_INIT;
+    VideoJsPlayer.play_called = false;
+    VideoJsPlayer.resuming = false;
+    VideoJsPlayer.split_seek = false;
+    VideoJsPlayer.resume_seeking_started = false;
+    VideoJsPlayer.aborted = false;
     var type = 'application/x-mpegURL';
     if (videoData.component == 'HAS')
         type = 'application/dash+xml';
     VideoJsPlayer.player.src({src:videoData.url,
+                              type:type,
                               withCredentials:true,
                               handleManifestRedirects:true,
-                              cacheEncryptionKeys:true,
-                              // smoothQualityChange:true,
-                              type:type// ,
-                              // allowSeeksWithinUnsafeLiveWindow:true
+                              cacheEncryptionKeys:true
                              });
-    VideoJsPlayer.player.load();
-    // alert('settings:' + JSON.stringify(VideoJsPlayer.player.settings()));
-};
 
-VideoJsPlayer.play = function(isLive, seconds) {
+    var headers = Channel.getHeaders() || [];
+    var ua = null;
+    for (var i=0; i < headers.length; i++) {
+        if (headers[i].key.match(/user-agent/i)) {
+            ua = headers[i].value;
+            break;
+        }
+    }
     VideoJsPlayer.player.ready(function() {
-        VideoJsLog('Player ready, seconds:' + seconds);
-        var milliSeconds = (seconds) ? seconds*1000 : seconds;
-        if (!milliSeconds && isLive && !videoData.use_offset) {
-            // var seek = VideoJsPlayer.player.seekable();
-            // milliSeconds = seek.end(seek.length-1)*1000;
-            milliSeconds = 'end';
-        }
-        if (milliSeconds) {
-            if (VideoJsPlayer.player.readyState())
-                VideoJsPlayer.skip(milliSeconds);
-            else
-                VideoJsPlayer.delayed_seek = milliSeconds;
-        }
-        if (!VideoJsPlayer.delayed_seek)
-            VideoJsPlayer.enableTimeUpdate();
+        if (ua)
+            VideoJsPlayer.tech().hls.xhr.beforeRequest = function(options) {
+                options.headers = {'User-Agent':ua};
+                return options;
+            };
+        VideoJsPlayer.player.load();
         VideoJsPlayer.player.play();
     });
 };
 
-VideoJsPlayer.enableTimeUpdate = function() {
-    VideoJsPlayer.player.on('timeupdate', function() {
-        Player.SetCurTime(VideoJsPlayer.player.currentTime()*1000);
-    });
+VideoJsPlayer.play = function(isLive, seconds) {
+
+    var milliSeconds = (seconds) ? seconds*1000 : seconds;
+    if (!milliSeconds && isLive && !videoData.use_offset) {
+        milliSeconds = 'end';
+    }
+
+    if (milliSeconds) {
+        VideoJsPlayer.resuming = milliSeconds;
+    };
+
+    if (VideoJsPlayer.state == VideoJsPlayer.STATE_WAITING)
+        VideoJsPlayer.startPlayback();
+    else
+        VideoJsPlayer.play_called = true;
 };
 
-VideoJsPlayer.checkDelayedSeek = function() {
-    // if (VideoJsPlayer.delayed_seek && VideoJsPlayer.player.readyState() >= 4) {
-    if (VideoJsPlayer.delayed_seek) {
-        VideoJsPlayer.skip(VideoJsPlayer.delayed_seek);
-        VideoJsPlayer.delayed_seek_started = true;
-        VideoJsPlayer.delayed_seek = null;
-    }
+VideoJsPlayer.startPlayback = function() {
+    if (VideoJsPlayer.resuming)
+        VideoJsPlayer.skip(VideoJsPlayer.resuming);
+    else
+        VideoJsPlayer.player.play();
+    VideoJsPlayer.state = VideoJsPlayer.STATE_STARTED;
+    VideoJsPlayer.play_called = false;
 };
 
 VideoJsPlayer.resume = function() {
@@ -236,31 +309,51 @@ VideoJsPlayer.pause = function() {
     VideoJsPlayer.player.pause();
 };
 
-VideoJsPlayer.skip = function(milliSeconds) {
+VideoJsPlayer.skip = function(milliSeconds, remainder) {
     var seek = VideoJsPlayer.player.seekable();
-    VideoJsLog('start:' + seek.start(0) + ' end:' + seek.end(seek.length-1) + ' milliSeconds:' + milliSeconds);
-    if (milliSeconds == 'end')
-        milliSeconds = seek.end(seek.length-1)*1000;
-    else if (milliSeconds/1000 > seek.end(seek.length-1))
+    var seekEnd = (seek.length > 0) ? seek.end(seek.length-1) : 0;
+    VideoJsLog('start:' + seek.start(0) + ' end:' + seekEnd + ' l:' + seek.length + ' milliSeconds:' + milliSeconds);
+    VideoJsPlayer.split_seek = false;
+    if (milliSeconds == 'end') {
+        milliSeconds = 0;
+        if (seekEnd >= 5) {
+            // Skip 5 seconds from end to avoid "ended" immediately
+            milliSeconds = (seekEnd-5)*1000;
+            // For some reason there seem to be some limit when duration is above approx 13 hours
+            // or similar. Need to seek in steps.
+            if (!remainder && milliSeconds > 13*3600*1000) {
+                milliSeconds = 13*3600*1000;
+                VideoJsPlayer.split_seek = true;
+            }
+        } else if (seekEnd < 0){
+            // Something is wrong - trigger fault
+            milliSeconds = seekEnd;
+        }
+    } else if (milliSeconds/1000 > seek.end(seek.length-1))
         milliSeconds = seek.end(seek.length-1)*1000;
     else if (milliSeconds/1000 < seek.start(0))
         milliSeconds = seek.start(0)*1000;
-    Log('adjusted milliSeconds:' + milliSeconds);
-    VideoJsPlayer.player.currentTime(milliSeconds/1000);
+    if (milliSeconds < 0)
+        VideoJsPlayer.abort(function(){Player.OnConnectionFailed('Skip failed');});
+    else
+        VideoJsPlayer.player.currentTime(milliSeconds/1000);
 };
 
 VideoJsPlayer.stop = function() {
     if (VideoJsPlayer.player) {
-        // Log('hls.stats:' + JSON.stringify(VideoJsPlayer.player.hls.stats));
-        // var history = VideoJsPlayer.player.log.history();
+        // Log('hls.stats:' + JSON.stringify(VideoJsPlayer.tech().hls.stats));
+        // var history = videojs.log.history();
         // videojs.log.history.clear();
-        // for (var i=0;i < history.length;i++)
-        //     Log('history:' + JSON.stringify(history[i]));
+        // for (var i=0;i < history.length;i++) {
+        //     if (!JSON.stringify(history[i]).match(/DEBUG/))
+        //         Log('history:' + JSON.stringify(history[i]));
+        // }
         this.remove();
     }
 };
 
 VideoJsPlayer.reload = function(videoData, isLive, seconds) {
+    Log('VideoJsPlayer.reload');
     this.remove();
     this.create();
     this.load(videoData),
@@ -268,19 +361,27 @@ VideoJsPlayer.reload = function(videoData, isLive, seconds) {
 };
 
 VideoJsPlayer.getResolution  = function() {
-    return {width:+VideoJsPlayer.player.videoWidth(), height:+VideoJsPlayer.player.videoHeight()};
+    return VideoJsPlayer.tech().hls.playlists.media().attributes.RESOLUTION;
+    // return {width:+VideoJsPlayer.player.videoWidth(), height:+VideoJsPlayer.player.videoHeight()};
 };
 
 VideoJsPlayer.getDuration  = function() {
     var duration = VideoJsPlayer.player.duration();
     if (duration == 'Infinity') {
-        duration = VideoJsPlayer.player.seekable();
-        return duration.end(duration.length-1);
+        return 0;
     }
-    return duration;
+    return duration*1000;
 };
 
 VideoJsPlayer.getBandwith  = function() {
+    // var representations = VideoJsPlayer.tech().hls.representations();
+    // for (var i=0; i < representations.length; i++) {
+    //     if (representations[i].enabled())
+    //         Log("selected bw: " + representations[i].bandwidth);
+    //     else
+    //         Log("disabled bw: " + representations[i].bandwidth);
+    // };
+    return VideoJsPlayer.tech().hls.playlists.media().attributes.BANDWIDTH;
     var levels = VideoJsPlayer.player.qualityLevels();
     if (levels.selectedIndex_ >= 0)
         return levels.levels_[levels.selectedIndex_].bitrate;
@@ -312,6 +413,28 @@ VideoJsPlayer.getAspectModeText = function() {
     }
 };
 
-VideoJsLog = function(Message) {
-    Log(Message + ' State:' + VideoJsPlayer.player.readyState())
+VideoJsPlayer.initMetaDataChange = function() {
+    var tracks = VideoJsPlayer.player.textTracks();
+    for (var i = 0; i < tracks.length; i++) {
+        if (tracks[i].on && tracks[i].label==='segment-metadata') {
+            tracks[i].on('cuechange', function() {
+                VideoJsLog('cuechange: ' + VideoJsPlayer.getBandwith());
+                Player.OnStreamInfoReady(true);
+            });
+            break;
+        }
+    }
+};
+
+VideoJsPlayer.tech = function() {
+    return VideoJsPlayer.player.tech({IWillNotUseThisInPlugins:true});
+};
+
+VideoJsPlayer.abort = function(Function) {
+    VideoJsPlayer.aborted = true;
+    window.setTimeout(Function, 0);
+};
+
+function VideoJsLog(Message) {
+    Log(Message + ' State:' + VideoJsPlayer.player.readyState() + ' Currenttime:' + VideoJsPlayer.player.currentTime() + ' VS:' + VideoJsPlayer.state);
 }
