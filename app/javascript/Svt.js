@@ -1216,7 +1216,7 @@ Svt.decodeSearchList = function (data, extra) {
 
 Svt.getPlayUrl = function(url, isLive, streamUrl) {
 
-    var video_urls=[], extra = {isLive:isLive, useBitrates:true};
+    var video_urls=[], extra = {isLive:isLive, useBitrates:true, use_vjs:isLive};
 
     if (url.match(/=ChannelsQuery/)) {
         extra.use_offset = true;
