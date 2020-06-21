@@ -91,7 +91,8 @@ var AvPlayer = {
     aspects : ['PLAYER_DISPLAY_MODE_AUTO_ASPECT_RATIO',
                'PLAYER_DISPLAY_MODE_FULL_SCREEN',
                'PLAYER_DISPLAY_MODE_LETTER_BOX'
-              ]
+              ],
+    load_error : null
 };
 
 AvPlayer.create = function() {
@@ -126,29 +127,38 @@ AvPlayer.remove = function() {
 };
 
 AvPlayer.load = function(videoData) {
-    webapis.avplay.open(videoData.url);
-    webapis.avplay.setListener(AvPlayer.listener);
-    webapis.avplay.setDisplayRect(0, 0, MAX_WIDTH,MAX_HEIGHT);
+    try {
+        AvPlayer.load_error = null;
+        webapis.avplay.open(videoData.url);
+        webapis.avplay.setListener(AvPlayer.listener);
+        webapis.avplay.setDisplayRect(0, 0, MAX_WIDTH,MAX_HEIGHT);
 
-    Log('set PREBUFFER_MODE result: ' + webapis.avplay.setStreamingProperty('PREBUFFER_MODE ', 0));
+        Log('set PREBUFFER_MODE result: ' + webapis.avplay.setStreamingProperty('PREBUFFER_MODE ', 0));
 
-    var headers = Channel.getHeaders() || [];
-    for (var i=0; i < headers.length; i++) {
-        if (headers[i].key.match(/user-agent/i)) {
-            Log('set USER_AGENT: ' + headers[i].value + ' result: ' + webapis.avplay.setStreamingProperty('USER_AGENT', headers[i].value));
-            break;
+        var headers = Channel.getHeaders() || [];
+        for (var i=0; i < headers.length; i++) {
+            if (headers[i].key.match(/user-agent/i)) {
+                Log('set USER_AGENT: ' + headers[i].value + ' result: ' + webapis.avplay.setStreamingProperty('USER_AGENT', headers[i].value));
+                break;
+            }
         }
+        if (videoData.license)
+            Log('setDrm Properties result:' + webapis.avplay.setDrm('PLAYREADY', 'SetProperties', JSON.stringify({'DeleteLicenseAfterUse':true, 'LicenseServer':videoData.license, 'CustomData':videoData.custom_data})));
+        if (videoData.bitrates && videoData.bitrates != '')
+            Log('set ADAPTIVE_INFO: ' + videoData.bitrates + ' result: ' + webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', videoData.bitrates));
+    } catch(err) {
+        AvPlayer.load_error = '' + err;
     }
-    if (videoData.license)
-        Log('setDrm Properties result:' + webapis.avplay.setDrm('PLAYREADY', 'SetProperties', JSON.stringify({'DeleteLicenseAfterUse':true, 'LicenseServer':videoData.license, 'CustomData':videoData.custom_data})));
-    if (videoData.bitrates && videoData.bitrates != '')
-        Log('set ADAPTIVE_INFO: ' + videoData.bitrates + ' result: ' + webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', videoData.bitrates));
 };
 
 AvPlayer.play = function(isLive, seconds) {
-    if (seconds)
-        AvPlayer.skip(seconds*1000);
-    webapis.avplay.prepareAsync(webapis.avplay.play,Player.OnConnectionFailed);
+    if (AvPlayer.load_error) {
+        window.setTimeout(function(){Player.PlaybackFailed(AvPlayer.load_error);},0);
+    } else {
+        if (seconds)
+            AvPlayer.skip(seconds*1000);
+        webapis.avplay.prepareAsync(webapis.avplay.play,Player.OnConnectionFailed);
+    }
 };
 
 AvPlayer.resume = function() {
