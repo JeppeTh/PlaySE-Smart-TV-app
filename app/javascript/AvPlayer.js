@@ -122,7 +122,8 @@ var AvPlayer = {
               ],
     time_offset : 0,
     stream_ensured : false,
-    delayed_skip : null
+    delayed_skip : null,
+    load_error : null
 };
 
 function base64ToArrayBuffer(Base64) {
@@ -206,25 +207,30 @@ AvPlayer.remove = function() {
 };
 
 AvPlayer.load = function(videoData) {
-    AvPlayer.time_offset = null;
-    AvPlayer.stream_ensured = false;
-    AvPlayer.delayed_skip = null;
-    webapis.avplay.open(videoData.url);
-    webapis.avplay.setListener(AvPlayer.listener);
-    webapis.avplay.setDisplayRect(0, 0, MAX_WIDTH, MAX_HEIGHT);
+    try {
+        AvPlayer.time_offset = null;
+        AvPlayer.stream_ensured = false;
+        AvPlayer.delayed_skip = null;
+        AvPlayer.load_error = null;
+        webapis.avplay.open(videoData.url);
+        webapis.avplay.setListener(AvPlayer.listener);
+        webapis.avplay.setDisplayRect(0, 0, MAX_WIDTH, MAX_HEIGHT);
 
-    Log('set PREBUFFER_MODE result: ' + webapis.avplay.setStreamingProperty('PREBUFFER_MODE ', 0));
+        Log('set PREBUFFER_MODE result: ' + webapis.avplay.setStreamingProperty('PREBUFFER_MODE ', 0));
 
-    var headers = Channel.getHeaders() || [];
-    for (var i=0; i < headers.length; i++) {
-        if (headers[i].key.match(/user-agent/i)) {
-            Log('set USER_AGENT: ' + headers[i].value + ' result: ' + webapis.avplay.setStreamingProperty('USER_AGENT', headers[i].value));
-            break;
+        var headers = Channel.getHeaders() || [];
+        for (var i=0; i < headers.length; i++) {
+            if (headers[i].key.match(/user-agent/i)) {
+                Log('set USER_AGENT: ' + headers[i].value + ' result: ' + webapis.avplay.setStreamingProperty('USER_AGENT', headers[i].value));
+                break;
+            }
         }
+        AvPlayer.loadDrm();
+        if (videoData.bitrates && videoData.bitrates != '')
+            Log('set ADAPTIVE_INFO: ' + videoData.bitrates + ' result: ' + webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', videoData.bitrates));
+    } catch(err) {
+        AvPlayer.load_error = '' + err;
     }
-    AvPlayer.loadDrm();
-    if (videoData.bitrates && videoData.bitrates != '')
-        Log('set ADAPTIVE_INFO: ' + videoData.bitrates + ' result: ' + webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', videoData.bitrates));
 };
 
 AvPlayer.loadDrm = function() {
@@ -251,14 +257,18 @@ AvPlayer.loadDrm = function() {
 };
 
 AvPlayer.play = function(isLive, seconds) {
-    if (seconds && seconds > 0) {
-        if (isLive) {
-            $('.video-background').show();
-            AvPlayer.delayed_skip = seconds*1000;
-        } else
-            AvPlayer.skip(seconds*1000);
+    if (AvPlayer.load_error) {
+        window.setTimeout(function(){Player.PlaybackFailed(AvPlayer.load_error);},0);
+    } else {
+        if (seconds && seconds > 0) {
+            if (isLive) {
+                $('.video-background').show();
+                AvPlayer.delayed_skip = seconds*1000;
+            } else
+                AvPlayer.skip(seconds*1000);
+        }
+        webapis.avplay.prepareAsync(webapis.avplay.play, Player.OnConnectionFailed);
     }
-    webapis.avplay.prepareAsync(webapis.avplay.play, Player.OnConnectionFailed);
 };
 
 AvPlayer.resume = function() {
