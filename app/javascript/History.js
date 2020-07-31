@@ -305,8 +305,9 @@ History.addShow = function(details, percentage) {
     // Keep old percentage in case none provided. At least consistent behaviour with how
     // resume info is handled in player.
     if (!percentage) {
-        percentage = History.lookup(details.parent_show.name);
-        percentage = percentage && percentage.watched;
+        var oldEntry = History.lookup(details.parent_show.name);
+        if (oldEntry && History.isSameEpisode(oldEntry,details))
+            percentage = oldEntry.watched;
     }
 
     var savedShows = History.removeShow(details.parent_show.name, Channel.id(), true);
@@ -361,3 +362,6 @@ History.lookup = function(showName) {
     return null;
 };
 
+History.isSameEpisode = function(a, b) {
+    return a.season==b.season && a.episode==b.episode && a.episode_name==b.episode_name;
+};

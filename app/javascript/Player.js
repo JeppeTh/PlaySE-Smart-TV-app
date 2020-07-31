@@ -484,6 +484,9 @@ Player.resumeVideo = function() {
 };
 
 Player.reloadVideo = function(time) {
+    if (Player.state == Player.STOPPED)
+        return;
+
     retries = retries+1;
     Player.plugin.Execute('Stop');
     Player.plugin.Execute('InitPlayer', videoData.url);

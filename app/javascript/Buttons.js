@@ -256,7 +256,7 @@ Buttons.keyHandleForList = function() {
 };
 
 function skipUpcoming() {
-    if (!myPos && columnCounter==0 && items!=[] && items[0].is_upcoming) {
+    if (!myPos && columnCounter==0 && items.length > 0 && items[0].is_upcoming) {
         for (var i=1; i < items.length; i++) {
             if (!items[i].is_upcoming) {
                 selectItemIndex(i);

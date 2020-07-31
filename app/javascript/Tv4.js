@@ -4,7 +4,7 @@ var TV4_API_BASE = 'https://tv4-graphql-web.b17g.net/graphql?operationName=';
 var START_PAGE_SHA = 'ce253e3933a7de579878336774016bd9c2a6c8043233629ab035739c3b832af9';
 var START_PAGE_SHA_LOGGED_IN = '0de74fcc0be0c13d524eb76cf3f9d6519417237b4b2514e702ba3f773e390c4e';
 var PROGRAM_SEARCH_QUERY_SHA = '3585de8e12b3351186fa3b4f03f5703bc42eba205e9651c391e20d5a1565a1a1';
-var PROGRAM_SEARCH_SHA = '78cdda0280f7e6b21dea52021406cc44ef0ce37102cb13571804b1a5bd3b9aa1'
+var PROGRAM_SEARCH_SHA = '78cdda0280f7e6b21dea52021406cc44ef0ce37102cb13571804b1a5bd3b9aa1';
 var CATEGORY_PAGE_SHA = 'af5d3fd1a0a57608dca2f031580d80528c17d96fd146adf8a6449d3114ca2174';
 var SEARCH_QUERY_SHA = '12ad45e4cebb69e34b849dee4ce045aff7cb5786b30c28a3dced805676c65b7c';
 var CDP_SHA = '906eba9587ac10bd55ebb063b549b513bb690bc26dd373d95797efc57bedba67';
@@ -282,7 +282,7 @@ Tv4.decodeCategoryDetail = function(data, extra) {
             if (!cards)
                 cards = data[k].cards;
             else
-                cards = cards.concat(data[k].cards)
+                cards = cards.concat(data[k].cards);
         }
     }
     if (!found) {
@@ -579,7 +579,7 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
     if (extra.strip_show) {
         if (Tv4.result.length==0 && extra.upcoming) {
             extra.upcoming.program = data.program;
-            extra.upcoming.name = Tv4.determineEpisodeName(extra.upcoming)
+            extra.upcoming.name = Tv4.determineEpisodeName(extra.upcoming);
         }
         Name = Tv4.determineEpisodeName(data);
     }
@@ -807,10 +807,10 @@ Tv4.decodeShows = function(data, extra) {
 
         Tv4.result = [];
         for (var k=0; k < data.length; k++) {
-            if (data[k].__typename == "PlayableCard") {
+            if (data[k].__typename == 'PlayableCard') {
                 VideoItem = Tv4.decodeVideo(data[k].videoAsset, getCurrentDate(), extra);
                 if (VideoItem)
-                    videos.push(VideoItem)
+                    videos.push(VideoItem);
                 continue;
             }
             if (data[k].program)
@@ -995,7 +995,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
     // if (isLive)
     //     reqUrl = reqUrl + '&is_live=true';
 
-    var cbComplete = function(stream, srtUrl, license, useOffset) {
+    var cbComplete = function(stream, srtUrl, license, customData, useOffset) {
         if (!stream) {
             $('.bottomoverlaybig').html('Not Available!');
         } else {
@@ -1003,6 +1003,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
                                         srtUrl,
                                         {useBitrates:true,
                                          license:license,
+                                         customdata:customData,
                                          isLive:isLive,
                                          use_offset:useOffset
                                         });
@@ -1011,14 +1012,17 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
     requestUrl(RedirectIfEmulator(reqUrl),
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(streamUrl)) {
-                       var stream=null, license=null, srtUrl=null;
+                       var stream=null, license=null, srtUrl=null, customData=null;
                        data = JSON.parse(data.responseText).playbackItem;
                        stream = data.manifestUrl;
                        license = data.license && data.license.url;
-                       // license = data.license && data.license.castlabsServer;
-                       // customData = data.license && data.license.castlabsToken;
-                       // if (customData)
-                           // customData = btoa('{"userId":"userId","merchant":"bonnierbroadcasting","sessionId":"sessionId","authToken":"' + customData + '"}');
+                       license = data.license && data.license.castlabsServer;
+                       customData = data.license && data.license.castlabsToken;
+                       if (customData) {
+                           data = JSON.parse(JSON.parse(atob(customData.split(".")[1])).optData);
+                           data.authToken = customData;
+                           customData = btoa(JSON.stringify(data));
+                       }
                        if (!drm && license && reqUrl != hlsUrl) {
                            hlsUrl = stream.replace(/\.mpd/,'.m3u8');
                            return Tv4.getPlayUrl(streamUrl, isLive, true, hlsUrl);
@@ -1026,13 +1030,13 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
                            hlsUrl = (drm) ? hlsUrl : stream.replace(/\.mpd/,'.m3u8');
                            Tv4.getSrtUrl(asset,
                                          function(srtUrl){
-                                             cbComplete(stream, srtUrl, license);
+                                             cbComplete(stream, srtUrl, license, customData);
                                          });
                        } else {
                            // Use offset for live shows with 'startOver'
                            Tv4.checkUseOffset(streamUrl,
                                               function(useOffset) {
-                                                  cbComplete(stream, null, license, useOffset)
+                                                  cbComplete(stream, null, license, customData, useOffset);
                                               });
                        }
                    }
@@ -1041,7 +1045,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
 };
 
 Tv4.getSrtUrl = function (asset, cb) {
-    var url = 'https://playback-api.b17g.net/subtitles/' + asset + '?service=tv4&format=webvtt'
+    var url = 'https://playback-api.b17g.net/subtitles/' + asset + '?service=tv4&format=webvtt';
     var srtUrl = null;
     requestUrl(RedirectIfEmulator(url),
                function(status, data) {
@@ -1059,7 +1063,7 @@ Tv4.checkUseOffset = function(streamUrl, cb) {
     requestUrl(Tv4.getDetailsUrl(streamUrl),
                function(status, data) {
                    data = JSON.parse(data.responseText).data;
-                   cb(data && data.videoAsset.startOver)
+                   cb(data && data.videoAsset.startOver);
                });
 };
 

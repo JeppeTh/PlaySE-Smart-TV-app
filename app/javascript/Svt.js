@@ -943,8 +943,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
     requestUrl(streamUrl,
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(url)) {
-                       var videoReferences, subtitleReferences=[], srtUrl=null;
-                       var hls_url=null, dash_hbbtv_url=null, other_url=null;
+                       var videoReferences, subtitleReferences=[], srtUrl=null, formatList=[];
                        if (!streamUrl.match(SVT_ALT_API_URL)) {
                            data = JSON.parse(data.responseText).data.listablesByEscenicId[0];
                            streamUrl = SVT_ALT_API_URL + data.videoSvtId;
@@ -959,28 +958,17 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
                            videoReferences = data.videoReferences;
 
 		       for (var i = 0; i < videoReferences.length; i++) {
-		           Log('videoReferences:' + videoReferences[i].url);
-                           if ((videoReferences[i].format.match('cmaf')) ||
-                               (videoReferences[i].format.match('\-lb')))
-                               continue;
-                           if (videoReferences[i].url.match(/\.m3u8/)) {
-                               if (!hls_url ||
-                                   (videoReferences[i].format &&
-                                    videoReferences[i].format.match(/vtt/))
-                                  )
-		                   hls_url = videoReferences[i].url;
-                           } else if (videoReferences[i].format &&
-                                      videoReferences[i].format == 'dash-hbbtv') {
-                               dash_hbbtv_url = videoReferences[i].url;
-                           } else if (!other_url && videoReferences[i].url.match(/\.mpd/))
-                               other_url = videoReferences[i].url;
-		       }
-                       if (dash_hbbtv_url)
-                           video_urls.push(dash_hbbtv_url);
-                       if (hls_url)
-                           video_urls.push(hls_url);
-                       if (other_url)
-                           video_urls.push(other_url);
+                           formatList.push(videoReferences[i].format);
+                       }
+                       videoReferences.sort(function(a, b){
+                           var rank_a = Svt.getStreamRank(a,formatList);
+                           var rank_b = Svt.getStreamRank(b,formatList);
+                           return (rank_a < rank_b) ? -1 : 1;
+                       });
+                       for (var j = 0; j < videoReferences.length; j++) {
+                           alert('format:' + videoReferences[j].format);
+                           video_urls.push(videoReferences[j].url);
+                       }
                        alert('video_urls:' + video_urls);
                        if (data.video && data.video.subtitleReferences)
                            subtitleReferences = data.video.subtitleReferences;
@@ -1002,6 +990,29 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
                        Svt.playUrl();
                    }
                });
+};
+
+Svt.getStreamRank = function(stream, index_list) {
+    if (stream.format == 'dash-hbbtv')
+        return 0;
+    else if (stream.format == 'dash-hbbtv-avc')
+        return 1;
+    else if (stream.format.match(/vtt/))
+        return 2;
+    else if (stream.format == 'hls')
+        return 3;
+    else {
+        var base = 1000;
+        if (stream.format.match(/hevc/))
+            base = base*1000;
+        else if (stream.format.match(/cmaf/))
+            base = base*100;
+        else if (stream.format.match(/-lb/))
+            base = base*10;
+        else if (stream.format.match(/dash-hbbtv/))
+            base = 100;
+        return base + index_list.indexOf(stream.format);
+    }
 };
 
 Svt.playUrl = function() {
@@ -1495,7 +1506,7 @@ Svt.IsClip = function(a) {
 };
 
 Svt.requestDateString = function(Callback) {
-    httpRequest(Svt.getUrl("live"),
+    httpRequest(Svt.getUrl('live'),
                 {cb:function(status,data) {
                     data = JSON.parse(data).data.channels.channels[0].running.start;
                     Callback(data);
