@@ -943,7 +943,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
     requestUrl(streamUrl,
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(url)) {
-                       var videoReferences, subtitleReferences=[], srtUrl=null, formatList=[];
+                       var videoReferences, subtitleReferences=[], srtUrl=null;
                        if (!streamUrl.match(SVT_ALT_API_URL)) {
                            data = JSON.parse(data.responseText).data.listablesByEscenicId[0];
                            streamUrl = SVT_ALT_API_URL + data.videoSvtId;
@@ -957,14 +957,9 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
                        else
                            videoReferences = data.videoReferences;
 
-		       for (var i = 0; i < videoReferences.length; i++) {
-                           formatList.push(videoReferences[i].format);
-                       }
-                       videoReferences.sort(function(a, b){
-                           var rank_a = Svt.getStreamRank(a,formatList);
-                           var rank_b = Svt.getStreamRank(b,formatList);
-                           return (rank_a < rank_b) ? -1 : 1;
-                       });
+                       Svt.sortStreams(videoReferences,
+                                       function(s){return s.format;}
+                                      );
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
                            video_urls.push(videoReferences[j].url);
@@ -990,6 +985,22 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
                        Svt.playUrl();
                    }
                });
+};
+
+Svt.sortStreams = function(streams, formatCb) {
+    var formatList=[];
+    for (var i = 0; i < streams.length; i++) {
+        // Some adaptions to OA...
+        streams[i].format = formatCb(streams[i]);
+        if (streams[i].format == 'ios' && streams[i].url.match('.m3u8'))
+            streams[i].format = 'hls';
+        formatList.push(streams[i].format);
+    }
+    streams.sort(function(a, b){
+        var rank_a = Svt.getStreamRank(a,formatList);
+        var rank_b = Svt.getStreamRank(b,formatList);
+        return (rank_a < rank_b) ? -1 : 1;
+    });
 };
 
 Svt.getStreamRank = function(stream, index_list) {

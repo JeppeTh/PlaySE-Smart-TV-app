@@ -446,11 +446,12 @@ Oa.getPlayUrl = function(url, isLive) {
                        if (data.video)
                            data = data.video;
 
-		       for (var i = 0; i < data.videoReferences.length; i++) {
-		           Log('videoReferences:' + data.videoReferences[i].url);
-                           if (!video_url || video_url.indexOf('.m3u8') == -1)
-		               video_url = data.videoReferences[i].url;
-                       }
+                       // Re-use SVT logic
+                       Svt.sortStreams(data.videoReferences,
+                                       function(s){return s.playerType;}
+                                      );
+                       video_url = data.videoReferences[0].url;
+
                        for (var k = 0; k < data.subtitles.length; k++) {
 		           Log('subtitles:' + data.subtitles[k].url);
                            if (data.subtitles[k].url.indexOf('.m3u8') != -1)
