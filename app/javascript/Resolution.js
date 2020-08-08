@@ -52,7 +52,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        extra.subtitles_idx = streams.subtitles_idx;
                        if (!extra.previewThumb && streams.thumb)
                            extra.previewThumb = streams.thumb;
-                       if (!extra.isLive)
+                       if (!extra.isLive && !extra.use_vjs)
                            extra.hls_subs = streams.hls_subs;
                    }
                    if (target != 'Auto') {

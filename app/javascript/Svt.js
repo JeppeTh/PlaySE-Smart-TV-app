@@ -1244,7 +1244,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else if (data.subtitleReferences)
                            subtitleReferences = data.subtitleReferences;
 
-                       for (var k = 0; k < subtitleReferences.length; k++) {
+                       for (var k = 0; !isLive && k < subtitleReferences.length; k++) {
 		           Log('subtitleReferences:' + subtitleReferences[k].url);
                            srtUrl = subtitleReferences[k].url;
                            if (subtitleReferences[k].label &&
