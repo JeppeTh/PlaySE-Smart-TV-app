@@ -10,6 +10,7 @@ var VideoJsPlayer = {
     resume_seeking_started:false,
     split_seek:false,
     play_called:false,
+    has_subtitles:false,
 
     aborted:false,
 
@@ -195,6 +196,10 @@ VideoJsPlayer.On = function (Event, e) {
         VideoJsPlayer.abort(function(){Player.OnRenderingComplete();});
         break;
 
+    case 'playing':
+        VideoJsPlayer.checkSubtitles();
+        break;
+
     default:
         break;
     }
@@ -244,6 +249,7 @@ VideoJsPlayer.load = function(videoData) {
     VideoJsPlayer.play_called = false;
     VideoJsPlayer.resuming = false;
     VideoJsPlayer.split_seek = false;
+    VideoJsPlayer.has_subtitles = false;
     VideoJsPlayer.resume_seeking_started = false;
     VideoJsPlayer.aborted = false;
     var type = 'application/x-mpegURL';
@@ -431,6 +437,10 @@ VideoJsPlayer.getAspectModeText = function() {
     }
 };
 
+VideoJsPlayer.hasSubtitles = function() {
+    return VideoJsPlayer.has_subtitles;
+};
+
 VideoJsPlayer.initMetaDataChange = function() {
     var tracks = VideoJsPlayer.player.textTracks();
     for (var i = 0; i < tracks.length; i++) {
@@ -451,6 +461,38 @@ VideoJsPlayer.tech = function() {
 VideoJsPlayer.abort = function(Function) {
     VideoJsPlayer.aborted = true;
     window.setTimeout(Function, 0);
+};
+
+VideoJsPlayer.checkSubtitles = function() {
+    var track = VideoJsPlayer.findSubtitleTrack('sv') ||
+        VideoJsPlayer.findSubtitleTrack('en');
+    if (track &&
+        (VideoJsPlayer.has_subtitles || !Subtitles.exists())) {
+        if (!VideoJsPlayer.has_subtitles)
+            Log('VJS found subtitles:' + track.language);
+        track.mode = 'hidden';
+        VideoJsPlayer.has_subtitles = true;
+        track.addEventListener('cuechange', function() {
+            var text = '';
+            if (this.activeCues.length > 0) {
+                text = this.activeCues[0].text.replace('\n','<br />');
+            }
+            Subtitles.set(text);
+        });
+    }
+};
+
+VideoJsPlayer.findSubtitleTrack = function(language) {
+    var tracks = VideoJsPlayer.player.textTracks();
+    var track = null;
+    for (var i = 0; i < tracks.length; i++) {
+        if (tracks[i].kind == 'subtitles') {
+            tracks[i].mode = 'disabled';
+            if (tracks[i].language == language)
+                track = tracks[i];
+        }
+    }
+    return track;
 };
 
 function VideoJsLog(Message) {
