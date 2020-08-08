@@ -456,12 +456,16 @@ Player.OnBufferingComplete = function() {
     Player.selectInitialAudio();
 
     // Only reset in case no additional skip is in progess
-    if (skipTime == skipTimeInProgress) {
-        Player.hidePreviewThumb(); // Just in case...
-        this.skipState = -1;
-        if (this.state == this.PAUSED) ccTime = skipTime;
-        skipTime = 0;
-        skipTimeInProgress = false;
+    if (skipTimeInProgress !== false) {
+        if (skipTime == skipTimeInProgress) {
+            Player.hidePreviewThumb(); // Just in case...
+            this.skipState = -1;
+            if (this.state == this.PAUSED) ccTime = skipTime;
+            skipTime = 0;
+            skipTimeInProgress = false;
+        } else
+            // Skip during skip? Retry
+            skipTimer = window.setTimeout(this.skipInVideo, 200);
     }
     if (this.skipState == -1) {
         loadingStop();
