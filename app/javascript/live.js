@@ -31,6 +31,6 @@ live.loadXml = function(refresh) {
 };
 
 live.onUnload = function() {
-	Player.deinit();
+    Player.remove();
 };
 //window.location = 'project.html?ilink=' + ilink;

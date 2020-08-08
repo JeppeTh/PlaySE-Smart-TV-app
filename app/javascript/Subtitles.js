@@ -59,7 +59,7 @@ Subtitles.printStatus = function () {
     if (subtitlesEnabled && Subtitles.exists()) {
         this.set('Subtitles On', 2500);
     } else if (!subtitlesEnabled && Subtitles.exists()) {
-        this.set('Subtitles Off', 2500);
+        this.set('Subtitles Off', 2500, true);
     } else {
         this.set('Subtitles not available', 2500);
     }
@@ -401,10 +401,10 @@ Subtitles.clearUnlessConfiguring = function () {
     }
 };
 
-Subtitles.set = function (text, timeout) {
-    if (!subtitlesEnabled) return;
+Subtitles.set = function (text, timeout, forced) {
+    if (!forced && !subtitlesEnabled) return;
     try {
-        if (!text.match(/<br \/>/g)) {
+        if (!text.match(/<br ?\/>/g) && text !='') {
             // If only one liner we want it at bottom
             text  = '<br />' + text;
         }

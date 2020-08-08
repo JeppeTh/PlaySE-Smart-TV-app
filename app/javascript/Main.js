@@ -58,7 +58,7 @@ Main.onLoad = function(refresh) {
 };
 
 Main.onUnload = function() {
-	Player.deinit();
+	Player.remove();
 };
 
 Main.setClock = function() {

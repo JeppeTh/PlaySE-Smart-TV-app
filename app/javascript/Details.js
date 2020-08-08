@@ -24,7 +24,7 @@ Details.onLoad = function() {
 };
 
 Details.onUnload = function() {
-	Player.deinit();
+    Player.remove();
 };
 
 Details.refresh = function (isBackground) {

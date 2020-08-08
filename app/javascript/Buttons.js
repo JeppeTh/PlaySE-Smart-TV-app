@@ -669,7 +669,7 @@ Buttons.keyHandleForPlayer = function() {
 
     case tvKey.KEY_UP:
     case tvKey.KEY_DOWN:
-        if (Player.aspectMode == Player.ASPECT_ZOOM) {
+        if (Player.isZoomAspect()) {
             Player.changeZoom(keyCode == tvKey.KEY_UP);
         } else {
 	    Subtitles.move(keyCode == tvKey.KEY_UP);

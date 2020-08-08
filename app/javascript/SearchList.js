@@ -13,7 +13,7 @@ SearchList.onLoad = function(refresh) {
 };
 
 SearchList.onUnload = function() {
-	Player.deinit();
+    Player.remove();
 };
 
 SearchList.getQuery = function(refresh){

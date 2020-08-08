@@ -10,7 +10,7 @@ showList.onLoad = function(refresh) {
 };
 
 showList.onUnload = function() {
-	Player.deinit();
+    Player.remove();
 };
 
 

@@ -1,8 +1,8 @@
 var skipTime = 0;
 var skipTimeInProgress = false;
-var osdTimer; 
-var clockTimer; 
-var skipTimer; 
+var osdTimer;
+var clockTimer;
+var skipTimer;
 var detailsTimer;
 var delayedPlayTimer = 0;
 var pluginAPI = new Common.API.Plugin();
@@ -12,7 +12,6 @@ var resumeTime = 0;
 var bufferCompleteCount = 0;
 var videoBw = null;
 var lastPos = 0;
-var resumeJump = null;
 var videoUrl;
 var videoData = {};
 var detailsUrl;
@@ -49,11 +48,6 @@ var Player = {
     REPEAT_ALL:2,
     REPEAT_ONE:3,
 
-    aspectMode: 0,
-    ASPECT_NORMAL : 0,
-    ASPECT_H_FIT : 1,
-    ASPECT_ZOOM : 2,
-    
     STOPPED : 0,
     PLAYING : 1,
     PAUSED : 2,  
@@ -64,143 +58,6 @@ var Player = {
     FRONT_DISPLAY_PLAY:  100,
     FRONT_DISPLAY_STOP:  101,
     FRONT_DISPLAY_PAUSE: 102
-};
-
-Player.togglePlayer = function() {
-    Log('Player.togglePlayer()');
-    Player.deinit();
-    Player.plugin = null;
-    useSef = !useSef;
-};
-
-Player.init = function() {
-    var success = true;
-    this.state = this.STOPPED;
-    if (this.plugin)
-        return success;
-
-    if (deviceYear > 2010 && useSef) {
-        Log('Using sef');
-        this.plugin = document.getElementById('pluginSef');
-        Log('Player Open:' + this.plugin.Open('Player', '1.112', 'Player'));
-        this.plugin.OnEvent = Player.OnEvent;
-    } else {
-        Log('Not using sef');
-        this.plugin = document.getElementById('pluginPlayer');
-        this.plugin.Execute = function(Name){
-            var args=[];
-            if (Name == 'StartPlayback') {
-                Name = 'ResumePlay';
-                args.push('"' + videoUrl + '"');
-            }
-            Name = 'Player.plugin.' + Name;
-            if (eval(Name)) {
-                for (var i=1; i < arguments.length; i++) {
-                    if (typeof(arguments[i]) === 'string') {
-                        args.push('"' + arguments[i]+'"');
-                    } else
-                        args.push(arguments[i]);
-                };
-                args.join(',');
-                Name = Name  + '(' + args + ');';
-                // alert(Name);
-                return eval(Name);
-            } else
-                alert('ignoring: ' + Name);
-        };
-        this.plugin.OnCurrentPlayTime = 'Player.SetCurTime';
-        this.plugin.OnStreamInfoReady = 'Player.OnStreamInfoReady';
-        this.plugin.OnBufferingStart = 'Player.OnBufferingStart';
-        this.plugin.OnBufferingProgress = 'Player.OnBufferingProgress';
-        this.plugin.OnBufferingComplete = 'Player.OnBufferingComplete';           
-        this.plugin.OnRenderingComplete  = 'Player.OnRenderingComplete'; 
-        this.plugin.OnNetworkDisconnected = 'Player.OnNetworkDisconnected';
-        this.plugin.OnConnectionFailed = 'Player.OnConnectionFailed';
-        this.plugin.OnStreamNotFound   = 'Player.OnStreamNotFound';
-        this.plugin.OnRenderError      = 'Player.OnRenderError';
-        this.plugin.OnAuthenticationFailed = 'Player.OnAuthenticationFailed';
-    }
-    fpPlugin = document.getElementById('pluginFrontPanel');
-    
-    if (!this.plugin) {
-         success = false;
-    }
-    else {
-        var mwPlugin = document.getElementById('pluginObjectTVMW');
-        
-        if (!mwPlugin) {
-            success = false;
-        }
-        else {
-            /* Save current TV Source */
-            this.originalSource = mwPlugin.GetSource();
-            
-            /* Set TV source to media player plugin */
-            mwPlugin.SetMediaSource();
-        }
-    }
-
-    // this.setWindow();
-    return success;
-};
-
-Player.OnEvent = function(EventType, param1, param2) {
-    switch (EventType) {
-    case 1: //OnConnectionFailed();
-        Player.OnConnectionFailed();
-        break;
-    case 2: //OnAuthenticationFailed();
-        Player.OnAuthenticationFailed();
-    case 3: //OnStreamNotFound();
-        Player.OnStreamNotFound();
-        break;
-    case 4: //OnNetworkDisconnected();
-        Player.OnNetworkDisconnected();
-        break;
-    case 6: //OnRenderError();
-        Player.OnRenderError(param1);
-        break;
-    case 7: //OnRenderingStart();
-        Player.OnRenderingStart();
-        break;
-    case 8: //OnRenderingComplete();
-        Player.OnRenderingComplete();
-        break;
-    case 9: //OnStreamInfoReady();
-        Player.OnStreamInfoReady();
-        break;
-    case 11: //OnBufferingStart();
-        Player.OnBufferingStart();
-        break;
-    case 12: //OnBufferingComplete();
-        Player.OnBufferingComplete();
-        break;
-    case 13: //OnBufferingProgress();
-        Player.OnBufferingProgress(param1);
-        break;
-    case 14: //SetCurTime(param1);
-        Player.SetCurTime(param1);
-        break;
-        //'15' : 'AD_START',
-        //'16' : 'AD_END',
-    case 17: // 'RESOLUTION_CHANGED'
-        Player.OnStreamInfoReady(true);
-        break;
-    case 18: // 'BITRATE_CHANGED'
-        // Ignore BW since it seems it reacts on new data instead of buffered data. 
-        // I.e. it's updated before resolution... 
-        break;
-    case 19: // 'SUBTITLE'
-        Subtitles.set(param1.replace(/< *\/br>/g, '<br />').replace(/<br \/>$/, ''));
-        break;
-    case 100: // LICENSE_FAILURE?'
-        Player.OnRenderError('DRM License failed');
-        break;
-        //'19' : 'SUBTITLE'
-    default:
-        Log('SefPlayer event ' + EventType + '(' + param1 + ', ' + param2 + ')');
-        break;
-    }
 };
 
 Player.setFrontPanelTime = function (hours, mins, secs) {
@@ -224,28 +81,20 @@ Player.setFrontPanelText = function (text) {
     }
 };
 
-Player.deinit = function() {
-        if (Player.plugin)
-            Player.plugin.Execute('Stop');
-        Player.disableScreenSaver();
-        Player.storeResumeInfo();
-        var mwPlugin = document.getElementById('pluginObjectTVMW');
-        
-        if (mwPlugin && (this.originalSource != null) ) {
-            /* Restore original TV source before closing the widget */
-            mwPlugin.SetSource(this.originalSource);
-            Log('Restore source to ' + this.originalSource);
-        }
-};
+Player.remove = function() {
+    if (Player.plugin) {
+        Player.plugin.remove();
+        Player.plugin = null;
+    }
+    Player.disableScreenSaver();
+    Player.storeResumeInfo();
+    var mwPlugin = document.getElementById('pluginObjectTVMW');
 
-Player.setWindow = function() {
-	//Player.plugin.Execute('SetDisplayArea', 0, 0, GetMaxVideoWidth(), GetMaxVideoHeight());
-    Log('SetDisplayArea:' + Player.plugin.Execute('SetDisplayArea', 0, 0, 1, 1) + ' 1x1');
-    
-};
-
-Player.setFullscreen = function() {
-    Log('SetDisplayArea:' + Player.plugin.Execute('SetDisplayArea', 0, 0, GetMaxVideoWidth(), GetMaxVideoHeight()) + ' ' + GetMaxVideoWidth() + 'x' +  GetMaxVideoHeight());
+    if (mwPlugin && (this.originalSource != null) ) {
+        /* Restore original TV source before closing the widget */
+        mwPlugin.SetSource(this.originalSource);
+        Log('Restore source to ' + this.originalSource);
+    }
 };
 
 Player.setVideoURL = function(master, url, srtUrl, extra) {
@@ -272,25 +121,16 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoUrl                = url;
     videoData.component     = videoUrl.match(/\|COMPONENT=([^|]+)/);
     videoData.component     = videoData.component && videoData.component[1];
+    videoData.bitrates      = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
     videoData.url           = videoUrl;
     videoData.audio_idx     = extra.audio_idx;
     videoData.subtitles_idx = extra.subtitles_idx;
     videoData.use_offset    = extra.use_offset;
-
-    if (deviceYear >= 2011 && videoUrl.match(/=WMDRM/)) {
-        Player.plugin.Execute('InitPlayer', videoUrl);
-        if (extra.license) {
-            if (extra.customdata) {
-                videoData.customdata = extra.customdata;
-                Log('CustomData:' + extra.customdata);
-                Player.plugin.Execute('SetPlayerProperty', 3, extra.customdata, extra.customdata.length);
-            }
-            Log('LICENSE URL: ' + extra.license);
-            videoData.license = extra.license;
-            Player.plugin.Execute('SetPlayerProperty', 4, extra.license, extra.license.length);
-        }
-    }
+    videoData.license       = extra.license;
+    videoData.custom_data   = extra.customdata;
     Log('VIDEO URL: ' + videoUrl);
+    // Log('LICENSE URL: ' + videoData.license);
+    // Log('CustomData:' + videoData.custom_data);
 };
 
 Player.setDuration = function(duration) {
@@ -359,10 +199,9 @@ Player.playVideo = function() {
     // if (videoUrl == null) {
         Log('No videos to play');
     } else {
-        Player.plugin.Execute('Stop');
+        Player.plugin.load(videoData);
         Player.setFrontPanelText(Player.FRONT_DISPLAY_PLAY);
         Player.disableScreenSaver();
-        this.setWindow();
 
         // Player.plugin.Execute('SetInitialBuffer', 640*1024);
         // Player.plugin.Execute('SetPendingBuffer', 640*1024);
@@ -415,12 +254,19 @@ Player.playVideo = function() {
 
 Player.playIfReady = function() {
     if (Player.srtState == -1) {
-        if (startup && startup != true)
+        if (startup && startup !== true) {
             // Resuming
+            window.clearTimeout(delayedPlayTimer);
+            // Can resume have been chosen after delayedPlayTimer expired?
             Player.startPlayback(startup);
-        else if (!delayedPlayTimer || delayedPlayTimer == -1)
-            Player.plugin.Execute('Play', videoUrl);
+        } else if (!delayedPlayTimer || delayedPlayTimer == -1) {
+            Player.startPlayback();
+        }
     }
+};
+
+Player.startPlayback = function(time) {
+    Player.plugin.play(Player.isLive, time);
 };
 
 Player.togglePause = function() {
@@ -446,7 +292,7 @@ Player.pauseVideo = function() {
     Player.enableScreenSaver();
     this.state = this.PAUSED;
     Player.setFrontPanelText(Player.FRONT_DISPLAY_PAUSE);
-    Player.plugin.Execute('Pause');
+    Player.plugin.pause();
 };
 
 Player.stopVideo = function(keep_playing) {
@@ -466,7 +312,8 @@ Player.stopVideo = function(keep_playing) {
     window.clearTimeout(skipTimer);
     this.skipState = -1;
     this.srtState = -1;
-    Player.plugin.Execute('Stop');
+    if (Player.plugin)
+        Player.plugin.stop();
     if (this.stopCallback) {
         this.stopCallback(keep_playing);
     }
@@ -475,11 +322,8 @@ Player.stopVideo = function(keep_playing) {
 Player.resumeVideo = function() {
     Player.disableScreenSaver();
     Player.setFrontPanelText(Player.FRONT_DISPLAY_PLAY);
-	//Player.plugin.Execute('ResumePlay', vurl, time);
-    if (this.state == this.PLAYING)
-        Player.plugin.Execute('SetPlaybackSpeed', 1);
     this.state = this.PLAYING;
-    Player.plugin.Execute('Resume');
+    Player.plugin.resume();
     this.hideDetailedInfo();
 };
 
@@ -488,18 +332,13 @@ Player.reloadVideo = function(time) {
         return;
 
     retries = retries+1;
-    Player.plugin.Execute('Stop');
-    Player.plugin.Execute('InitPlayer', videoData.url);
-    if (videoData.customdata)
-        Player.plugin.Execute('SetPlayerProperty', 3, videoData.customdata, videoData.customdata.length);
-    if (videoData.license)
-        Player.plugin.Execute('SetPlayerProperty', 4, videoData.license, videoData.license.length);
     if (time)
         ccTime = time;
     lastPos = Math.floor((ccTime-Player.offset) / 1000.0);
     Player.disableScreenSaver();
     Player.setFrontPanelText(Player.FRONT_DISPLAY_PLAY);
-    Log('video reloaded result:' + Player.resumePlayback(lastPos) + ' url: ' + videoUrl + ' pos: ' + lastPos + ' org time:' + time + ' ccTime:' + ccTime);
+    Player.plugin.reload(videoData, Player.isLive, lastPos);
+    Log('video reloaded url: ' + videoUrl + ' pos: ' + lastPos + ' org time:' + time + ' ccTime:' + ccTime);
     this.state = this.PLAYING;
 };
 
@@ -511,13 +350,8 @@ Player.skipInVideo = function() {
     }
     window.clearTimeout(osdTimer);
     var timediff = +skipTime - +ccTime;
-    timediff = timediff / 1000;
-    if (timediff > 0) {
-        Log('forward jump: ' + timediff + ' result:' + Player.plugin.Execute('JumpForward', timediff));
-    } else if (timediff < 0) {
-    	timediff = 0 - timediff;
-    	Log('backward jump: ' + timediff + ' result:' + Player.plugin.Execute('JumpBackward', timediff));
-    }
+    Log('skip: ' + timediff);
+    Player.plugin.skip(timediff);
     skipTimeInProgress = skipTime;
 };
 
@@ -594,7 +428,7 @@ Player.OnBufferingStart = function() {
 };
 
 Player.OnBufferingProgress = function(percent) {
-    Log('OnBufferingProgress');
+    Log('OnBufferingProgress: ' + percent + '%');
     // Ignore if received without onBufferingStart. Seems sometimes 
     // it's received after onBufferingComplete.
     if (!Player.infoActive)
@@ -607,9 +441,7 @@ Player.OnBufferingComplete = function() {
     Log('OnBufferingComplete');
     $('.bottomoverlaybig').html('');
     retries = 0;
-    if (!useSef)
-        Player.OnRenderingStart();
-    if (startup && startup != true && bufferCompleteCount == 0) {
+    if (startup && startup !== true && bufferCompleteCount == 0) {
         // Resuming - wait for next buffering complete
         bufferCompleteCount = bufferCompleteCount + 1;
         return;
@@ -633,11 +465,6 @@ Player.OnRenderingStart = function() {
     Log('OnRenderingStart');
     if (skipTime && skipTimer == -1)
         skipTimer = window.setTimeout(this.skipInVideo, 0);
-    else if (resumeJump)
-        Log('jump:'+Player.plugin.Execute('JumpForward', resumeJump)+' resumeJump:' + resumeJump);
-
-    resumeJump = null;
-
     History.addShow(Details.fetchedDetails);
 };
 
@@ -780,16 +607,6 @@ Player.keyReturn = function() {
 	Player.stopVideo();
 };
 
-Player.startPlayback = function(time) {
-    window.clearTimeout(delayedPlayTimer);
-    // Stop in case delayedPlayTimer already expired...
-    Player.plugin.Execute('Stop');
-    if (!videoUrl.match(/=WMDRM/)) {
-        Player.plugin.Execute('InitPlayer', videoUrl);
-    }
-    Player.resumePlayback(time);
-};
-
 Player.keyEnter = function() {
     if ($('.bottomoverlaybig').html().match(/Press ENTER/)) {
         $('.bottomoverlaybig').html('Resuming');
@@ -797,16 +614,6 @@ Player.keyEnter = function() {
         Player.playIfReady();
     } else if(!$('.bottomoverlaybig').html().match(/Resuming/)) {
         Player.togglePause();
-    }
-};
-
-Player.resumePlayback = function(time) {
-    // Seems Auto and at least HLS has issues with resume...
-    if ('Auto' == Resolution.getTarget(Player.isLive) && videoUrl.match('=HLS')) {
-        Player.plugin.Execute('Play', videoUrl);
-        resumeJump = time;
-    } else {
-        Player.plugin.Execute('StartPlayback', time);
     }
 };
 
@@ -824,14 +631,13 @@ Player.hideDetailedInfo = function(){
 };
 
 Player.GetResolution = function() {
-    var res = Player.plugin.Execute('GetVideoResolution').split('|');
-    return {width:Number(res[0]),height: Number(res[1])};
+    return Player.plugin.getResolution();
 };
 Player.SetCurTime = function(time) {
         if (this.state == this.STOPPED)
             return;
 	if(startup) {
-            if (startup != true && (time/1000 < (startup-5))) {
+            if (startup !== true && (time/1000 < (startup-5))) {
                 Log('SetCurTime waiting for resume, time:' + time + ' startup:' + startup);
                 // resuming - wait
                 return;
@@ -914,21 +720,14 @@ Player.OnStreamInfoReady = function(forced) {
     Log('OnStreamInfoReady, forced:' + forced);
     var oldTopOsd = $('.topoverlayresolution').html();
     var resolution = Player.GetResolution();
-    videoBw = Player.plugin.Execute('GetCurrentBitrates');
+    videoBw = Player.plugin.getBandwith();
     if (this.bw && videoBw && this.bw != (' ' + Player.BwToString(videoBw)))
         Log('videoBw difference:' + Player.BwToString(videoBw) + this.bw);
     this.setResolution(resolution);
-    Player.pluginDuration = Player.plugin.Execute('GetDuration');
+
+    Player.pluginDuration = Player.plugin.getDuration();
     this.setTotalTime();
     Player.updateTopOSD(oldTopOsd);
-    if (videoData.audio_idx)
-        Log('SetStreamID Audio: ' + videoData.audio_idx + ' res: ' + Player.plugin.Execute('SetStreamID', 1, videoData.audio_idx));
-    if (Subtitles.exists()) {
-        // Log('StartSubtitle res: ' + Player.plugin.Execute('StartSubtitle', videoData.url.replace(/\|.+$/, '')));
-        Log('Number of Subtitles:' + Player.plugin.Execute('GetTotalNumOfStreamID',5));
-        if (videoData.subtitles_idx != null && subtitles.length == 0)
-            Log('SetStreamID Subtitles: ' + videoData.subtitles_idx + ' res: ' + Player.plugin.Execute('SetStreamID', 5, videoData.subtitles_idx));
-    }
 };
 
 Player.setTotalTime = function() {
@@ -1093,7 +892,7 @@ Player.PlaybackFailed = function(text) {
                                function(){
                                    Log('Trying alternative');
                                    $('.bottomoverlaybig').html('Trying alternative stream');
-                                   if (startup && startup != true) {
+                                   if (startup && startup !== true) {
                                        var altResumeTime = Player.getStoredResumeTime();
                                        if (altResumeTime && altResumeTime != resumeTime) {
                                            resumeTime = altResumeTime;
@@ -1119,7 +918,7 @@ Player.GetDuration = function() {
 
     var duration = this.sourceDuration;
     if (Player.plugin && !Player.pluginDuration ) {
-        Player.pluginDuration = Player.plugin.Execute('GetDuration');
+        Player.pluginDuration = Player.plugin.getDuration();
         duration = Player.pluginDuration - Player.durationOffset;
     }
 
@@ -1166,12 +965,7 @@ Player.updateTopOSD = function(oldTopOsd) {
 
 Player.toggleAspectRatio = function() {
 
-    if (!this.IsAutoBwUsedFor2011()) {
-        this.aspectMode = (this.aspectMode+1) % (Player.ASPECT_ZOOM+1);
-    }
-    else {
-        this.aspectMode = Player.ASPECT_NORMAL;
-    }
+    Player.plugin.toggleAspectRatio();
     this.setAspectRatio(Player.GetResolution());
     // Update OSD
     this.updateTopOSD();
@@ -1181,6 +975,7 @@ Player.toggleAspectRatio = function() {
 
 Player.setResolution = function (resolution) {
 
+    this.setAspectRatio(resolution);
     if (resolution.width  > 0 && resolution.height > 0) {
         var aspect = resolution.width / resolution.height;
         if (aspect == 16/9) {
@@ -1194,86 +989,31 @@ Player.setResolution = function (resolution) {
         // Only use given bw in case of 'Auto-mode'
         var bw = (this.bw || !videoBw) ? this.bw : ' ' + Player.BwToString(videoBw);
         Player.setTopOSDText(resolution.width + 'x' + resolution.height + ' (' + aspect + ')' + bw);
-        this.setAspectRatio(resolution);
     } else {
-        this.setFullscreen();
         Log('Missing resolution: ' + resolution.width + 'x' + resolution.height);
     }
 };
 
 Player.setAspectRatio = function(resolution) {
-
-    var aspect = resolution.width/resolution.height;
-    // During 'AUTO Bandwith' resolution can change which doesn't seem to be
-    // reported to 2011 devices. So then Crop Area would be all wrong.
-    if (resolution.width > 0 && resolution.height > 0 && !Player.IsAutoBwUsedFor2011()) {
-        if (Player.aspectMode === Player.ASPECT_H_FIT && aspect > 4/3) {
-            var cropOffset = Math.floor((GetMaxVideoWidth() - (4/3*GetMaxVideoHeight()))/2);
-            var cropX      = Math.round(resolution.width/GetMaxVideoWidth()*cropOffset);
-            var cropWidth  = resolution.width-(2*cropX);
-            Player.plugin.Execute('SetCropArea', cropX, 0, cropWidth, resolution.height);
-        } else if (Player.aspectMode === Player.ASPECT_H_FIT) {
-            Player.setFullscreen();
-        } else {
-            resolution.aspect = aspect;
-            if (Player.aspectMode === Player.ASPECT_ZOOM) {
-                Player.zoom(resolution);
-            } else {
-                Player.plugin.Execute('SetCropArea', 0, 0, resolution.width, resolution.height);
-                Player.scaleDisplay(resolution);
-            }
-        }
-        // Re-pause
-        if (this.state === this.PAUSED) {
-            Player.plugin.Execute('Pause');
-        }
-    }
-};
-
-Player.scaleDisplay = function (resolution) {
-    var factor = (resolution.aspect >= 16/9) ?
-        // Wider than high - 'extend/limit' based on width
-        GetMaxVideoWidth()/resolution.width :
-        // Higher than wide - 'extend/limit' based on height
-        GetMaxVideoHeight()/resolution.height;
-
-    var width  = Math.min(GetMaxVideoWidth(),  resolution.width*factor);
-    var height = Math.min(GetMaxVideoHeight(), resolution.height*factor);
-
-    var x = Math.floor((GetMaxVideoWidth()-width)/2);
-    var y = Math.floor((GetMaxVideoHeight()-height)/2);
-    // Log('scaleDisplay:'+x+','+y+','+width+','+height + ' resolution:' + JSON.stringify(resolution));
-    Player.plugin.Execute('SetDisplayArea', x, y, Math.floor(width), Math.floor(height));
-};
-
-Player.zoom = function(resolution) {
-
-    var zoomFactor = Player.getZoomFactor();
-    var cropY      = resolution.height*zoomFactor;
-    var cropHeight = resolution.height-(2*cropY);
-    var cropX      = 0;
-
-    if (resolution.width/cropHeight > 16/9 && zoomFactor > 0) {
-        // Must start cropping also in width
-        cropX = (resolution.width-(16/9*cropHeight))/2;
-    }
-    var cropWidth = resolution.width-(2*cropX);
-
-    if (resolution.aspect < 16/9) {
-        Player.scaleDisplay({width:cropWidth, height:cropHeight, aspect:cropWidth/cropHeight});
-    }
-    // Log('SetCropArea:'+cropX+','+cropY+','+cropWidth+','+cropHeight+' resolution:'+JSON.stringify(resolution) + ' zoom:' + (Player.getZoomFactor()*100).toFixed(1) + '%');
-    Player.plugin.Execute('SetCropArea', Math.round(cropX), Math.round(cropY), Math.round(cropWidth), Math.round(cropHeight));
+    Player.plugin.setAspectRatio(resolution);
 };
 
 Player.getAspectModeText = function() {
-    if (this.aspectMode === Player.ASPECT_H_FIT) {
-        return SEPARATOR + 'H-FIT';
-    } else if (this.aspectMode === Player.ASPECT_ZOOM) {
-        return SEPARATOR + 'ZOOM ' + (Player.getZoomFactor()*100).toFixed(1) + '%';
-    }
-    else 
-        return '';
+    var text = Player.plugin.getAspectModeText();
+    if (text == '')
+        return text;
+    else
+        return SEPARATOR + text;
+};
+
+Player.isZoomAspect = function() {
+    return Player.plugin.isZoomAspect && Player.plugin.isZoomAspect();
+};
+
+Player.changeZoom = function(increase) {
+    Player.plugin.changeZoom(increase);
+    Player.setAspectRatio(Player.GetResolution());
+    Player.updateTopOSD();
 };
 
 Player.getRepeatText = function() {
@@ -1288,40 +1028,20 @@ Player.getRepeatText = function() {
     }
 };
 
-Player.getZoomFactor = function () {
-    var savedValue = Config.read('zoomFactor');
-    if (savedValue != null) {
-        return Number(savedValue);
-    } else {
-        return 0.125;
+Player.createPlugin = function() {
+    if (!Player.plugin) {
+        Player.plugin = SefPlayer;
+        Player.plugin.create();
+        fpPlugin = document.getElementById('pluginFrontPanel');
+
+        var mwPlugin = document.getElementById('pluginObjectTVMW');
+        if (mwPlugin) {
+            /* Save current TV Source */
+            this.originalSource = mwPlugin.GetSource();
+            /* Set TV source to media player plugin */
+            mwPlugin.SetMediaSource();
+        }
     }
-};
-
-Player.saveZoomFactor = function (value) {
-    Config.save('zoomFactor', value);
-};
-
-Player.changeZoom = function(increase) {
-
-    var oldZoomFactor = Player.getZoomFactor();
-    if (increase)
-        Player.saveZoomFactor(oldZoomFactor + 0.01);
-    else if (oldZoomFactor >= 0.005)
-        Player.saveZoomFactor(oldZoomFactor - 0.005);
-
-    if (oldZoomFactor != Player.getZoomFactor())
-        Player.setAspectRatio(Player.GetResolution());
-
-    Player.updateTopOSD();
-};
-
-Player.decreaseZoom = function() {
-
-    Player.zoomFactor = Player.zoomFactor - 0.01;
-    if (Player.zoomFactor < 0)
-        Player.zoomFactor = 0;
-    Player.zoom(Player.zoomFactor);
-    Player.updateTopOSD();
 };
 
 Player.startPlayer = function(url, isLive, startTime) {
@@ -1344,7 +1064,6 @@ Player.startPlayer = function(url, isLive, startTime) {
     lastPos = 0;
     videoBw = null;
     videoData = {};
-    resumeJump = null;
     bufferCompleteCount = 0;
     Player.skipState = -1;
     Player.srtState = -1;
@@ -1352,6 +1071,9 @@ Player.startPlayer = function(url, isLive, startTime) {
     skipTimeInProgress = false;
     skipTimer = null;
     this.hideDetailedInfo();
+    if (Player.plugin)
+        Player.plugin.stop();
+    Player.createPlugin();
     Player.setTopOSDText('');
     $('.currentTime').text('');
     $('.totalTime').text('');
@@ -1359,21 +1081,17 @@ Player.startPlayer = function(url, isLive, startTime) {
     Player.setVideoBackground(background);
     if (!$('.bottomoverlaybig').html().match(/Trying alternative/))
         $('.bottomoverlaybig').html('');
-    if ( Player.init() && Audio.init()) {
-
-	Player.stopCallback = function(keep_playing) {
-            if (!keep_playing) {
-	        $('#outer').show();
-                Player.hideDetailedInfo();
-            }
-	    Buttons.setKeyHandleID(oldKeyHandleID);
-	};
-        requestedUrl = url;
-        Channel.getPlayUrl(url, isLive);
-        Details.fetchData(url);
-        detailsUrl = url;
-    } else
-        Log('INIT FAILED!!!!!');
+    Player.stopCallback = function(keep_playing) {
+        if (!keep_playing) {
+	    $('#outer').show();
+            Player.hideDetailedInfo();
+        }
+	Buttons.setKeyHandleID(oldKeyHandleID);
+    };
+    requestedUrl = url;
+    Channel.getPlayUrl(url, isLive);
+    Details.fetchData(url);
+    detailsUrl = url;
 };
 
 Player.setVideoBackground = function(img) {
@@ -1418,7 +1136,7 @@ Player.refreshStartData = function(details) {
     if (videoData.use_offset && details && details.start_time != 0 && details.start_time != Player.startTime) {
         Log('refreshStartData, new start:' + details.start_time + ' old start:' + Player.startTime);
         Player.setNowPlaying(details.title);
-        Player.pluginDuration = Player.plugin.Execute('GetDuration');
+        Player.pluginDuration = Player.plugin.getDuration();
         Player.setDuration(details.duration);
         Player.updateOffset(details.start_time);
         Player.setDetailsData(details);
@@ -1469,6 +1187,10 @@ Player.checkPlayUrlStillValid = function(gurl) {
     return true;
 };
 
+Player.hasSubtitles = function() {
+    return Player.plugin.hasSubtitles();
+};
+
 Player.refreshOsdTimer = function(value) {
     window.clearTimeout(osdTimer);
     if (!Player.detailsActive)
@@ -1496,20 +1218,6 @@ Player.internalError = function(err) {
         // Error during stream fetching?
         Player.PlaybackFailed('Internal Error:' + err);
 };
-
-function GetMaxVideoWidth() {
-    // Seems 1280x720 doesn't really work for HD variants either...
-    // if (deviceYear > 2011) 
-    //     return MAX_WIDTH;
-    return 960;
-}
-
-function GetMaxVideoHeight() {
-    // Seems 1280x720 doesn't really work for HD variants either...
-    // if (deviceYear > 2011) 
-    //     return MAX_HEIGHT;
-    return 540;
-}
 
 Player.GetHelpText = function() {
     var help = '<table style="margin-bottom:40px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">';
