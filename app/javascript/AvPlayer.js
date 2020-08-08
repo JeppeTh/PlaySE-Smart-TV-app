@@ -210,6 +210,11 @@ AvPlayer.getAspectModeText = function() {
     }
 };
 
+AvPlayer.hasSubtitles = function() {
+    // Not yet supported though...
+    return videoData.subtitles_idx >=0;
+};
+
 AvPlayer.GetCurrentVideoStreamInfo = function() {
     var streamInfo = webapis.avplay.getCurrentStreamInfo();
     for (var i=0; i < streamInfo.length; i++)

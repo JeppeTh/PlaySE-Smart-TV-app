@@ -49,7 +49,8 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        }
                        extra.audio_idx     = streams.audio_idx;
                        extra.subtitles_idx = streams.subtitles_idx;
-                       extra.hls_subs      = streams.hls_subs;
+                       if (!extra.use_vjs)
+                           extra.hls_subs = streams.hls_subs;
                    }
                    if (target != 'Auto') {
                        streams = streams.streams;
