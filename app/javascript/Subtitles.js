@@ -75,7 +75,7 @@ Subtitles.stop = function() {
 };
 
 Subtitles.exists = function() {
-    return subtitles.length > 0 || videoData.subtitles_idx > 0 || videoData.subtitles_idx === 0;
+    return (subtitles.length > 0 || Player.hasSubtitles());
 };
 
 Subtitles.toggle = function () {
