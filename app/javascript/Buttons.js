@@ -951,6 +951,9 @@ Buttons.runNextItem = function(direction, play) {
     else
         tmpItem = this.findPriorItem(play);
     if (tmpItem != -1) {
+        // Start by stopping playback to avoid history storing info about wrong item.
+        if (play)
+            Player.stopVideo(true);
         itemSelected.removeClass('selected');
         columnCounter = tmpItem.col;
         isTopRowSelected = tmpItem.top;
@@ -974,10 +977,8 @@ Buttons.runNextItem = function(direction, play) {
             }
             Details.refresh(play);
         }
-        if (play) {
-            Player.stopVideo(true);
+        if (play)
             this.playItem();
-        }
 
     } else {
         // Log('No more items');
