@@ -50,7 +50,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        extra.audio_streams = streams.audio_streams;
                        extra.audio_idx     = streams.audio_idx;
                        extra.subtitles_idx = streams.subtitles_idx;
-                       if (!extra.isLive)
+                       if (!extra.isLive && !extra.use_vjs)
                            extra.hls_subs = streams.hls_subs;
                    }
                    if (target != 'Auto') {
