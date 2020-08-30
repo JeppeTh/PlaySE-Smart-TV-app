@@ -24,11 +24,12 @@ Main.onLoad = function(refresh) {
 	Header.display(document.title);
     }
     if (!this.loaded) {
-        // Cache Viasat since slow
-        httpRequest(Viasat.getMainUrl());
         $('#page-cover').hide();
         var model = document.getElementById('pluginObjectDEVICE').GetRealModel();
         isEmulator = (model === 'VALENCIA' || model === 'SDK' || !model);
+        if (!isEmulator)
+            // Cache Viasat since slow
+            httpRequest(Viasat.getMainUrl());
         deviceYear = getDeviceYear();
         if (deviceYear > 2011)
             LINE_LENGTH = 36;
