@@ -296,7 +296,7 @@ Subtitles.fetchHls = function (hlsSubs, usedRequestedUrl, extra) {
 Subtitles.parse = function (data, append) {
     try {
         if (!append) subtitles = [];
-        var srtContent = this.strip(data.replace(/\r\n|\r|\n/g, '\n').replace(/\n\n*/g,'\n').replace(/(^([0-9]+\n)?[0-9:.,]+ --> [0-9:.,]+)(.+)?\n/mg,'\n$1\n').replace(/<\/*[0-9]+>/g, '')).replace(/<c\.([^>]+)/mg,'<font color="$1"').replace(/<\/c(\.[^>]+)?>/mg,'</font>');
+        var srtContent = this.strip(data.replace(/\r\n|\r|\n/g, '\n').replace(/\n\n*/g,'\n').replace(/(^([0-9]+\n)?[0-9:.,]+ --> [0-9:.,]+)(.+)?\n/mg,'\n$1\n').replace(/<\/*[0-9]+>/g, '')).replace(/<c\.([^>]+)/mg,'<font color="$1"').replace(/<\/c(\.[^>]+)?>/mg,'</font>').replace(/font-size[^;"]+;?/ig,'').replace(/(<\/)?div/ig,'$1span');
         srtContent = srtContent.split('\n\n');
         for (var i = 0; i < srtContent.length; i++) {
             this.parseSrtRecord(srtContent[i]);

@@ -610,7 +610,7 @@ function requestUrl(url, cbSucces, extra) {
                 if (isRequestStillValid(requestedLocation)) {
                     Log('Failure:' + this.url + ' status:' + textStatus + ' error:' + errorThrown);
                     this.tryCount++;
-          	    if ((textStatus=='timeout' || xhr.status==1015) &&
+          	    if ((textStatus=='timeout' || xhr.status==1015 || xhr.status==502) &&
                         this.tryCount <= this.retryLimit) {
                         //try again
                         retrying = true;
@@ -681,10 +681,9 @@ function httpRequest(url, extra) {
     var location = null, timer = null;
     if (extra.timeout || extra.timeout === 0) {
         timer = window.setTimeout(function() {
+            handleHttpResult(url, timer, extra, {status:'timeout',xhr:xhr});
+            timer = -1;
             xhr.abort();
-            xhr.destroy();
-            handleHttpResult(url, timer, extra, {status:'timeout'});
-            timer=-1;
         }, extra.timeout);
     }
     xhr.onreadystatechange = function () {
