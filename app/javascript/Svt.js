@@ -27,9 +27,6 @@ Svt.getHeaderPrefix = function() {
 };
 
 Svt.getSectionTitle = function(location) {
-    if (location.match(/tips.html/)) {
-        return getUrlParam(location, 'history',true);
-    }
     return Svt.sections[Svt.getSectionIndex().current].name;
 };
 
@@ -38,8 +35,10 @@ Svt.getCategoryTitle = function() {
     case 0:
         return 'Kategorier';
     case 1:
-        return 'Alla Kategorier';
+        return 'Utvalt';
     case 2:
+        return 'Alla Kategorier';
+    case 3:
         return 'Alla Program';
     }
 };
@@ -64,9 +63,9 @@ Svt.getAButtonText = function(language) {
 Svt.getBButtonText = function(language, catLoaded) {
     var loc = getIndexLocation();
     var text = null;
-    if (loc.match(/categoryDetail\.html/)) {
+    if (loc.match(/categoryDetail\.html/) && !getUrlParam(loc,'collection_id'))
         text = Svt.getNextCategoryDetailText(language);
-    } else if (loc.match(/categories\.html/))
+    else if (loc.match(/categories\.html/))
         text = Svt.getNextCategoryText();
     return text;
 };
@@ -422,9 +421,6 @@ Svt.getSectionUrl = function(location) {
         PathHistory.GetPath();
         return location.match(/similar.html\?url=([^&]+)/)[1];
     }
-    if (location.match(/tips.html\?ilink=/)) {
-        return decodeURIComponent(location.match(/tips.html\?ilink=([^&]+)/)[1]);
-    }
 
     var index = location.match(/tab_index=([0-9]+)/)[1];
     return Svt.sections[index].url;
@@ -438,11 +434,17 @@ Svt.getCategoryUrl = function() {
                                '66fea23f05ac32bbb67e32dbd7b9ab932692b644b90fdbb651bc039f43e387ff'
                               );
     case 1:
+        return  Svt.makeApiLink('FionaExperiment',
+                                '{"abTestVariants":[{"project":"svtplay","experiment":"contento-fiona-start","variant":"with-lists"}]}',
+                                '5b16903ef70149f5537bcaf2f6d622e74325b7bad7fa1e8b6b6ec837c994f1b7'
+                               );
+
+    case 2:
         return Svt.makeApiLink('AllGenres',
                                '{}',
                                '6bef51146d05b427fba78f326453127f7601188e46038c9a5c7b9c2649d4719c'
                               );
-    case 2:
+    case 3:
         return Svt.makeApiLink('ProgramsListing',
                                '{}',
                                '1eeb0fb08078393c17658c1a22e7eea3fbaa34bd2667cec91bbc4db8d778580f'
@@ -497,13 +499,7 @@ Svt.decodeMain = function(data, extra) {
 
         Svt.sections.push({name:data[k].name, url:extra.url, id:data[k].id});
     }
-    Svt.sections.push({name: 'Tips',
-                       url:  Svt.makeApiLink('FionaExperiment',
-                                             '{"abTestVariants":[{"project":"svtplay","experiment":"contento-fiona-start","variant":"with-lists"}]}',
-                                             '5b16903ef70149f5537bcaf2f6d622e74325b7bad7fa1e8b6b6ec837c994f1b7'
-                                            ),
-                       id:   'tips'
-                      });
+
     Svt.section_max_index = Svt.sections.length-1;
     $('#a-button').text(Svt.getNextSectionText());
 
@@ -515,33 +511,12 @@ Svt.decodeMain = function(data, extra) {
 };
 
 Svt.decodeSection = function(data, extra) {
-
+    var Section = Svt.sections[Svt.getSectionIndex().current];
     data = JSON.parse(data.responseText).data.startForSvtPlay.selections;
-    var TipsId = getUrlParam(extra.url, 'tipsId');
-    if (TipsId) {
-        for (var i=0; i < data.length; i++) {
-            if (data[i].id == TipsId) {
-                Svt.decode(data[i].items);
-                break;
-            }
-        }
-    } else {
-        var Section = Svt.sections[Svt.getSectionIndex().current];
-        if (Section.id == 'tips') {
-            for (var j=0; j < data.length; j++) {
-                toHtml({name  : data[j].name,
-                        thumb : Svt.getThumb(data[j].items[0]),
-                        link_prefix: '<a href="tips.html?ilink=',
-                        link  : encodeURIComponent(addUrlParam(extra.url,'tipsId', data[j].id))
-                       });
-            }
-        } else {
-            for (var k=0; k < data.length; k++) {
-                if (data[k].id == Section.id) {
-                    Svt.decode(data[k].items, extra);
-                    break;
-                }
-            }
+    for (var k=0; k < data.length; k++) {
+        if (data[k].id == Section.id) {
+            Svt.decode(data[k].items, extra);
+            break;
         }
     }
 
@@ -560,7 +535,7 @@ Svt.decodeCategories = function (data, extra) {
         data = JSON.parse(data.responseText).data;
         switch (Index) {
         case 0:
-        case 1:
+        case 2:
             if (Index == 0)
                 data = data.genres;
             else
@@ -580,7 +555,18 @@ Svt.decodeCategories = function (data, extra) {
             }
             break;
 
-        case 2:
+        case 1:
+            data = data.startForSvtPlay.selections;
+            for (var j=0; j < data.length; j++) {
+                categoryToHtml(data[j].name,
+                               Svt.getThumb(data[j].items[0]),
+                               Svt.getThumb(data[j].items[0], 'large'),
+                               addUrlParam(extra.url,'collection_id', data[j].id)
+                              );
+            }
+            break;
+
+        case 3:
             data = data.programAtillO.flat;
             data.sort(function(a, b) {
                 if (b.name.toLowerCase() > a.name.toLowerCase())
@@ -611,6 +597,10 @@ Svt.decodeCategories = function (data, extra) {
 };
 
 Svt.decodeCategoryDetail = function (data, extra) {
+
+    var CollectionId = getUrlParam(extra.url, 'collection_id');
+    if (CollectionId)
+        return Svt.decodeCollections(CollectionId, data, extra);
 
     var Name = getUrlParam(getLocation(extra.refresh), 'catName');
     var Slug = decodeURIComponent(getLocation(extra.refresh)).match(/(genre|cluster)"[^"]+"([^"]+)/)[2];
@@ -678,6 +668,19 @@ Svt.decodeCategoryDetail = function (data, extra) {
             DecodeAndComplete(data, extra);
         }
     }
+};
+
+Svt.decodeCollections = function (id, data, extra) {
+    data = JSON.parse(data.responseText).data.startForSvtPlay.selections;
+    for (var i=0; i < data.length; i++) {
+        if (data[i].id == id) {
+            Svt.decode(data[i].items);
+            break;
+        }
+    }
+
+    if (extra.cbComplete)
+        extra.cbComplete();
 };
 
 Svt.decodeCategoryTabs = function (name, slug, data, url) {
@@ -1062,11 +1065,11 @@ Svt.tryAltPlayUrl = function(failedUrl, cb) {
 };
 
 Svt.getNextCategory = function() {
-    return getNextIndexLocation(2);
+    return getNextIndexLocation(3);
 };
 
 Svt.getCategoryIndex = function () {
-    return getIndex(2);
+    return getIndex(3);
 };
 
 Svt.getNextCategoryDetail = function() {
@@ -1093,11 +1096,17 @@ Svt.getNextCategoryText = function() {
         return null;
     case 1:
         if (language == 'Swedish')
+            return 'Utvalt';
+        else
+            return 'Collections';
+        break;
+    case 2:
+        if (language == 'Swedish')
             return 'Alla Kategorier';
         else
             return 'All Categories';
         break;
-    case 2:
+    case 3:
         if (language == 'Swedish')
             return 'Alla Program';
         else
