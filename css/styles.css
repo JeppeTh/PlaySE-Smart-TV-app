@@ -624,6 +624,8 @@ ul.dropdown .root-item {
 }
 
 .scroll-item-name {
+    max-height:48px;
+    overflow:hidden;
     text-align: left;
 }
 
