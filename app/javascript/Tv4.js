@@ -10,10 +10,12 @@ var Tv4 = {
     unavailableShows:[],
     movies:[],
     movieDetails:[],
-    updatingShows:false
+    updatingShows:false,
+    loaded:false
 };
 
 Tv4.fetchShows = function() {
+    Tv4.loaded = true;
     if (Config.read('tv4DrmShows'))
         Config.remove('tv4DrmShows');
     var savedShows = Config.read('tv4UnavailableShows');
@@ -24,7 +26,7 @@ Tv4.fetchShows = function() {
         Tv4.unavailableShows = savedShows.shows.split(';');
         Tv4.movies           = (movies && movies.shows.split(';')) || [];
         Tv4.movieDetails     = (movies && movies.details) || [];
-        Log('Found saved unavailable shows, Days:' + Math.floor(tsDiff) + ' length:' + Tv4.unavailableShows.length);
+        Log('Found saved shows, Days:' + Math.floor(tsDiff) + ' unavailable:' + Tv4.unavailableShows.length + ' movies:' + Tv4.movies.length);
     } else {
         Tv4.refreshShows();
     }
@@ -93,9 +95,9 @@ Tv4.checkShows = function(i, data) {
                     });
     }
     else {
-        Log('Saving unavailable shows, length:' + Tv4.unavailableShows.length);
         Config.save('tv4UnavailableShows', {ts:getCurrentDate().getTime(), shows:Tv4.unavailableShows.join(';')});
         Tv4.saveMovies();
+        Log('Saved shows, unavailable:' + Tv4.unavailableShows.length + ' movies:' + Tv4.movies.length);
         Tv4.updatingShows = false;
         data = null;
     }
@@ -133,9 +135,11 @@ Tv4.getUrl = function(tag, extra) {
     var startDate = getCurrentDate();
     var endDate   = getCurrentDate();
 
+    if (!Tv4.loaded)
+        Tv4.fetchShows();
+
     switch (tag) {
     case 'main':
-        Tv4.fetchShows();
         return Tv4.makeApiLink('indexPage{showcase{__typename ... on TopCarousel' + CARD_UNION + ' ... on ShowcaseMosaic' + CARD_UNION + '}}');
 
     case 'section':
