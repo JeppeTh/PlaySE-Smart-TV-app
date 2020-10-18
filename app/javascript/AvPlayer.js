@@ -11,6 +11,8 @@ var AvPlayer = {
 
         onbufferingcomplete: function() {
             Player.OnBufferingComplete();
+            // Pause during skip doesn't work.
+            AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
             try {
             Log('CURRENT_BANDWIDTH:' + webapis.avplay.getStreamingProperty('CURRENT_BANDWIDTH'));
             Log('IS_LIVE:' + webapis.avplay.getStreamingProperty('IS_LIVE'));
@@ -31,6 +33,12 @@ var AvPlayer = {
 
         oncurrentplaytime: function(currentTime) {
             Player.SetCurTime(currentTime);
+            if (AvPlayer.pause_failed) {
+                if (AvPlayer.isPauseOutOfSync())
+                    AvPlayer.pause();
+                else
+                    AvPlayer.pause_failed = false
+            }
         },
 
         onerror: function(eventType) {
@@ -92,7 +100,8 @@ var AvPlayer = {
                'PLAYER_DISPLAY_MODE_FULL_SCREEN',
                'PLAYER_DISPLAY_MODE_LETTER_BOX'
               ],
-    load_error : null
+    load_error : null,
+    pause_failed: null
 };
 
 AvPlayer.create = function() {
@@ -167,6 +176,10 @@ AvPlayer.resume = function() {
 
 AvPlayer.pause = function() {
     webapis.avplay.pause();
+};
+
+AvPlayer.isPauseOutOfSync = function() {
+    return (Player.state==Player.PAUSED && webapis.avplay.getState()=='PLAYING');
 };
 
 AvPlayer.skip = function(milliSeconds) {
