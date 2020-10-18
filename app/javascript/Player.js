@@ -59,9 +59,11 @@ var Player = {
     REPEAT_ALL:2,
     REPEAT_ONE:3,
 
+    // Play states
     STOPPED : 0,
     PLAYING : 1,
-    PAUSED : 2,  
+    PAUSED : 2,
+    // Skip States
     FORWARD : 3,
     REWIND : 4,
 
@@ -352,17 +354,25 @@ Player.skipInVideo = function() {
         Log('skipInVideo during startup');
         return null;
     }
-    Subtitles.clear();
     window.clearTimeout(osdTimer);
     try{
         Log('skip to: ' + +skipTime);
         Player.plugin.skip(+skipTime);
+        Subtitles.clear();
         skipTimeInProgress = skipTime;
         Player.hidePreviewThumb();
         loadingStart();
     } catch (err) {
-        Log('skipInVideo failed:' + err);
+        Log('skipInVideo failed: ' + err);
+        Player.retrySkip(skipTime);
     }
+};
+
+Player.retrySkip = function(failedSkip) {
+    window.setTimeout(function() {
+        if (skipTime == failedSkip)
+            Player.skipInVideo();
+    }, 500);
 };
 
 Player.skipForward = function(time) {
@@ -437,7 +447,7 @@ Player.OnBufferingStart = function() {
 };
 
 Player.OnBufferingProgress = function(percent) {
-    Log('OnBufferingProgress: ' + percent + '%');
+    // Log('OnBufferingProgress: ' + percent + '%');
     // Ignore if received without onBufferingStart. Seems sometimes 
     // it's received after onBufferingComplete.
     if (!Player.infoActive)
@@ -463,9 +473,7 @@ Player.OnBufferingComplete = function() {
             if (this.state == this.PAUSED) ccTime = skipTime;
             skipTime = 0;
             skipTimeInProgress = false;
-        } else
-            // Skip during skip? Retry
-            skipTimer = window.setTimeout(this.skipInVideo, 200);
+        }
     }
     if (this.skipState == -1) {
         loadingStop();
