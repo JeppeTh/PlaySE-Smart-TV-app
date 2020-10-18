@@ -15,6 +15,9 @@ var AvPlayer = {
             AvPlayer.stream_ensured = true;
             if (AvPlayer.delayed_skip !== null)
                 return;
+            Player.OnBufferingComplete();
+            // Pause during skip doesn't work.
+            AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
             try {
             Player.OnBufferingComplete();
             if (webapis.avplay.getState() != 'IDLE') {
@@ -56,6 +59,12 @@ var AvPlayer = {
                 $('.video-background').hide();
                 AvPlayer.delayed_skip = null
             };
+            if (AvPlayer.pause_failed) {
+                if (AvPlayer.isPauseOutOfSync())
+                    AvPlayer.pause();
+                else
+                    AvPlayer.pause_failed = false
+            }
         },
 
         onerror: function(eventType) {
@@ -123,7 +132,8 @@ var AvPlayer = {
     time_offset : 0,
     stream_ensured : false,
     delayed_skip : null,
-    load_error : null
+    load_error : null,
+    pause_failed: null
 };
 
 function base64ToArrayBuffer(Base64) {
@@ -277,6 +287,10 @@ AvPlayer.resume = function() {
 
 AvPlayer.pause = function() {
     webapis.avplay.pause();
+};
+
+AvPlayer.isPauseOutOfSync = function() {
+    return (Player.state==Player.PAUSED && webapis.avplay.getState()=='PLAYING');
 };
 
 AvPlayer.skip = function(milliSeconds, successCb) {
