@@ -1355,7 +1355,7 @@ Svt.decode = function(data, extra) {
             }
 
             // What about variants inside episode - is that another "variant"?
-            if (!extra.variant && data[k].accessibilities && data[k].variants) {
+            if (!IsUpcoming && !extra.variant && data[k].accessibilities && data[k].variants) {
                 for (var m=0; m < data[k].accessibilities.length; m++) {
                     if (Variants.indexOf(data[k].accessibilities[m]) == -1)
                         Variants.push(data[k].accessibilities[m]);

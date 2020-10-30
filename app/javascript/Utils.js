@@ -511,11 +511,20 @@ function dateToHuman(date) {
             date = dateToClock(date);
         else if (days_diff == 1)
             date = ((Language.getisSwedish()) ? 'Imorgon ' : 'Tomorrow ') + dateToClock(date);
+        else if (days_diff < 7 && days_diff > 1)
+            date = getDay(date) + ' ' + dateToClock(date);
         else
             date = dateToFullString(date);
     } else if (date == undefined)
         return '';
     return date;
+}
+
+function getDay(Date) {
+    var days = (Language.getisSwedish()) ?
+        ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag']:
+        ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[Date.getDay()];
 }
 
 function dateToFullString(Date) {
