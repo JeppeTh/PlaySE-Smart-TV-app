@@ -115,6 +115,7 @@ Buttons.restartKeyTimer = function() {
 
 Buttons.sscroll = function(hide) {
     // alert('Buttons.sscroll:' + itemCounter + ' margin:' + Buttons.getMargin());
+    preloadItem(itemSelected);
     animateCallbacked = 0;
     $('.content-holder').animate(
         {marginLeft: Buttons.getMargin()},
@@ -286,20 +287,20 @@ function selectItemIndex(i) {
     alert('i:' + i + ' col:' + columnCounter + ' top:' + isTopRowSelected + ' htmlSection:' + JSON.stringify(htmlSection));
 }
 
-function checkLoadNextSection(column, steps) {
+function checkLoadNextSection(column, steps, noLoad) {
     var selected = null;
     if (htmlSection) {
         if (htmlSection.load_next_column != 0) {
             if ((column+steps) >= htmlSection.load_next_column) {
-                selected = loadNextSection();
+                selected = noLoad || loadNextSection();
             }
         } else if (column==0 && steps==0) {
-            selected = loadNextSection();
+            selected = noLoad || loadNextSection();
         }
     }
 
     if (selected) {
-        if (detailsOnTop)
+        if (!noLoad && detailsOnTop)
             refreshSectionInHistory();
         return {selected: selected,
                 top     : $('.topitem'),
@@ -310,21 +311,21 @@ function checkLoadNextSection(column, steps) {
     return null;
 }
 
-function checkLoadPriorSection(column, steps) {
+function checkLoadPriorSection(column, steps, noLoad) {
     var selected = null;
 
     if (htmlSection) {
         if (htmlSection.load_prior_column > -1) {
             if ((column-steps) < htmlSection.load_prior_column) {
-                selected = loadPriorSection();
+                selected = noLoad || loadPriorSection();
             }
         } else if (steps==0) {
-            selected = loadPriorSection();
+            selected = noLoad || loadPriorSection();
         }
     }
 
     if (selected) {
-        if (detailsOnTop)
+        if (!noLoad && detailsOnTop)
             refreshSectionInHistory();
         return {selected: selected,
                 top     : $('.topitem'),
@@ -838,10 +839,11 @@ Buttons.playItem = function() {
     Player.setDuration(duration);
     Player.setNowPlaying(itemSelected.find('a').text());
     Player.startPlayer(Buttons.getLinkUrl(itemLink), isLive, starttime);
+    preloadAdjacentItems(true);
     return 0;
 };
 
-Buttons.findNextItem = function(play) {
+Buttons.findNextItem = function(play, noLoad) {
     var topItems = $('.topitem');
     var bottomItems = $('.bottomitem');
     var tmpItem;
@@ -849,8 +851,8 @@ Buttons.findNextItem = function(play) {
     var tmpColumnCounter = columnCounter;
 
     while (true) {
-        if (checkLoadNextSection(tmpColumnCounter, 1))
-            return Buttons.findNextItem(play);
+        if (checkLoadNextSection(tmpColumnCounter, 1, noLoad))
+            return (noLoad) ? -1 : Buttons.findNextItem(play);
         // First go down if possible
         if(tmpTopSelected) {
             if (bottomItems.length > tmpColumnCounter) {
@@ -881,7 +883,8 @@ Buttons.findNextItem = function(play) {
                 tmpColumnCounter++;
             }
         }
-        if (tmpColumnCounter == 0 && checkLoadNextSection(tmpColumnCounter, 0)) {
+        if (tmpColumnCounter == 0 && checkLoadNextSection(tmpColumnCounter, 0, noLoad)) {
+            if (noLoad) return -1;
             topItems = $('.topitem');
             bottomItems = $('.bottomitem');
             tmpItem = topItems.eq(0);
@@ -895,7 +898,7 @@ Buttons.findNextItem = function(play) {
     }
 };
 
-Buttons.findPriorItem = function(play) {
+Buttons.findPriorItem = function(play, noLoad) {
     var topItems = $('.topitem');
     var bottomItems = $('.bottomitem');
     var tmpItem;
@@ -903,8 +906,8 @@ Buttons.findPriorItem = function(play) {
     var tmpColumnCounter = columnCounter;
 
     while (true) {
-        if (checkLoadPriorSection(tmpColumnCounter, 1))
-            return Buttons.findPriorItem(play);
+        if (checkLoadPriorSection(tmpColumnCounter, 1, noLoad))
+            return (noLoad) ? -1 : Buttons.findPriorItem(play);
         // First go up
         if(!tmpTopSelected) {
             // Go Up
@@ -913,7 +916,8 @@ Buttons.findPriorItem = function(play) {
         } else if (tmpColumnCounter == 0) {
             // At first Item - go to last item unless playing (or the only item).
             if (!play && topItems.length > 1) {
-                if (checkLoadPriorSection(tmpColumnCounter, 0)) {
+                if (checkLoadPriorSection(tmpColumnCounter, 0, noLoad)) {
+                    if (noLoad) return -1;
                     topItems = $('.topitem');
                     bottomItems = $('.bottomitem');
                 }

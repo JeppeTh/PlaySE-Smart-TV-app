@@ -14,6 +14,7 @@ Details.init = function() {
     Details.isLive = false;
     Details.duration = null;
     Details.startTime = 0;
+    Details.fetchedDetails = null;
 };
 
 Details.onLoad = function() {
@@ -64,29 +65,30 @@ Details.loadXml = function(isBackground) {
                         thumb       : decodeURIComponent(catThumb)
                        });
         window.setTimeout(loadingStop, 0);
-        return;
-    }
-    var url = this.getUrl();
-    requestUrl(url,
-               function(status, data) {
-                   var html;
-                   var programData = Details.getData(url, data);
-                   Details.fetchedDetails = programData;
-                   if (!isBackground) {
-		       Language.setDetailLang();
-                       Player.setNowPlaying(programData.name);
-                       loadingStop();
+    } else {
+        var url = this.getUrl();
+        requestUrl(url,
+                   function(status, data) {
+                       var html;
+                       var programData = Details.getData(url, data);
+                       if (!isBackground) {
+		           Language.setDetailLang();
+                           Player.setNowPlaying(programData.name);
+                           loadingStop();
+                       }
+                       Details.toHtml(programData);
+                   },
+                   {cbError:function(textStatus, data, errorThrown) {
+                       if (!isBackground) {
+                           loadingStop();
+                       }},
+                    headers:Channel.getHeaders(),
+                    no_cache:Details.noCache()
                    }
-                   Details.toHtml(programData);
-               },
-               {cbError:function(textStatus, data, errorThrown) {
-                   if (!isBackground) {
-                       loadingStop();
-                   }},
-                headers:Channel.getHeaders(),
-                no_cache:Details.noCache()
-               }
-              );
+                  );
+    }
+    if (detailsOnTop)
+        preloadAdjacentItems(false);
 };
 
 Details.toHtml = function (programData) {
@@ -166,30 +168,43 @@ Details.noCache = function() {
          itemSelected.find('.ilink').attr('not-yet-available') != null);
 };
 
-Details.fetchData = function(detailsUrl, refresh) {
-    Details.init();
-    if (!refresh)
-        Details.fetchedDetails = null;
+Details.loadImage = function(detailsUrl) {
+    if (detailsUrl.match(/categoryDetail\.html/)) {
+        var catThumb = detailsUrl.match(/catThumb=([^&]+)/);
+        catThumb && loadImage(decodeURIComponent(catThumb[1]));
+    } else {
+        Details.fetchData(detailsUrl, null, true);
+    }
+};
+
+Details.fetchData = function(detailsUrl, refresh, preload) {
     detailsUrl = this.getUrl(detailsUrl);
     httpRequest(detailsUrl,
                 {cb: function(status, data) {
-                    Details.fetchedDetails = Details.getData(detailsUrl,{responseText:data});
+                    data = Details.getData(detailsUrl,{responseText:data}, preload);
+                    if (preload && data)
+                        loadImage(data.thumb)
                 },
                  headers:Channel.getHeaders(),
                  no_cache:Details.noCache()
                 });
 };
 
-Details.getData = function(url, data) {
+Details.getData = function(url, data, preload) {
     data = Channel.getDetailsData(url,data);
-
     if (data.description && data.description.length > 0)
         data.description = data.description.replace(/\\\"/g, '"');
-    if (!data.show) {
-        data.start_time   = dateToClock(data.start_time);
-        Details.duration  = data.duration;
-        Details.isLive    = data.is_live;
-        Details.startTime = data.start_time;
+    if (!data.show)
+        data.start_time = dateToClock(data.start_time);
+
+    if (!preload) {
+        Details.init();
+        Details.fetchedDetails = data;
+        if (!data.show) {
+            Details.duration  = data.duration;
+            Details.isLive    = data.is_live;
+            Details.startTime = data.start_time;
+        }
     }
     return data;
 };

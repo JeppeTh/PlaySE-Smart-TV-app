@@ -508,6 +508,8 @@ Player.removeResumeInfo = function(key) {
 };
 
 Player.storeResumeInfo = function() {
+    if (delayedPlayTimer > 0)
+        return;
     if (videoData.key && resumeTime > 20 && !Player.isLive) {
         Log('Player.storeResumeInfo, resumeTime:' + resumeTime + ' duration:' + Player.GetDuration() + ' videoData.key:' + JSON.stringify(videoData.key) + ' !Player.isLive:' + !Player.isLive);
         var percentage = Math.floor(100*resumeTime/(Player.GetDuration()/1000));

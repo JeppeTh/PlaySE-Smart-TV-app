@@ -844,6 +844,7 @@ function loadFinished(status, refresh) {
         if (!refresh)
             contentShow();
     }
+    preloadItem(itemSelected || $('.topitem').eq(0));
 }
 
 function contentShow() {
@@ -1009,6 +1010,8 @@ function itemToHtml(Item, OnlyReturn) {
     }
     else{
 	html = '<div class="scroll-content-item' + itemRow  + '">';
+        // Preload background
+        loadImage(Item.background);
     }
     if ((Item.is_live && Item.is_running) || Item.is_channel) {
         IsLiveText = ' is-live';
@@ -1298,6 +1301,22 @@ function slideToggle(id, timer, callback) {
         id.slideToggle(timer, callback);
 }
 
+function preloadItem(item) {
+    var ilink = item.find('.ilink').attr('href');
+    // Preload background
+    if (Buttons.isPlayable(ilink))
+        loadImage(item.find('.ilink').attr('data-background'));
+    // Preload details thumb
+    Details.loadImage(ilink);
+}
+
+function preloadAdjacentItems(play) {
+    var result = Buttons.findNextItem(play, true);
+    result != -1 && preloadItem(result.item);
+    result = Buttons.findPriorItem(play, true);
+    result != -1 && preloadItem(result.item);
+}
+
 function loadImage(image, callback, timeout) {
     var thisTimeout = null;
     // if (alt)
@@ -1312,14 +1331,14 @@ function loadImage(image, callback, timeout) {
                     alert('IMG TIMEOUT: ' + image);
                 else
                     Log('IMG TIMEOUT');
-                callback();
+                callback && callback();
             }, timeout);
         }
-        if (callback) {
+        if (timeout || callback) {
             img.onload = img.onerror = img.onabort = function() {
                 window.clearTimeout(thisTimeout);
                 // alert('READY')
-                callback();
+                callback && callback();
             };
         }
         img.src = image;
