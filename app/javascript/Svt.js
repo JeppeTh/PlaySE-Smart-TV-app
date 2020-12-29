@@ -9,8 +9,7 @@
 // https://api.svt.se/contento/graphql?ua=svtplaywebb-play-render-prod-client&operationName=VideoPageSimilarContent&variables={"escenicIds":[21744946],"abTestVariants":[]}&extensions={"persistedQuery":{"version":1,"sha256Hash":"b4cb0372ea38ff877bbadde706980d63b09aef8b8448ec3a249cd4810e5f15bd"}}
 
 var SVT_API_BASE = 'https://api.svt.se/contento/graphql?ua=svtplaywebb-play-render-prod-client&operationName=';
-var SVT_OLD_API_BASE = 'https://www.svtplay.se/api/';
-var SVT_ALT_API_URL = 'https://www.svt.se/videoplayer-api/video/';
+var SVT_ALT_API_URL = 'https://api.svt.se/videoplayer-api/video/';
 
 var Svt = {
     sections:[],
@@ -18,8 +17,7 @@ var Svt = {
     category_details:[],
     category_detail_max_index:0,
     thumbs_index:null,
-    play_args:{},
-    live_url:SVT_OLD_API_BASE + 'live?includeEnded=true'
+    play_args:{}
 };
 
 Svt.getHeaderPrefix = function() {
@@ -938,11 +936,9 @@ Svt.decodeSearchList = function (data, extra) {
         extra.cbComplete();
 };
 
-Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
-    if (url.match('oppet-arkiv-api'))
-        return Oa.getPlayUrl(url, isLive);
+Svt.getPlayUrl = function(url, isLive, streamUrl) {
 
-    var video_urls=[], extra = {isLive:isLive};
+    var video_urls=[], extra = {isLive:isLive, useBitrates:true};
 
     if (url.match(/=ChannelsQuery/)) {
         extra.use_offset = true;
@@ -958,24 +954,11 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
                        if (!streamUrl.match(SVT_ALT_API_URL)) {
                            data = JSON.parse(data.responseText).data.listablesByEscenicId[0];
                            streamUrl = SVT_ALT_API_URL + data.videoSvtId;
-                           return Svt.getPlayUrl(url, isLive, streamUrl, cb, failedUrl);
+                           return Svt.getPlayUrl(url, isLive, streamUrl);
                        } else {
                            data = JSON.parse(data.responseText);
                        }
 
-                       if (data.video)
-                           videoReferences = data.video.videoReferences;
-                       else
-                           videoReferences = data.videoReferences;
-
-                       Svt.sortStreams(videoReferences,
-                                       function(s){return s.format;}
-                                      );
-                       for (var j = 0; j < videoReferences.length; j++) {
-                           alert('format:' + videoReferences[j].format);
-                           video_urls.push(videoReferences[j].url);
-                       }
-                       alert('video_urls:' + video_urls);
                        if (data.video && data.video.subtitleReferences)
                            subtitleReferences = data.video.subtitleReferences;
                        else if (data.video && data.video.subtitles)
@@ -992,37 +975,69 @@ Svt.getPlayUrl = function(url, isLive, streamUrl, cb, failedUrl) {
                                break;
                            }
 		       }
+
+                       if (data.video)
+                           videoReferences = data.video.videoReferences;
+                       else
+                           videoReferences = data.videoReferences;
+
+                       // Full if no subtitles?
+                       // dash hbbtv not working if ac-3?
+                       Svt.sortStreams(videoReferences, srtUrl);
+                       for (var j = 0; j < videoReferences.length; j++) {
+                           alert('format:' + videoReferences[j].format);
+                           video_urls.push(videoReferences[j].url);
+                       }
+                       alert('video_urls:' + video_urls);
+
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
                        Svt.playUrl();
                    }
                });
 };
 
-Svt.sortStreams = function(streams, formatCb) {
+Svt.sortStreams = function(streams, srtUrl) {
     var formatList=[];
     for (var i = 0; i < streams.length; i++) {
-        // Some adaptions to OA...
-        streams[i].format = formatCb(streams[i]);
-        if (streams[i].format == 'ios' && streams[i].url.match('.m3u8'))
-            streams[i].format = 'hls';
         formatList.push(streams[i].format);
     }
     streams.sort(function(a, b){
-        var rank_a = Svt.getStreamRank(a,formatList);
-        var rank_b = Svt.getStreamRank(b,formatList);
-        return (rank_a < rank_b) ? -1 : 1;
+        switch (Svt.checkFormat(a,b)) {
+        case -1:
+            return -1;
+
+        case 1:
+            return 1;
+
+        case 0:
+            var rank_a = Svt.getStreamRank(a,formatList,srtUrl);
+            var rank_b = Svt.getStreamRank(b,formatList,srtUrl);
+            return (rank_a < rank_b) ? -1 : 1;
+        }
     });
 };
 
-Svt.getStreamRank = function(stream, index_list) {
-    if (stream.format == 'dash-hbbtv')
+Svt.checkFormat = function (a, b) {
+    var is_a_dash = (a.format.match(/dash/) != null);
+    var is_b_dash = (b.format.match(/dash/) != null);
+
+    // Prefer dash
+    if (is_a_dash == is_b_dash)
         return 0;
-    else if (stream.format == 'dash-hbbtv-avc')
+    else if (is_a_dash)
+        return -1;
+    else
+        return 1
+};
+
+Svt.getStreamRank = function(stream, index_list, srtUrl) {
+
+    if (!srtUrl && stream.format == 'dash-full')
+        return 0;
+    else if (stream.format == 'dash-hbbtv')
         return 1;
-    else if (stream.format.match(/vtt/))
+    else if (stream.format == 'dash-hbbtv-avc')
         return 2;
-    else if (stream.format == 'hls')
-        return 3;
     else {
         var base = 1000;
         if (stream.format.match(/hevc/))
@@ -1054,11 +1069,10 @@ Svt.playUrl = function() {
 };
 
 Svt.tryAltPlayUrl = function(failedUrl, cb) {
-    if (Svt.play_args.urls[0].match(/[?&]alt=/)) {
-        Svt.play_args.urls[0] = Svt.play_args.urls[0].match(/[?&]alt=([^|]+)/)[1];
-        Svt.play_args.urls[0] = decodeURIComponent(Svt.play_args.urls[0]);
-        if (Svt.play_args.urls[0].match(/^[^?]+&/))
-            Svt.play_args.urls[0] = Svt.play_args.urls[0].replace(/&/,'?');
+    if (Svt.play_args.urls.length == 0)
+        return false;
+    if (getUrlParam(Svt.play_args.urls[0],"alt")) {
+        Svt.play_args.urls[0] = getUrlParam(Svt.play_args.urls[0],"alt").replace(/\|.+$/,'');
     } else {
         Svt.play_args.urls.shift();
     }

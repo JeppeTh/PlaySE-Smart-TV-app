@@ -32,8 +32,8 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
     requestUrl(videoUrl,
                null,
                {cbComplete:function(status, data) {
-                   if (!data.responseText || data.responseText.length == 0) {
-                       Log('No data, use Auto and hope for the best');
+                   if (status == 'error' | !data.responseText || data.responseText.length == 0) {
+                       Log('Failed to read stream, use Auto and hope for the best');
                        target = 'Auto';
                    } else {
                        var streams, is_hls = videoUrl.match(/\.m3u8/);
@@ -69,7 +69,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
 		           for (var j = 0; j < streams.length; j++) {
                                if (+target >= streams[j].bandwidth)
                                    currentId = j;
-                               else 
+                               else
                                    break;
                            }
 		       }

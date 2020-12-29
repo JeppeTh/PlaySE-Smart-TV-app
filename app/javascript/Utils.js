@@ -681,7 +681,7 @@ function getUrlParam(url, key, raw) {
 }
 
 function getUrlPrefix(url) {
-    return url.replace(/[^\/]+(\?.+)?$/,'')
+    return url.replace(/[^\/]+(\?.+)?$/,'');
 }
 
 function httpRequest(url, extra) {
@@ -1010,8 +1010,6 @@ function itemToHtml(Item, OnlyReturn) {
     }
     else{
 	html = '<div class="scroll-content-item' + itemRow  + '">';
-        // Preload background
-        loadImage(Item.background);
     }
     if ((Item.is_live && Item.is_running) || Item.is_channel) {
         IsLiveText = ' is-live';
@@ -1322,6 +1320,7 @@ function loadImage(image, callback, timeout) {
     // if (alt)
     //     return callback();
     // alert('image:' + image + ' noretry:' + noretry);
+    // var start = new Date();
     if (image) {
         var img = document.createElement('img');
         if (timeout) {
@@ -1338,6 +1337,8 @@ function loadImage(image, callback, timeout) {
             img.onload = img.onerror = img.onabort = function() {
                 window.clearTimeout(thisTimeout);
                 // alert('READY')
+                // if (!callback)
+                //     alert(new Date()-start + ' to load ' + image);
                 callback && callback();
             };
         }

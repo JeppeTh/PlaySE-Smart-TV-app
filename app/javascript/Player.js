@@ -544,11 +544,14 @@ Player.showControls = function(){
     if (Player.infoActive)
         return;
 
+    if (startup===false && !Player.bw && videoBw != Player.plugin.getBandwith())
+        Player.OnStreamInfoReady(true);
+
     Player.infoActive = true;
     // Restore Top OSD in case of 'Auto 2011'
     this.setTopOSDText();
     $('.topoverlayresolution').show();
-    $('.video-wrapper').show();				
+    $('.video-wrapper').show();
     $('.video-footer').show();
     this.setClock();
   // Log('show controls');
@@ -561,6 +564,9 @@ Player.setClock = function() {
 
 Player.playbackStarted = function() {
     // Log('Player.playbackStarted')
+    if (backgroundLoading) {
+        $('#outer').hide();
+    }
     Player.hideVideoBackground();
     loadingStop();
     this.hideControls();
@@ -1100,11 +1106,11 @@ Player.setVideoBackground = function(img) {
 
     Player.hideVideoBackground();
     var complete = function() {
-        Player.showControls();
         if (!$('.bottomoverlaybig').html().match(/error/i))
             // Avoid in case of internal errors.
             loadingStart();
         $('#outer').hide();
+        Player.showControls();
     };
     if (img) {
         alert('Background:' + img);

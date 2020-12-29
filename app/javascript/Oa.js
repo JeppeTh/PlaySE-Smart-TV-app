@@ -436,35 +436,17 @@ Oa.decodeSearchList = function (data, extra) {
 };
 
 Oa.getPlayUrl = function(url, isLive) {
-    var video_url, extra = {};
-
     requestUrl(url,
                function(status, data) {
                    data = JSON.parse(data.responseText);
-                   if (Player.checkPlayUrlStillValid(url)) {
-                       var subtitleReferences=[], srtUrl=null;
-                       if (data.video)
-                           data = data.video;
-
-                       // Re-use SVT logic
-                       Svt.sortStreams(data.videoReferences,
-                                       function(s){return s.playerType;}
-                                      );
-                       video_url = data.videoReferences[0].url;
-
-                       for (var k = 0; k < data.subtitles.length; k++) {
-		           Log('subtitles:' + data.subtitles[k].url);
-                           if (data.subtitles[k].url.indexOf('.m3u8') != -1)
-                               continue;
-                           else if (data.subtitles[k].url.length > 0) {
-		               srtUrl = data.subtitles[k].url;
-                               break;
-                           }
-		       }
-		       Resolution.getCorrectStream(video_url, srtUrl, extra);
-	           }
+                   data = SVT_ALT_API_URL + data.programVersionId;
+                   Svt.getPlayUrl(url, isLive, data);
                }
               );
+};
+
+Oa.tryAltPlayUrl = function(failedUrl, cb) {
+    Svt.tryAltPlayUrl(failedUrl, cb);
 };
 
 Oa.getNextCategory = function() {
