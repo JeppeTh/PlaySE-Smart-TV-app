@@ -982,7 +982,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else
                            videoReferences = data.videoReferences;
 
-                       Svt.sortStreams(videoReferences, srtUrl);
+                       Svt.sortStreams(videoReferences, isLive);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
@@ -995,13 +995,13 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                });
 };
 
-Svt.sortStreams = function(streams, srtUrl) {
+Svt.sortStreams = function(streams, isLive) {
     var formatList=[];
     for (var i = 0; i < streams.length; i++) {
         formatList.push(streams[i].format);
     }
     streams.sort(function(a, b){
-        switch (Svt.checkFormat(a,b)) {
+        switch (Svt.checkFormat(a,b,isLive)) {
         case -1:
             return -1;
 
@@ -1009,19 +1009,19 @@ Svt.sortStreams = function(streams, srtUrl) {
             return 1;
 
         case 0:
-            var rank_a = Svt.getStreamRank(a,formatList,srtUrl);
-            var rank_b = Svt.getStreamRank(b,formatList,srtUrl);
+            var rank_a = Svt.getStreamRank(a,formatList);
+            var rank_b = Svt.getStreamRank(b,formatList);
             return (rank_a < rank_b) ? -1 : 1;
         }
     });
 };
 
-Svt.checkFormat = function (a, b) {
+Svt.checkFormat = function (a, b, isLive) {
     var is_a_dash = (a.format.match(/dash/) != null);
     var is_b_dash = (b.format.match(/dash/) != null);
 
-    // Prefer dash
-    if (is_a_dash == is_b_dash)
+    // Prefer dash unless isLive
+    if (isLive || (is_a_dash == is_b_dash))
         return 0;
     else if (is_a_dash)
         return -1;
@@ -1029,21 +1029,12 @@ Svt.checkFormat = function (a, b) {
         return 1
 };
 
-Svt.getStreamRank = function(stream, index_list, srtUrl) {
+Svt.getStreamRank = function(stream, index_list) {
 
-    if (!srtUrl && stream.format == 'dash-avc-51' && deviceYear > 2013)
-        // Seems devices > 2013 supports AC-3, use in case of no subtitles.
+    if (stream.format == 'dash-avc-51')
         return 0;
-    else if (!srtUrl && stream.format == 'dash-avc')
-        // 'dash-avc' contains non AC-3 audio stream needed for older devices.
-        // Also more bandwith variants....
+    else if (stream.format == 'dash-avc')
         return 1;
-    else if (stream.format == 'dash-hbbtv')
-        // Never contains subtitles which seem to cause issues.
-        // In case of AC-3 we're smoked on older devices though.
-        return 2;
-    else if (stream.format == 'dash-hbbtv-avc')
-        return 3;
     else {
         var base = 1000;
         if (stream.format.match(/hevc/))
@@ -1071,11 +1062,13 @@ Svt.stripDuplicatStreams = function(streams) {
 
 Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
+        Svt.play_args.extra.use_vjs = Svt.play_args.urls[0].match(/\.m3u8/);
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,
                                     Svt.play_args.extra
                                    );
     } else{
+        Svt.play_args.extra.use_vjs = false;
         Svt.play_args.extra.cb = function() {Player.playVideo();};
 	Player.setVideoURL(Svt.play_args.urls[0],
                            Svt.play_args.urls[0],
