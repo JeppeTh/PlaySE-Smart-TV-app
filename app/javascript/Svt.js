@@ -1302,8 +1302,8 @@ Svt.sortStreams = function(streams, isLive) {
             return 1;
 
         case 0:
-            var rank_a = Svt.getStreamRank(a,formatList);
-            var rank_b = Svt.getStreamRank(b,formatList);
+            var rank_a = Svt.getStreamRank(a,formatList,isLive);
+            var rank_b = Svt.getStreamRank(b,formatList,isLive);
             return (rank_a < rank_b) ? -1 : 1;
         }
     });
@@ -1322,9 +1322,11 @@ Svt.checkFormat = function (a, b, isLive) {
         return 1;
 };
 
-Svt.getStreamRank = function(stream, index_list) {
+Svt.getStreamRank = function(stream, index_list, isLive) {
 
-    if (stream.format == 'dash-avc-51')
+    if (isLive && stream.format == 'hls')
+        return -1;
+    else if (stream.format == 'dash-avc-51')
         return 0;
     else if (stream.format == 'dash-hbbtv-avc')
         // Not sure if dash-xxx-51 has been ditched.
