@@ -107,7 +107,11 @@ Svt.makeSearchLink = function (query) {
 };
 
 Svt.makeEpisodeLink = function (data) {
-    var ArticleId = data.articleId || data.urls.svtplay.match(/\/(video|klipp)\/([0-9]+)/)[2];
+    var ArticleId = data.articleId;
+    if (!ArticleId) {
+        ArticleId = data.urls.svtplay.match(/\/(video|klipp)\/([0-9]+)/);
+        ArticleId = ArticleId && ArticleId[2];
+    }
 
     return Svt.makeApiLink('VideoPage',
                            '{"legacyIds":[' + ArticleId + ']}',
