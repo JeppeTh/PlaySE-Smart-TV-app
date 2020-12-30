@@ -1172,6 +1172,8 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            data = JSON.parse(data.responseText);
                        }
 
+                       var isLiveStream = isLive || data.live;
+
                        if (data.video && data.video.subtitleReferences)
                            subtitleReferences = data.video.subtitleReferences;
                        else if (data.video && data.video.subtitles)
@@ -1179,7 +1181,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else if (data.subtitleReferences)
                            subtitleReferences = data.subtitleReferences;
 
-                       for (var k = 0; !isLive && k < subtitleReferences.length; k++) {
+                       for (var k = 0; !isLiveStream && k < subtitleReferences.length; k++) {
 		           Log('subtitleReferences:' + subtitleReferences[k].url);
                            srtUrl = subtitleReferences[k].url;
                            if (subtitleReferences[k].label &&
@@ -1193,7 +1195,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else
                            videoReferences = data.videoReferences;
 
-                       Svt.sortStreams(videoReferences, isLive);
+                       Svt.sortStreams(videoReferences, isLiveStream);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
