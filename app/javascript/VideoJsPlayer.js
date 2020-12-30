@@ -78,7 +78,7 @@ VideoJsPlayer.create = function() {
 
     // VideoJsPlayer.player.reloadSourceOnError();
     // videojs.log.level('all');
-    videojs.log.level('error');
+    videojs.log.level('warn');
     videojs.log.history.disable();
 
     for (var i=0; i < VideoJsPlayer.events.length; i++) {
@@ -115,6 +115,10 @@ VideoJsPlayer.subscribeEvent = function(Event) {
 
 VideoJsPlayer.On = function (Event, e) {
 
+    if (VideoJsPlayer.state != VideoJsPlayer.STATE_STARTED) {
+        // VideoJsPlayer.logStats();
+        VideoJsPlayer.logHistory();
+    }
     if (Event != 'timeupdate')
         VideoJsLog(Event);
 
@@ -123,6 +127,10 @@ VideoJsPlayer.On = function (Event, e) {
 
     if (Event == 'loadedmetadata')
         VideoJsPlayer.metaDataLoaded();
+    else if (Event == 'error') {
+        e = VideoJsPlayer.player.error().code + '-' + VideoJsPlayer.player.error().message;
+        return VideoJsPlayer.abort(function(){Player.OnRenderError(e);});
+    };
 
     if (VideoJsPlayer.state == VideoJsPlayer.STATE_INIT) {
         if (VideoJsPlayer.player.readyState() > 1) {
@@ -178,18 +186,6 @@ VideoJsPlayer.On = function (Event, e) {
 
     case 'abort':
         VideoJsPlayer.abort(function(){Player.OnConnectionFailed('abort');});
-        break;
-
-    case 'error':
-        Log('Error: ' + JSON.stringify(e));
-        for (var k in e) {
-            Log(k + ':' + e[k]);
-        }
-        Log('Error: ' + e.code + ' ' + e.message);
-        Log('Error: ' + VideoJsPlayer.player.error.code + ' ' + VideoJsPlayer.player.error.message);
-        if (e.currentTarget)
-            Log('Error: ' + e.currentTarget.error);
-        VideoJsPlayer.abort(function(){Player.OnRenderError(e);});
         break;
 
     case 'ended':
@@ -347,13 +343,8 @@ VideoJsPlayer.skip = function(milliSeconds, remainder) {
 
 VideoJsPlayer.stop = function() {
     if (VideoJsPlayer.player) {
-        // Log('hls.stats:' + JSON.stringify(VideoJsPlayer.tech().hls.stats));
-        // var history = videojs.log.history();
-        // videojs.log.history.clear();
-        // for (var i=0;i < history.length;i++) {
-        //     if (!JSON.stringify(history[i]).match(/DEBUG/))
-        //         Log('history:' + JSON.stringify(history[i]));
-        // }
+        // VideoJsPlayer.logStats();
+        // VideoJsPlayer.logHistory(true);
         this.remove();
     }
 };
@@ -367,7 +358,8 @@ VideoJsPlayer.reload = function(videoData, isLive, seconds) {
 };
 
 VideoJsPlayer.getResolution  = function() {
-    return VideoJsPlayer.tech().hls.playlists.media().attributes.RESOLUTION;
+    var resolution = VideoJsPlayer.tech().hls.playlists.media().attributes.RESOLUTION;
+    return (resolution) ? resolution : {width:0, height:0};
     // return {width:+VideoJsPlayer.player.videoWidth(), height:+VideoJsPlayer.player.videoHeight()};
 };
 
@@ -493,6 +485,42 @@ VideoJsPlayer.findSubtitleTrack = function(language) {
         }
     }
     return track;
+};
+
+VideoJsPlayer.logHistory = function(debug) {
+    var history = videojs.log.history();
+    videojs.log.history.clear();
+    for (var i=0;i < history.length;i++) {
+        history[i] = JSON.stringify(history[i]).substring(0,150);
+        if (debug || !history[i].match(/DEBUG/))
+            Log(history[i])
+    }
+};
+
+VideoJsPlayer.logStats = function() {
+    var stats = VideoJsPlayer.tech().hls.stats;
+    for (var k in stats) {
+        if (k == 'master') {
+            for (var i in stats[k]) {
+                if (i == 'playlists') {
+                    var playlists = stats[k][i];
+                    for (var j = 0; j < playlists.length; j++) {
+                        for (var l in playlists[j]) {
+                            if (l == 'segments' && playlists[j][l].length > 1) {
+                                Log('Stats->master->playlist->' + l + ':' + JSON.stringify(playlists[j][l][0]));
+                                continue
+                            }
+                            Log('Stats->master->playlists->'  + l + ':' + JSON.stringify(playlists[j][l]));
+                        }
+                    }
+                    continue;
+                }
+                Log('Stats->master->' + i + ':' + JSON.stringify(stats[k][i]));
+            }
+            continue;
+        }
+        Log('Stats->' + k + ':' + JSON.stringify(stats[k]));
+    }
 };
 
 function VideoJsLog(Message) {
