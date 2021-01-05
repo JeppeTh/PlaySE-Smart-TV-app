@@ -985,9 +985,8 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else
                            videoReferences = data.videoReferences;
 
-                       // Full if no subtitles?
-                       // dash hbbtv not working if ac-3?
                        Svt.sortStreams(videoReferences, srtUrl);
+                       videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
                            video_urls.push(videoReferences[j].url);
@@ -1037,8 +1036,11 @@ Svt.checkFormat = function (a, b) {
 Svt.getStreamRank = function(stream, index_list, srtUrl) {
 
     if (!srtUrl && stream.format == 'dash-full')
+        // Seems dash-full is ok unless it contains subtitles, and this contains
+        // non AC-3 audio streams which we need.
         return 0;
     else if (stream.format == 'dash-hbbtv')
+        // In case of AC-3 we're smoked....
         return 1;
     else if (stream.format == 'dash-hbbtv-avc')
         return 2;
@@ -1054,6 +1056,17 @@ Svt.getStreamRank = function(stream, index_list, srtUrl) {
             base = 100;
         return base + index_list.indexOf(stream.format);
     }
+};
+
+Svt.stripDuplicatStreams = function(streams) {
+    var urls=[], result=[];
+    for (var i=0; i < streams.length; i++) {
+        if (urls.indexOf(streams[i].url) == -1) {
+            urls.push(streams[i].url);
+            result.push(streams[i]);
+        }
+    }
+    return result;
 };
 
 Svt.playUrl = function() {

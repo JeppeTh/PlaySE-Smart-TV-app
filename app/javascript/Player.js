@@ -257,6 +257,7 @@ Player.playIfReady = function() {
         if (startup && startup !== true) {
             // Resuming
             window.clearTimeout(delayedPlayTimer);
+            delayedPlayTimer = 0;
             // Can resume have been chosen after delayedPlayTimer expired?
             Player.startPlayback(startup);
         } else if (!delayedPlayTimer || delayedPlayTimer == -1) {
