@@ -772,9 +772,11 @@ Svt.decodeShowList = function(data, extra) {
     if (!extra.is_clips && !extra.season && !extra.variant) {
         for (var i=0; i < data.length; i++) {
             if (data[i].type == 'Season') {
+                if (!data[i].items || data[i].items.length == 0)
+                    continue;
                 if (!data[i].items[0].item.positionInSeason ||
                     data[i].items[0].item.positionInSeason == '' ||
-                    !data[i].name.match(/[0-9]/)
+                    !Svt.getSeasonDigits(data[i].name)
                    )
                     useSeasonName = true;
                 seasons.push(data[i].name);
@@ -791,16 +793,12 @@ Svt.decodeShowList = function(data, extra) {
         if (seasons.length > 1) {
             if (!useSeasonName) {
                 seasons.sort(function(a, b){
-                    a = +a.replace(/[^0-9]+/g,'');
-                    b = +b.replace(/[^0-9]+/g,'');
-                    return b-a;
+                    return Svt.getSeasonDigits(b)-Svt.getSeasonDigits(a);
                 });
                 latestSeasonName = seasons[0];
             }
             for (var k=0; k < seasons.length; k++) {
-                var Season = (useSeasonName) ?
-                    seasons[k] :
-                    +seasons[k].replace(/[^0-9]+/g,'');
+                var Season = (useSeasonName) ? seasons[k] : Svt.getSeasonDigits(seasons[k]);
                 seasonToHtml(seasons[k],
                              showThumb,
                              extra.url,
@@ -841,13 +839,13 @@ Svt.decodeShowList = function(data, extra) {
             if (extra.is_clips && data[j].id=='clips') {
                 data = data[j].items;
                 break;
-            } else if ((''+extra.season) == data[j].name.replace(/[^0-9]+/g,'') ||
+            } else if (extra.season == Svt.getSeasonDigits(data[j].name) ||
                        extra.season == data[j].name ||
                        (extra.season===0 && data[j].type == 'Season')) {
                 if (extra.season === 0) {
                     extra.season = (useSeasonName) ?
                         data[j].name :
-                        +data[j].name.replace(/[^0-9]+/g,'');
+                        Svt.getSeasonDigits(data[j].name);
                 }
                 // Decode upcoming first to avoid messing with multiple episodes
                 // with same episode numbers in case part of a new season.
@@ -1451,6 +1449,10 @@ Svt.getVariantName = function(accessService) {
         return 'Textat';
     else
         return accessService;
+};
+
+Svt.getSeasonDigits = function(Name) {
+    return +(Name.split(/\s*:.+$/)[0].replace(/[^0-9]+/g,''));
 };
 
 Svt.getSeasonNumber = function(data) {
