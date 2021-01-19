@@ -990,7 +990,6 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            video_urls.push(videoReferences[j].url);
                        }
                        alert('video_urls:' + video_urls);
-
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
                        Svt.playUrl();
                    }
@@ -1033,15 +1032,19 @@ Svt.checkFormat = function (a, b) {
 
 Svt.getStreamRank = function(stream, index_list, srtUrl) {
 
-    if (!srtUrl && stream.format == 'dash-full')
-        // Seems dash-full is ok unless it contains subtitles, and this contains
-        // non AC-3 audio streams which we need.
+    if (!srtUrl && stream.format == 'dash-avc-51' && deviceYear > 2013)
+        // Seems devices > 2013 supports AC-3, use in case of no subtitles.
         return 0;
-    else if (stream.format == 'dash-hbbtv')
-        // In case of AC-3 we're smoked....
+    else if (!srtUrl && stream.format == 'dash-avc')
+        // 'dash-avc' contains non AC-3 audio stream needed for older devices.
+        // Also more bandwith variants....
         return 1;
-    else if (stream.format == 'dash-hbbtv-avc')
+    else if (stream.format == 'dash-hbbtv')
+        // Never contains subtitles which seem to cause issues.
+        // In case of AC-3 we're smoked on older devices though.
         return 2;
+    else if (stream.format == 'dash-hbbtv-avc')
+        return 3;
     else {
         var base = 1000;
         if (stream.format.match(/hevc/))
