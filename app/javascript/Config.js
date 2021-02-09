@@ -15,22 +15,26 @@ Config.init = function(Callback) {
 	if (typeof JSON == 'object') {
 	    // var $this = this.id;
             localStorage.setItem(Config.fileName, JSON.stringify(this.items));
-            tizen.filesystem.resolve(
-                'documents',
-                function(dir ) {
-                    try{
-                        dir.createFile(Config.fileName);
-                    } catch(e) {
-                        // Assume it already exists...
+            try {
+                tizen.filesystem.resolve(
+                    'documents',
+                    function(dir ) {
+                        try{
+                            dir.createFile(Config.fileName);
+                        } catch(e) {
+                            // Assume it already exists...
+                        }
+                        dir.resolve(Config.fileName).openStream(
+                            'w',
+                            function(stream) {
+                                stream.write(localStorage.getItem(Config.fileName));
+                                stream.close();
+                            });
                     }
-                    dir.resolve(Config.fileName).openStream(
-                        'w',
-                        function(stream) {
-                            stream.write(localStorage.getItem(Config.fileName));
-                            stream.close();
-                        });
-                }
-            );
+                );
+            } catch(err) {
+                Log('Failed to save file:' + err);
+	    }
         }
     };
 

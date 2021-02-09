@@ -130,6 +130,7 @@ Buttons.enableKeys = function() {
         case tvKey.KEY_STOP:
         case tvKey.KEY_INFO:
         case tvKey.KEY_TOOLS:
+        case tvKey.KEY_GUIDE:
         case tvKey.KEY_ASPECT:
         case tvKey.KEY_SUBTITLE:
         case tvKey.KEY_SUB_TITLE:
@@ -681,6 +682,7 @@ Buttons.keyHandleForPlayer = function() {
 	Player.showDetails();
 	break;
     case tvKey.KEY_TOOLS:
+    case tvKey.KEY_GUIDE:
         event.preventDefault(event);
 	Player.showHelp();
 	break;
@@ -842,6 +844,7 @@ Buttons.handleMenuKeys = function(keyCode){
 	// Terminated by force
 	break;
     case tvKey.KEY_TOOLS:
+    case tvKey.KEY_GUIDE:
 	event.preventDefault(event);
 	Search.hide();
 	Language.show();
