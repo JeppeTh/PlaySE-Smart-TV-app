@@ -1006,7 +1006,9 @@ Viasat.getPlayUrl = function(orgStreamUrl, isLive) {
                        if (data.subtitles_for_hearing_impaired) srtUrls.push(data.subtitles_for_hearing_impaired);
                        if (data.subtitles_webvtt) srtUrls.push(data.subtitles_webvtt);
 
+                       var isNewApi = false;
                        if (!stream && data.mpx_guid) {
+                           isNewApi = true;
                            // Quick fix - let's see how APIs evolve...
                            streamUrl = 'https://viafree.mtg-api.com/stream-links/viafree/web/se/clear-media-guids/' + data.mpx_guid + '/streams';
                            data = JSON.parse(httpRequest(streamUrl,{sync:true}).data).embedded;
@@ -1019,10 +1021,13 @@ Viasat.getPlayUrl = function(orgStreamUrl, isLive) {
                        // Seems Samsung doesn't support the live/sports streams for some reason.
                        // It seems the variant streams can be used directly here though.
                        // Means those streams are unsupported in case of 'Auto Bitrate'.
-                       Resolution.getCorrectStream(stream,
-                                                   {list:srtUrls},
-                                                   {useBitrates:!stream.match(/\.isml/), isLive:isLive}
-                                                  );
+                       Resolution.getCorrectStream(
+                           stream,
+                           {list:srtUrls},
+                           {useBitrates   : isNewApi || !stream.match(/\.isml/),
+                            isLive        : isLive,
+                            use_vjs       : isNewApi
+                           });
                    }
                });
 };
