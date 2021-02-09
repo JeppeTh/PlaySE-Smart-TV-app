@@ -1760,7 +1760,12 @@ Player.disableScreenSaver = function() {
     $('.screensaver').hide();
     window.clearTimeout(screenSaverTimer);
     screenSaverTimer = null;
-    webapis.appcommon.setScreenSaver(webapis.appcommon.AppCommonScreenSaverState.SCREEN_SAVER_OFF);
+    try {
+        webapis.appcommon.setScreenSaver(webapis.appcommon.AppCommonScreenSaverState.SCREEN_SAVER_OFF);
+    }
+    catch (err) {
+        // Seems to be unsupported in emulator?
+    }
 };
 
 Player.internalError = function(err) {
