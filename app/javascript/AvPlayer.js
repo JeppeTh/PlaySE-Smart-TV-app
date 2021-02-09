@@ -226,8 +226,7 @@ AvPlayer.load = function(videoData) {
         webapis.avplay.setDisplayRect(0, 0, MAX_WIDTH, MAX_HEIGHT);
         webapis.avplay.setListener(AvPlayer.listener);
 
-        Log('set PREBUFFER_MODE result: ' + webapis.avplay.setStreamingProperty('PREBUFFER_MODE ', 0));
-
+        // Log('set PREBUFFER_MODE result: ' + webapis.avplay.setStreamingProperty('PREBUFFER_MODE ', 0));
         var headers = Channel.getHeaders() || [];
         for (var i=0; i < headers.length; i++) {
             if (headers[i].key.match(/user-agent/i)) {
@@ -239,6 +238,7 @@ AvPlayer.load = function(videoData) {
         if (videoData.bitrates && videoData.bitrates != '')
             Log('set ADAPTIVE_INFO: ' + videoData.bitrates + ' result: ' + webapis.avplay.setStreamingProperty('ADAPTIVE_INFO', videoData.bitrates));
     } catch(err) {
+        if (err.name) err = err.name;
         Log('Load error:' + err);
         AvPlayer.load_error = '' + err;
         AvPlayer.stop();
