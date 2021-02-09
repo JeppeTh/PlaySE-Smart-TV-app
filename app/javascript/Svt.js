@@ -11,12 +11,15 @@
 var SVT_API_BASE = 'https://api.svt.se/contento/graphql?ua=svtplaywebb-play-render-prod-client&operationName=';
 var SVT_ALT_API_URL = 'https://api.svt.se/videoplayer-api/video/';
 
+// Temporary? Where to find this URL?
+var SVT_ASSETS_URL = 'https://www.svtstatic.se/play/play6/sass/_i-play-cachemap.52d786864ef5c7019890370999ea4ba0.scss'
+
 var Svt = {
     sections:[],
     section_max_index:0,
     category_details:[],
     category_detail_max_index:0,
-    thumbs_index:null,
+    channel_thumbs:[],
     play_args:{}
 };
 
@@ -117,22 +120,6 @@ Svt.makeEpisodeLink = function (data) {
                            '{"legacyIds":[' + ArticleId + ']}',
                            'ae75c500d4f6f8743f6673f8ade2f8af89fb019d4b23f464ad84658734838c78'
                           );
-};
-
-Svt.checkThumbIndex = function(index, data) {
-    if (data && Svt.getThumbIndex(+index)!=data) {
-        Svt.thumbs_index[+index] = data;
-        Config.save('svtThumbs', Svt.thumbs_index);
-    }
-};
-
-Svt.getThumbIndex = function(index) {
-    if (Svt.thumbs_index == null) {
-        Svt.thumbs_index = Config.read('svtThumbs');
-        if (Svt.thumbs_index == null)
-            Svt.thumbs_index = [];
-    }
-    return Svt.thumbs_index[+index];
 };
 
 Svt.getThumb = function(data, size) {
@@ -389,6 +376,13 @@ Svt.getShowData = function(url, data) {
 Svt.getUrl = function(tag, extra) {
     switch (tag.replace(/\.html.+/,'.html')) {
     case 'main':
+        httpRequest(SVT_ASSETS_URL,
+                    {cb:function(status,data) {
+                        if (data) {
+                            Svt.channel_thumbs = data.match(/\/\/.+channels\/posters\/.+-[0-9]+.+png/mg)
+                            Svt.channel_thumbs = "https:" + Svt.channel_thumbs.join("\nhttps:");
+                        }
+                    }});
         return Svt.makeApiLink('StartPage',
                                '{}',
                                'ed75c27d9ea5c3319ed4fb88f483e3abbf156361cffccd2c1ec271dc70ce08d9'
@@ -1172,8 +1166,10 @@ Svt.getNextCategoryDetailText = function() {
     return 0;
 };
 
-Svt.GetChannelThumb = function (Name) {
-    return 'https://www.svtplay.se/assets/images/channels/posters/' + Name.toLowerCase().replace(' ','') + '.png';
+Svt.GetChannelThumb = function (Id) {
+    var ThumbRegexp = new RegExp('^http.+' + Id.replace(/^ch-/i,'') + '.*$','img');
+    var Thumb = Svt.channel_thumbs.match(ThumbRegexp);
+    return Thumb && Thumb[0];
 };
 
 Svt.decodeChannels = function(data, BaseUrl) {
@@ -1189,7 +1185,7 @@ Svt.decodeChannels = function(data, BaseUrl) {
         for (var k in data) {
             Name = data[k].name.trim();
             Link = addUrlParam(BaseUrl,'chId',data[k].id);
-            ImgLink = Svt.GetChannelThumb(Name);
+            ImgLink = Svt.GetChannelThumb(data[k].id);
             Background = Svt.getThumb(data[k].running, 'extralarge');
             if (!Background)
                 Background = ImgLink;

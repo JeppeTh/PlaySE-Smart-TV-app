@@ -1301,6 +1301,7 @@ function slideToggle(id, timer, callback) {
 
 function preloadItem(item) {
     var ilink = item.find('.ilink').attr('href');
+    if (!ilink) return;
     // Preload background
     if (Buttons.isPlayable(ilink))
         loadImage(item.find('.ilink').attr('data-background'));

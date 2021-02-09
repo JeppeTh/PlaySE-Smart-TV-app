@@ -1003,9 +1003,11 @@ Viasat.getPlayUrl = function(orgStreamUrl, isLive) {
                            // Quick fix - let's see how APIs evolve...
                            streamUrl = 'https://viafree.mtg-api.com/stream-links/viafree/web/se/clear-media-guids/' + data.mpx_guid + '/streams';
                            data = JSON.parse(httpRequest(streamUrl,{sync:true}).data).embedded;
-                           stream =  data.prioritizedStreams[0].links.stream.href;
-                           if (data.subtitles && data.subtitles.length > 0 && srtUrls == [])
-                               srtUrls.push(data.subtitles[0].link.href);
+                           stream = data.prioritizedStreams[0].links.stream.href;
+                           for (var i=0; i < data.subtitles.length; i++) {
+                               if (data.subtitles[i].data.language == 'sv')
+                                   srtUrls.push(data.subtitles[i].link.href);
+                           }
                        };
                        // Seems Samsung doesn't support the live/sports streams for some reason.
                        // It seems the variant streams can be used directly here though.
