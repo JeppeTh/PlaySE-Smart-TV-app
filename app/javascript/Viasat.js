@@ -1024,10 +1024,8 @@ Viasat.getPlayUrl = function(orgStreamUrl, isLive) {
                        Resolution.getCorrectStream(
                            stream,
                            {list:srtUrls},
-                           {useBitrates   : isNewApi || !stream.match(/\.isml/),
-                            isLive        : isLive,
-                            use_vjs       : isNewApi
-                           });
+                           {useBitrates:(isNewApi || !stream.match(/\.isml/)), isLive:isLive}
+                       );
                    }
                });
 };
