@@ -322,7 +322,7 @@ Tv4.decodeShowList = function(data, extra) {
         var upcoming;
 
         // 0 Means the only season
-        if (extra.season != 0) {
+        if (data.program && extra.season != 0) {
             showThumb = Tv4.fixThumb(data.program.image);
             upcoming = data.program.upcoming;
             if (upcoming) upcoming.is_upcoming = true;
