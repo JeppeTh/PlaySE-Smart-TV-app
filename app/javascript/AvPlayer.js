@@ -73,7 +73,11 @@ var AvPlayer = {
             // for (var k in eventType) {
             //     alert(k + ':' + eventType[k])
             // }
-            Player.OnRenderError(eventType);
+            // Later models get error when pausing too long, ignore and reload.
+            if (webapis.avplay.getState() == 'PAUSED')
+                AvPlayer.error_during_pause = true;
+            else
+                Player.OnRenderError(eventType);
         },
 
         onevent: function(eventType, eventData) {
@@ -133,6 +137,7 @@ var AvPlayer = {
     stream_ensured : false,
     delayed_skip : null,
     load_error : null,
+    error_during_pause: false,
     pause_failed: null
 };
 
@@ -222,6 +227,7 @@ AvPlayer.load = function(videoData) {
         AvPlayer.stream_ensured = false;
         AvPlayer.delayed_skip = null;
         AvPlayer.load_error = null;
+        AvPlayer.error_during_pause = false;
         webapis.avplay.open(videoData.url);
         webapis.avplay.setDisplayRect(0, 0, MAX_WIDTH, MAX_HEIGHT);
         webapis.avplay.setListener(AvPlayer.listener);
@@ -284,7 +290,10 @@ AvPlayer.play = function(isLive, seconds) {
 };
 
 AvPlayer.resume = function() {
-    webapis.avplay.play();
+    if (AvPlayer.error_during_pause)
+        Player.reloadVideo();
+    else
+        webapis.avplay.play();
 };
 
 AvPlayer.pause = function() {
