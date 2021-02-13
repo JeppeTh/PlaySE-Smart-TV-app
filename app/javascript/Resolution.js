@@ -32,11 +32,11 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
     requestUrl(videoUrl,
                null,
                {cbComplete:function(status, data) {
+                   var streams, is_hls = videoUrl.match(/\.m3u8/);
                    if (status == 'error' | !data.responseText || data.responseText.length == 0) {
                        Log('Failed to read stream, use Auto and hope for the best');
                        target = 'Auto';
                    } else {
-                       var streams, is_hls = videoUrl.match(/\.m3u8/);
                        extra.cookies = data.getAllResponseHeaders().match(/Set-Cookie: ?.+$/igm);
                        for (var i=0; extra.cookies && i < extra.cookies.length; i++)
                            extra.cookies[i] = extra.cookies[i].replace(/.*Set-Cookie: ?/i, '');
@@ -47,9 +47,9 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        } else if (videoUrl.match(/\.ism/)) {
                            streams = Resolution.getIsmStreams(videoUrl, data, prefix);
                        }
-                       extra.audio_idx = streams.audio_idx;
+                       extra.audio_idx     = streams.audio_idx;
                        extra.subtitles_idx = streams.subtitles_idx;
-                       extra.hls_subs = streams.hls_subs;
+                       extra.hls_subs      = streams.hls_subs;
                    }
                    if (target != 'Auto') {
                        streams = streams.streams;

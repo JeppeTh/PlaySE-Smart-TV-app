@@ -1363,7 +1363,8 @@ Svt.decode = function(data, extra) {
                 Link = Svt.makeEpisodeLink({articleId:data[k].id});
             } else if (data[k].__typename == 'Single' ||
                        data[k].__typename == 'Episode' ||
-                       data[k].__typename == 'Trailer'
+                       data[k].__typename == 'Trailer' ||
+                       data[k].__typename == 'Clip'
                       ) {
                 Link = Svt.makeEpisodeLink(data[k]);
             } else if (data[k].__typename == 'Genre') {
