@@ -844,7 +844,9 @@ function loadFinished(status, refresh) {
         if (!refresh)
             contentShow();
     }
-    preloadItem(itemSelected || $('.topitem').eq(0));
+    if (!itemSelected && $('.topitem').eq(0).hasClass('selected'))
+        itemSelected = $('.topitem').eq(0);
+    preloadItem(itemSelected);
 }
 
 function contentShow() {
@@ -996,6 +998,7 @@ function itemToHtml(Item, OnlyReturn) {
     var html;
     var IsLiveText;
     var Background='';
+    var Link = itemToLink(Item);
     var itemRow = (itemCounter % 2 == 0) ? 'topitem' : 'bottomitem';
     var borderStyle = (Item.watched) ? ' style="width:' + Item.watched + '%;"' : '';
 
@@ -1021,7 +1024,13 @@ function itemToHtml(Item, OnlyReturn) {
         Background = ' data-background=\'' + Item.background + '\'';
 
     html += '<div class="scroll-item-img">';
-    html += itemToLink(Item) + '" class="ilink" data-length="' + Item.duration + '"' + Background + IsLiveText + '/>';
+    if (!(Item.is_live && !Item.is_running) && !Item.is_upcoming && Buttons.isPlayable(Link)) {
+        if (deviceYear < 2012)
+            html += '<div class="scroll-item-play-icon-old"><img class="play-icon-old" src="images/play.png"/></div>';
+        else
+            html += '<div class="scroll-item-play-icon"/>';
+    }
+    html += Link + '" class="ilink" data-length="' + Item.duration + '"' + Background + IsLiveText + '/>';
     if (Item.thumb) {
         html += '<img class="image" src="' + Item.thumb + '" alt="' + Item.name + '"/>';
     }
@@ -1300,7 +1309,7 @@ function slideToggle(id, timer, callback) {
 }
 
 function preloadItem(item) {
-    var ilink = item.find('.ilink').attr('href');
+    var ilink = item && item.find('.ilink').attr('href');
     if (!ilink) return;
     // Preload background
     if (Buttons.isPlayable(ilink))

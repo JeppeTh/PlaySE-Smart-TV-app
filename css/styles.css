@@ -275,13 +275,13 @@ h4 {
     width: 100%;
     top: 0;
     position: absolute;
-    z-index:3;
+    z-index: 3;
 }
 
 #loading {
     top: 250px;
     left: 450px;
-    z-index:4;
+    z-index: 4;
 }
 
 .header {
@@ -609,14 +609,15 @@ ul.dropdown .root-item {
     margin-bottom: 3px;
 }
 
-.scroll-content-item.resumed .scroll-item-img{
-    border-color:#58b827;
+.scroll-content-item.resumed .scroll-item-img {
+    border-color: #58b827;
 }
 
 .scroll-content-item.selected .scroll-item-border {
     border-top: 3px solid #58b827;
     padding-top: 0;
 }
+
 .scroll-content-item.resumed .scroll-item-border {
     border-top: 3px solid red;
     padding-top: 0;
@@ -624,8 +625,8 @@ ul.dropdown .root-item {
 }
 
 .scroll-item-name {
-    max-height:48px;
-    overflow:hidden;
+    max-height: 48px;
+    overflow: hidden;
     text-align: left;
 }
 
@@ -1207,12 +1208,12 @@ small {
 /*video-overlay*/
 
 .video-background {
-    display:none;
+    display: none;
     top: 0;
     position: absolute;
-    height:100%;
-    width:100%;
-    overflow:hidden;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
     z-index: -1;
 }
 
@@ -1334,17 +1335,56 @@ small {
     top: 18px;
 }
 
+.scroll-item-play-icon {
+    width: 15%;
+    height: 27%;
+    position: absolute;
+    margin: auto;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    background: none;
+}
+
+.scroll-content-item.selected .scroll-item-play-icon {
+    background: url(../images/play.png) no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.scroll-item-play-icon-old {
+    display: none;
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    line-height: 135px;
+    text-align: center;
+    background: none;
+}
+
+.scroll-content-item.selected .scroll-item-play-icon-old {
+    display: inline-block;
+}
+
+.play-icon-old {
+    width: 15%;
+    vertical-align: middle;
+}
+
 .upcomingoverlay {
     position: absolute;
     top: 0;
-    height:100%;
-    width:100%;
-    line-height:135px;
+    height: 100%;
+    width: 100%;
+    line-height: 135px;
     text-align: center;
     background: rgba(0, 0, 0, 0.7);
 }
 
-.upcomingoverlay span{
+.upcomingoverlay span {
     color: #e0e7ea;
     font: bold 17px Helvetica, Sans-Serif;
     letter-spacing: -1px;

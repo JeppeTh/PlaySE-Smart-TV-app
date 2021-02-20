@@ -349,6 +349,9 @@ Tv4.decodeShowList = function(data, extra) {
                 } else if (data[k].assetType == 'CLIP')
                     clips_url = all_items_url;
             }
+            seasons.sort(function(a, b){
+                return b.season-a.season;
+            });
             if (seasons.length > 1 || non_seasons.length >= 1) {
                 for (var i=0; i < seasons.length; i++) {
                     seasonToHtml(seasons[i].name,
