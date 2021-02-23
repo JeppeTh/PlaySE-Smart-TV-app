@@ -1308,9 +1308,15 @@ function slideToggle(id, timer, callback) {
         id.slideToggle(timer, callback);
 }
 
-function preloadItem(item) {
+function preloadItem(item, check_channel) {
+
     var ilink = item && item.find('.ilink').attr('href');
     if (!ilink) return;
+    if (check_channel) {
+        var tmp_channel_id = getUrlParam(ilink, "tmp_channel_id");
+        if (tmp_channel_id && Channel.id() != tmp_channel_id)
+            return
+    }
     // Preload background
     if (Buttons.isPlayable(ilink))
         loadImage(item.find('.ilink').attr('data-background'));
@@ -1319,10 +1325,11 @@ function preloadItem(item) {
 }
 
 function preloadAdjacentItems(play) {
+    // We can't preload in History section in case different channels.
     var result = Buttons.findNextItem(play, true);
-    result != -1 && preloadItem(result.item);
+    result != -1 && preloadItem(result.item, true);
     result = Buttons.findPriorItem(play, true);
-    result != -1 && preloadItem(result.item);
+    result != -1 && preloadItem(result.item, true);
 }
 
 function loadImage(image, callback, timeout) {
