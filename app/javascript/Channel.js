@@ -138,6 +138,14 @@ Channel.upgradeUrl = function(channelId, url) {
     return url;
 };
 
+Channel.redirectUrl = function(url, callback) {
+    if (this.impl && this.impl.redirectUrl && getUrlParam(url,'my_redirect')) {
+        this.impl.redirectUrl(url.replace(/[&?]my_redirect.+/,''), callback)
+        return true;
+    }
+    return false;
+};
+
 Channel.login = function(callback) {
     if (this.impl.login)
         this.impl.login(callback);

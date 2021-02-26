@@ -66,9 +66,8 @@ Details.loadXml = function(isBackground) {
                        });
         window.setTimeout(loadingStop, 0);
     } else {
-        var url = this.getUrl();
-        requestUrl(url,
-                   function(status, data) {
+        requestUrl(this.getUrl(),
+                   function(status, data, url) {
                        var html;
                        var programData = Details.getData(url, data);
                        if (!isBackground) {
@@ -78,7 +77,7 @@ Details.loadXml = function(isBackground) {
                        }
                        Details.toHtml(programData);
                    },
-                   {cbError:function(textStatus, data, errorThrown) {
+                   {cbError:function(textStatus, data, url, errorThrown) {
                        if (!isBackground) {
                            loadingStop();
                        }},
@@ -178,10 +177,9 @@ Details.loadImage = function(detailsUrl) {
 };
 
 Details.fetchData = function(detailsUrl, refresh, preload) {
-    detailsUrl = this.getUrl(detailsUrl);
-    httpRequest(detailsUrl,
-                {cb: function(status, data) {
-                    data = Details.getData(detailsUrl,{responseText:data}, preload);
+    httpRequest(this.getUrl(detailsUrl),
+                {cb: function(status, data, xhr, url) {
+                    data = Details.getData(url,{responseText:data}, preload);
                     if (preload && data)
                         loadImage(data.thumb)
                 },

@@ -1097,10 +1097,17 @@ Player.startPlayer = function(url, isLive, startTime) {
         }
 	Buttons.setKeyHandleID(oldKeyHandleID);
     };
-    requestedUrl = url;
-    Channel.getPlayUrl(url, isLive);
-    Details.fetchData(url);
-    detailsUrl = url;
+    Player.initPlayback(url, isLive);
+};
+
+Player.initPlayback = function(url, isLive) {
+    if (!Channel.redirectUrl(url, function(newUrl) {
+        Player.initPlayback(newUrl, isLive)
+    })) {
+        requestedUrl = detailsUrl = url;
+        Channel.getPlayUrl(url, isLive);
+        Details.fetchData(url);
+    }
 };
 
 Player.setVideoBackground = function(img) {

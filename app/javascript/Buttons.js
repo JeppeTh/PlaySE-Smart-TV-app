@@ -227,17 +227,16 @@ Buttons.keyHandleForList = function() {
         if (ilink != undefined) {
             if (ilink.match('upcoming.html'))
                 return;
-            if (keyCode != tvKey.KEY_INFO && Buttons.isPlayable(ilink)) {
-                Buttons.playItem();
-                return;
-            }
-            else if (keyCode == tvKey.KEY_INFO &&
-                     (ilink.match(/showList.html\?((show_name|tmp_channel_id)=[^&]+&)*name=/) ||
-                      ilink.match('categoryDetail.html'))) {
-                // Info of show.
+
+            if (Buttons.isPlayable(ilink)) {
+                if (keyCode != tvKey.KEY_INFO) {
+                    Buttons.playItem();
+                    return;
+                }
+            } else if (keyCode == tvKey.KEY_INFO && Buttons.hasDetails(ilink)) {
+                // Info of show/category.
                 ilink = 'details.html?' + ilink;
-            }
-            else if (keyCode == tvKey.KEY_INFO && !Buttons.isPlayable(ilink)) {
+            } else if (keyCode == tvKey.KEY_INFO) {
                 // Info of non-episode/show, not relevant.
                 return;
             }
@@ -998,6 +997,12 @@ Buttons.showNextItem = function(direction) {
     if (this.runNextItem(direction, false) != -1)
         loadingStart();
 };
+
+Buttons.hasDetails = function(Link) {
+    return !Link.match('upcoming.html') && Buttons.isPlayable(Link) ||
+        Link.match('categoryDetail.html') ||
+        Link.match(/showList.html\?((show_name|tmp_channel_id)=[^&]+&)*name=/);
+}
 
 Buttons.isPlayable = function(Link) {
     return Link.search('details.html\\?') != -1;

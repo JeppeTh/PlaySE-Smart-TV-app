@@ -567,9 +567,15 @@ function requestUrl(url, cbSucces, extra) {
     if (!extra) extra = {};
 
     if (url.cached) {
-        window.setTimeout(function(){callUrlCallBack(url, cbSucces, 'success');},50);
+        window.setTimeout(function(){callUrlCallBack(url, cbSucces, 'success', url);},50);
         return;
     }
+
+    if (Channel.redirectUrl(url,
+                            function(newUrl) {
+                                requestUrl(newUrl, cbSucces, extra);
+                            }))
+        return;
 
     var requestedLocation = {url:url, loc:myLocation, refLoc:myRefreshLocation, channel:Channel.getName()};
     var retrying = false;
@@ -610,7 +616,7 @@ function requestUrl(url, cbSucces, extra) {
                 Log('Success:' + this.url);
                 retrying = false;
                 data = null;
-                callUrlCallBack(requestedLocation, cbSucces, status, xhr);
+                callUrlCallBack(requestedLocation, cbSucces, status, xhr, this.url);
                 if (extra.cookie)
                     deleteCookie(extra.cookie);
             },
@@ -627,7 +633,7 @@ function requestUrl(url, cbSucces, extra) {
                     } else {
                         if (!extra.dont_show_errors)
         	            ConnectionError.show();
-                        callUrlCallBack(requestedLocation, extra.cbError, textStatus, xhr, errorThrown);
+                        callUrlCallBack(requestedLocation, extra.cbError, textStatus, xhr, this.url, errorThrown);
         	    }
                 }
                 if (extra.cookie)
@@ -635,7 +641,7 @@ function requestUrl(url, cbSucces, extra) {
             },
             complete: function(xhr, status) {
                 if (!retrying) {
-                    callUrlCallBack(requestedLocation, extra.cbComplete, status, xhr);
+                    callUrlCallBack(requestedLocation, extra.cbComplete, status, xhr, this.url);
                     if (extra.callLoadFinished && isRequestStillValid(requestedLocation))
                         loadFinished(status, extra.refresh);
                 }
@@ -646,10 +652,10 @@ function requestUrl(url, cbSucces, extra) {
     );
 }
 
-function callUrlCallBack(requestedLocation,cb,status,xhr, errorThrown) {
+function callUrlCallBack(requestedLocation, cb, status, xhr, url, errorThrown) {
     if (cb && (requestedLocation.cached || isRequestStillValid(requestedLocation))) {
         try {
-            cb(status, xhr, errorThrown);
+            cb(status, xhr, url, errorThrown);
         } catch (err) {
             Log('callUrlCallBack failed: ' + err);
             Player.internalError(err);
@@ -685,6 +691,13 @@ function getUrlPrefix(url) {
 }
 
 function httpRequest(url, extra) {
+
+    if (Channel.redirectUrl(url,
+                            function(newUrl) {httpRequest(newUrl, extra);}
+                           ))
+        // extra.sync not supported - should lead to an exception
+        return;
+
     if (!extra) extra = {};
     var xhr = new XMLHttpRequest();
     var location = null, timer = null;
@@ -760,7 +773,7 @@ function handleHttpResult(url, timer, extra, result) {
         //     alert('Failure:' + url + ' status: + result.status);
     }
     if (extra.cb) {
-        extra.cb(result.status, result.data, result.xhr);
+        extra.cb(result.status, result.data, result.xhr, url);
     }
     if (extra.sync) {
         result.success = isHttpStatusOk(result.status);
@@ -1321,7 +1334,8 @@ function preloadItem(item, check_channel) {
     if (Buttons.isPlayable(ilink))
         loadImage(item.find('.ilink').attr('data-background'));
     // Preload details thumb
-    Details.loadImage(ilink);
+    if (Buttons.hasDetails(ilink))
+        Details.loadImage(ilink);
 }
 
 function preloadAdjacentItems(play) {
