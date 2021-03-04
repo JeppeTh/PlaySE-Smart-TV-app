@@ -833,8 +833,7 @@ Svt.decodeShowList = function(data, extra) {
             if (extra.is_clips && data[j].id=='clips') {
                 data = data[j].items;
                 break;
-            } else if (extra.season == Svt.getSeasonDigits(data[j].name) ||
-                       extra.season == data[j].name ||
+            } else if (Svt.isSameSeason(extra.season, data[j].name) ||
                        (extra.season===0 && data[j].type == 'Season')) {
                 if (extra.season === 0) {
                     extra.season = (useSeasonName) ?
@@ -843,8 +842,12 @@ Svt.decodeShowList = function(data, extra) {
                 }
                 // Decode upcoming first to avoid messing with multiple episodes
                 // with same episode numbers in case part of a new season.
-                if (upcoming && j==upcoming.last_season_index)
-                    Svt.decode(upcoming.items, extra);
+                if (upcoming) {
+                    if ((upcoming.season && Svt.isSameSeason(extra.season,upcoming.season)) ||
+                        (!upcoming.season && j==upcoming.last_season_index)) {
+                        Svt.decode(upcoming.items, extra);
+                    }
+                }
                 data = data[j].items;
                 break;
             }
@@ -862,12 +865,16 @@ Svt.decodeShowList = function(data, extra) {
 Svt.checkUpoming = function(data, nextEpsiode, latestSeasonName) {
     var upcoming = null;
     var lastSeasonIndex = -1;
+    var season = null;
 
     for (var k=0; k < data.length; k++) {
         if (data[k].type=='Upcoming') {
             if (data[k].items && data[k].items.length > 0) {
+                if (!season) season = Svt.getSeasonNumber(data[k].items[0]);
                 // Sort by date, most upcoming first...
                 data[k].items.sort(function(a,b) {
+                    if (season && season != Svt.getSeasonNumber(a))
+                        alert('multiple seasons');
                     var start_a = Svt.getAirDate(a.item);
                     var start_b = Svt.getAirDate(b.item);
                     if (start_a > start_b)
@@ -896,7 +903,7 @@ Svt.checkUpoming = function(data, nextEpsiode, latestSeasonName) {
             }
         }
     }
-    return (upcoming) ? {items:upcoming.items, last_season_index:lastSeasonIndex} : null;
+    return (upcoming) ? {items:upcoming.items, season:season, last_season_index:lastSeasonIndex} : null;
 };
 
 Svt.decodeSearchList = function (data, extra) {
@@ -1364,6 +1371,7 @@ Svt.decode = function(data, extra) {
             } else if (data[k].__typename == 'Single' ||
                        data[k].__typename == 'Episode' ||
                        data[k].__typename == 'Trailer' ||
+                       data[k].__typename == 'Teaser' ||
                        data[k].__typename == 'Clip'
                       ) {
                 Link = Svt.makeEpisodeLink(data[k]);
@@ -1501,6 +1509,10 @@ Svt.getEpisodeNumber = function(data) {
     if (data.item)
         return Svt.getEpisodeNumber(data.item);
     return null;
+};
+
+Svt.isSameSeason = function(season, name) {
+    return season && (season == Svt.getSeasonDigits(name) || season == name);
 };
 
 Svt.getItemName = function(data) {
