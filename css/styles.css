@@ -29,32 +29,22 @@ body {
 ###############################
 */
 
-#srtId {
-    text-align: center;
-    letter-spacing: -1px;
-    color: white;
-}
-
-#srtBlock {
-    color: white;
-    text-align: center;
-}
-
 .srtClass {
-    /*position: absolute;*/
-    position: relative;
-    overflow: hidden;
-    top: 420px;
+    position: absolute;
     left: 0;
-    width: 958px;
-    height: 80px;
-    text-align: center;
+    right: 0;
+    bottom: 30px;
     font-size: 30px;
     color: white;
     opacity: 0.9;
     border: 0 solid red;
+    letter-spacing: -1px;
     text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black;
-    z-index: 3;
+    text-align: center;
+}
+
+#srtId {
+    padding: 3px 0;
 }
 
 #exitId {
@@ -1220,6 +1210,7 @@ small {
 .vo {
     letter-spacing: -1px;
     background: rgba(0, 0, 0, 0.7);
+    z-index: 1;
     /*background:rgba(0, 0, 0, 0.3);*/
 }
 

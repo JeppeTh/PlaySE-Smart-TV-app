@@ -302,8 +302,8 @@ Player.stopVideo = function(keep_playing) {
     startup = false;
     Subtitles.stop();
     Player.storeResumeInfo();
-    widgetAPI.putInnerHTML(document.getElementById('srtId'), '');
-    $('#srtId').hide();
+    Subtitles.clear();
+    Subtitles.hide();
     Player.hideVideoBackground();
     window.clearTimeout(delayedPlayTimer);
     loadingStop();
@@ -326,6 +326,7 @@ Player.resumeVideo = function() {
     this.state = this.PLAYING;
     Player.plugin.resume();
     this.hideDetailedInfo();
+    Subtitles.resume();
 };
 
 Player.reloadVideo = function(time) {
@@ -349,6 +350,7 @@ Player.skipInVideo = function() {
         skipTimer = -1;
         return null;
     }
+    Subtitles.clear();
     window.clearTimeout(osdTimer);
     var timediff = +skipTime - +ccTime;
     Log('skip: ' + timediff);
@@ -357,7 +359,6 @@ Player.skipInVideo = function() {
 };
 
 Player.skipForward = function(time) {
-    widgetAPI.putInnerHTML(document.getElementById('srtId'), ''); //hide while jumping
     var duration = this.GetDuration();
     if(this.skipState == -1) {
         if (((+ccTime + time) > +duration) && (+ccTime <= +duration)) {
@@ -386,7 +387,6 @@ Player.skipLongForwardVideo = function(longMinutes) {
 };
 
 Player.skipBackward = function(time) {
-    widgetAPI.putInnerHTML(document.getElementById('srtId'), ''); //hide subs while jumping
     window.clearTimeout(skipTimer);
     this.showControls();
     if(this.skipState == -1){
@@ -555,6 +555,7 @@ Player.showControls = function(){
     $('.video-wrapper').show();
     $('.video-footer').show();
     this.setClock();
+    Subtitles.showControls();
   // Log('show controls');
 };
 
@@ -583,6 +584,7 @@ Player.hideControls = function(){
     $('.video-footer').hide();
     $('.bottomoverlaybig').html('');
     Player.infoActive = false;
+    Subtitles.hideControls();
     // Log('hide controls');
 };
 
@@ -669,7 +671,8 @@ Player.SetCurTime = function(time) {
 	    this.updateSeekBar(ccTime);
 	}
 
-	if (this.state != this.PAUSED) { // because on 2010 device the device triggers this function even if video is paused
+        // On 2010 device the device triggers this function even if video is paused
+	if (this.state != this.PAUSED && skipTimeInProgress === false) {
 	    Subtitles.setCur(ccTime);
         }
         Player.refreshStartData(Details.fetchedDetails);

@@ -5,12 +5,19 @@ var lastSetSubtitleTime = 0;
 var currentSubtitle = 0;
 var clrSubtitleTimer = 0;
 var subtitleStatusPrinted = false;
+var SPACE = '&nbsp;';
 
 var Subtitles = {
+    line_height:null,
+    fix_line_height:true,
+    alt_properties:null
 };
 
 Subtitles.init = function() {
-    Subtitles.setProperties();
+    this.setProperties(true);
+    this.upgradeSettings();
+    this.setAltProperties();
+    this.setProperties();
     hlsSubsState = null;
     subtitles = [];
     currentSubtitle = 0;
@@ -23,13 +30,55 @@ Subtitles.init = function() {
 
 };
 
+Subtitles.upgradeSettings = function() {
+    this.upgradeLineHeight();
+    this.upgradePos();
+};
+
+Subtitles.upgradeLineHeight = function() {
+    // Convert old subHeight (=line-height) to subMargin.
+    var subHeight = Number(Config.read('subHeight'));
+    if (subHeight) {
+        if (subHeight % 2) subHeight += 1;
+        subHeight = subHeight - this.line_height;
+        if (subHeight < 4) subHeight = 4; // Method seems inaccurate - so use 4 a minimum.
+        if (subHeight > 50) subHeight = 50;
+        Log('Upgraded subHeight:' + Config.read('subHeight') + ' to subMargin:' + subHeight);
+        this.saveMargin(subHeight);
+        this.fix_line_height = true;
+        this.fixLineHeight();
+        Config.remove('subHeight');
+    }
+};
+
+Subtitles.upgradePos = function() {
+    // Convert old subPos (=top) to subBottom.
+    var top = Number(Config.read('subPos'));
+    if (top) {
+        var srtHeight = this.getHeight(true);
+        // Try to align top - 2 extra paddings to align top and reduce margin.
+        var padding = Number($('#srtId').css('padding-bottom').replace('px',''));
+        padding = 6*padding;
+        var margin = Math.round((this.getMargin()/100)*this.getSize());
+        var bottom = MAX_HEIGHT-(top+srtHeight)-(padding) - margin;
+        if (bottom % 2) bottom += 1;
+        if (bottom < 0) bottom = 0;
+        if (bottom > 90) bottom = 90;
+        Log('Upgraded subPos:' + Config.read('subPos') + ' to subBottom:' + bottom);
+        this.savePos(bottom);
+        $('.srtClass').css('bottom', bottom);
+        Config.remove('subPos');
+    }
+};
+
 Subtitles.stop = function() {
     hlsSubsState = null;
 };
 
 Subtitles.exists = function() {
-    return (subtitles.length > 0 || videoData.subtitles_idx >=0);
+    return subtitles.length > 0 || videoData.subtitles_idx > 0 || videoData.subtitles_idx === 0;
 };
+
 Subtitles.toggle = function () {
 
     if (subtitleStatusPrinted) {
@@ -42,6 +91,7 @@ Subtitles.toggle = function () {
                 subtitlesEnabled = false;
             }
         } else {
+            this.fixLineHeight();
             subtitlesEnabled = true;
         }
         Config.save('subEnabled',subtitlesEnabled*1);
@@ -51,7 +101,7 @@ Subtitles.toggle = function () {
     }
 
     if (!subtitlesEnabled || $('#srtId').html() == '' || $('#srtId').html().match(/Subtitle/i)) {
-        Subtitles.printStatus();
+        this.printStatus();
     }
 };
 
@@ -397,16 +447,25 @@ Subtitles.setCur = function (time) {
 
 Subtitles.clearUnlessConfiguring = function () {
     if (!$('#srtId').html().match(/Subtitle/i)) {
-        widgetAPI.putInnerHTML(document.getElementById('srtId'), '');
+        Subtitles.clear();
     }
+};
+
+Subtitles.clear = function () {
+    $('#srtId').html('');
+    this.fixLineHeight();
+};
+
+Subtitles.hide = function() {
+    $('.srtClass').hide();
 };
 
 Subtitles.set = function (text, timeout, forced) {
     if (!forced && !subtitlesEnabled) return;
     try {
-        if (!text.match(/<br ?\/>/g) && text !='') {
-            // If only one liner we want it at bottom
-            text  = '<br />' + text;
+        if (text != '') {
+            text = SPACE + text + SPACE;
+            text = text.replace(/(<br ?\/>)/g,SPACE + '$1' + SPACE);
         }
         if (timeout > 0 || timeout===0)
             this.refreshClearTimer(timeout+100);
@@ -421,8 +480,12 @@ Subtitles.refreshClearTimer = function(timeout) {
     window.clearTimeout(clrSubtitleTimer);
     clrSubtitleTimer = window.setTimeout(function () {
         // Log('Clearing srt due to timer');
-        $('#srtId').html('');
+        Subtitles.clear();
     }, timeout);
+};
+
+Subtitles.resume = function() {
+    this.refreshClearTimer(2500);
 };
 
 Subtitles.pause = function() {
@@ -439,20 +502,20 @@ Subtitles.getSize = function () {
 };
 
 Subtitles.getPos = function () {
-    var savedValue = Config.read('subPos');
-    if (savedValue) {
+    var savedValue = Config.read('subBottom');
+    if (savedValue || savedValue === 0) {
         return Number(savedValue);
     } else {
-        return 420;
+        return 30;
     }
 };
 
-Subtitles.getLineHeight = function () {
-    var savedValue = Config.read('subHeight');
-    if (savedValue) {
-        return Number(savedValue);
+Subtitles.getMargin = function () {
+    var savedValue = Config.read('subMargin');
+    if (Subtitles.getBackground() && savedValue) {
+        return savedValue;
     } else {
-        return 100;
+        return 0;
     }
 };
 
@@ -466,28 +529,39 @@ Subtitles.getBackground = function () {
 };
 
 Subtitles.setBackground = function (value) {
-    Config.save('subBack', value); 
+    Config.save('subBack', value);
+    this.fix_line_height = true;
+    this.alt_properties = null;
     this.setProperties();
 };
 
 Subtitles.saveSize = function (value) {
-    Config.save('subSize', value); 
+    Config.save('subSize', value);
 };
 
 Subtitles.savePos = function (value) {
-    Config.save('subPos', value);
+    Config.save('subBottom', value);
 };
 
-Subtitles.saveLineHeight = function (value) {
-    Config.save('subHeight', value);
+Subtitles.saveMargin = function (value) {
+    Config.save('subMargin', value);
+};
+
+Subtitles.showControls = function(factor) {
+    this.setAltProperties();
+};
+
+Subtitles.hideControls = function() {
+    // Restore position
+    this.setProperties();
 };
 
 Subtitles.move = function (moveUp) {
     if (!subtitlesEnabled) return;
     var oldValue = this.getPos();
-    var newValue = (moveUp) ? oldValue-2 : oldValue+2;
-    if (newValue > 300 && newValue < 550) {
-        $('#srtId').css('top', newValue); // write value to CSS
+    var newValue = (moveUp) ? oldValue+2 : oldValue-2;
+    if (newValue >= 0 && newValue <= 90) {
+        $('.srtClass').css('bottom', newValue);
         this.savePos(newValue);
         this.showTest();
     }
@@ -498,51 +572,118 @@ Subtitles.size = function(increase) {
     var oldValue = this.getSize();
     var newValue = (increase) ? oldValue+1 : oldValue-1;
     if (newValue > 15 && newValue < 51) {
-        $('#srtId').css('font-size', newValue); // write value to CSS
+        $('.srtClass').css('font-size', newValue);
         this.saveSize(newValue);
         this.showTest();
+        this.fix_line_height = true;
+        this.alt_properties = null;
     }
 };
 
 Subtitles.separate = function(increase) {
-    if (!subtitlesEnabled) return;
-    var oldValue = this.getLineHeight();
-    var newValue = (increase) ? oldValue+1 : oldValue-1;
-    if (newValue >= 100 && newValue < 200) {
-        if (newValue == 100) {
-            $('#srtId').css('line-height', ''); // write value to CSS
-        } else {
-            $('#srtId').css('line-height', newValue + '%'); // write value to CSS
-        }
-        this.saveLineHeight(newValue);
+    if (!subtitlesEnabled || !this.getBackground()) return;
+    var oldValue = Number(Config.read('subMargin'));
+    var newValue = (increase) ? oldValue+2 : oldValue-2;
+    if (newValue >= 0 && newValue <= 50) {
+        this.saveMargin(newValue);
+        this.line_height += (newValue-oldValue);
+        this.setLineHeight();
         this.showTest();
+        this.alt_properties = null;
     }
 };
 
 Subtitles.showTest = function () {
     Player.hideDetailedInfo();
-    var testText = 'Test subtitle<br />Test subtitle';
-    if ($('#srtId').html() == '' || $('#srtId').html() == testText) {
-        this.set(testText, 2500);
+    var testText = 'Test subtitle';
+    if ($('#srtId').html() == '' || $('#srtId').html().match(testText)) {
+        this.set(testText + '<br />' + testText, 2500);
     }
 };
 
-Subtitles.setProperties = function() {
-    $('#srtId').show();
-    $('#srtId').css('font-size', this.getSize());
-    $('#srtId').css('top', this.getPos());
-    var subBack = this.getBackground();
-    var lineHeight = this.getLineHeight();
-    if (lineHeight > 100 && subBack)
-        $('#srtId').css('line-height', lineHeight + '%');
-    else
-        $('#srtId').css('line-height', '');
-    if (subBack) {
-        if (deviceYear >= 2014)
-            $('#srtId').css('background-color', 'rgba(0, 0, 0, 0.7)');
-        else
-            $('#srtId').css('background-color', 'rgba(0, 0, 0, 0.5)');
+Subtitles.setProperties = function(initial) {
+    $('.srtClass').show();
+    var background = '';
+    if (this.getBackground()) {
+        background = (deviceYear >= 2014) ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)';
+    }
+    $('#srtId').css('background-color', background);
+    $('.srtClass').css('font-size',this.getSize()).css('bottom',this.getPos());
+    this.fixLineHeight();
+    this.setLineHeight();
+    if (!initial && Player.infoActive)
+        this.showControls();
+};
+
+Subtitles.setAltProperties = function(factor) {
+    if (!this.alt_properties) {
+        this.fixLineHeight();
+        var lineHeight = this.line_height + '%';
+        // "Hide" it
+        $('.srtClass').css('bottom', -MAX_HEIGHT);
+        // Subtitles.hide();
+        // Move subtitles above video-footer and make sure it fits below topoverlaybig...
+        var fontSize = +($('.srtClass').css('font-size').replace(/[^0-9]+/,''));
+        if (factor) {
+            fontSize = Math.floor((100-factor)/100*fontSize);
+            $('.srtClass').css('font-size',fontSize).css('line-height', lineHeight);
+        }
+        var srtHeight    = this.getHeight(true);
+        var footerHeight = $('.thumb').height()+7;
+        var maxBottom    = MAX_HEIGHT - ($('.bottomoverlaybig').position().top+2+srtHeight);
+        if (maxBottom < footerHeight) {
+            // Too big - scale down font.
+            this.setAltProperties(Math.ceil((footerHeight-maxBottom)/srtHeight*100), retries+1);
+        } else {
+            var bottom = footerHeight;
+            if (!factor) {
+                // Normal settings are ok as long original org bottom/top is between limits
+                var orgBottom = this.getPos();
+                if (orgBottom >= footerHeight && orgBottom <= maxBottom)
+                    bottom = orgBottom;
+            }
+            this.alt_properties = {bottom:bottom, size:fontSize, line_height:lineHeight};
+        }
+    }
+    var alt = this.alt_properties;
+    $('.srtClass').css('font-size',alt.size).css('line-height',alt.line_height);
+    $('.srtClass').css('bottom', alt.bottom);
+};
+
+Subtitles.getHeight = function(total) {
+    var orgText = $('.srtClass').html();
+    var orgBottom = $('.srtClass').css('bottom');
+    // "Hide" it
+    $('.srtClass').css('bottom', -MAX_HEIGHT);
+    var height;
+    if (total) {
+        // 2 lines
+        this.set('_<br/>_', -1, true);
+        height = $('.srtClass')[0].scrollHeight;
     } else {
-        $('#srtId').css('background-color', '');
+        var fontSize = $('.srtClass').css('fontSize').replace(/px/,'');
+        var orgLineHeight = $('.srtClass').css('line-height');
+        $('.srtClass').css('line-height','');
+        // 1 line
+        this.set('_', -1, true);
+        height = $('#srtId')[0].offsetHeight;
+        height = Math.ceil(height/Number(fontSize)*100);
+        $('.srtClass').css('line-height',orgLineHeight);
+    }
+    $('.srtClass').html(orgText).css('bottom',orgBottom);
+    return height;
+};
+
+Subtitles.fixLineHeight = function() {
+    if (Subtitles.fix_line_height) {
+        this.line_height = this.getHeight(false) + this.getMargin();
+        this.setLineHeight();
+        this.fix_line_height = false;
+    }
+};
+
+Subtitles.setLineHeight = function() {
+    if (this.line_height) {
+        $('.srtClass').css('line-height', this.line_height+'%');
     }
 };

@@ -1493,10 +1493,10 @@ Svt.getEpisodeNumber = function(data) {
     for (var i=0; i < Candidates.length; i++) {
         if (Candidates[i]) {
             Episode =
+                Candidates[i].match(/^([0-9]+)\-/) ||
+                Candidates[i].match(/^([0-9]+)\./) ||
                 Candidates[i].match(/.+\-([0-9]+)$/) ||
-                Candidates[i].match(/^([0-9]+)\-$/) ||
-                Candidates[i].match(/avsnitt\s*([0-9]+)/i) ||
-                Candidates[i].match(/^([0-9]+)\./i);
+                Candidates[i].match(/avsnitt\s*([0-9]+)/i);
             if (Episode)
                 return +Episode[1];
         }

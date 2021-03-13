@@ -949,10 +949,10 @@ Tv4.getDetailsUrl = function(streamUrl) {
         return streamUrl;
 };
 
-Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
+Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
 
     var asset = decodeURIComponent(streamUrl).match(/id:"([^"]+)/)[1];
-    var protocol = (drm || isLive) ? '&device=samsung-orsay&protocol=mss' : '&device=browser&protocol=dash';
+    var protocol = (wmdrm || isLive) ? '&device=samsung-orsay&protocol=mss' : '&device=browser&protocol=dash';
     var reqUrl = 'https://playback-api.b17g.net/media/' + asset + '?service=tv4&drm=playready' + protocol;
     hlsUrl = hlsUrl || reqUrl.replace(/dash/,'hls');
 
@@ -987,11 +987,11 @@ Tv4.getPlayUrl = function(streamUrl, isLive, drm, hlsUrl) {
                            data.authToken = customData;
                            customData = btoa(JSON.stringify(data));
                        }
-                       if (!drm && license && reqUrl != hlsUrl) {
+                       if (!wmdrm && ((license && reqUrl != hlsUrl) || stream.match(/\/\.mpd/))) {
                            hlsUrl = stream.replace(/\.mpd/,'.m3u8');
                            return Tv4.getPlayUrl(streamUrl, isLive, true, hlsUrl);
                        } else if (!isLive) {
-                           hlsUrl = (drm) ? hlsUrl : stream.replace(/\.mpd/,'.m3u8');
+                           hlsUrl = (wmdrm) ? hlsUrl : stream.replace(/\.mpd/,'.m3u8');
                            Tv4.getSrtUrl(asset,
                                          function(srtUrl){
                                              cbComplete(stream, srtUrl, license, customData);
