@@ -251,6 +251,10 @@ Channel.tryAltPlayUrl = function(failedUrl, cbComplete) {
     return false;
 };
 
+Channel.addBwFilter = function (bw, bwStream, stream) {
+    return this.impl.addBwFilter(bw, bwStream, stream);
+};
+
 Channel.fetchSubtitles = function(srtUrl, hlsSubs, usedRequestedUrl, cb) {
     Subtitles.init();
     if (typeof srtUrl == 'string' && srtUrl.match(/\.m3u8/)) {
