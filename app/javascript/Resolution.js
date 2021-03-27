@@ -81,6 +81,9 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        if (!streams[currentId].url.match(/^http/))
                            streams[currentId].url = prefix + streams[currentId].url;
 
+                       if (extra.add_bw_filter)
+                           videoUrl = Channel.addBwFilter(target, streams[currentId].url, videoUrl);
+
                        if (extra.useBitrates || !is_hls) {
                            videoUrl = videoUrl + '|STARTBITRATE=' + target +'|BITRATES=' + target + ':' + target;
                        } else {
