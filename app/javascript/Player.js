@@ -549,8 +549,8 @@ Player.showControls = function(){
         Player.OnStreamInfoReady(true);
 
     Player.infoActive = true;
-    // Restore Top OSD in case of 'Auto 2011'
-    this.setTopOSDText();
+    if (!startup)
+        Player.setResolution(Player.GetResolution());
     $('.topoverlayresolution').show();
     $('.video-wrapper').show();
     $('.video-footer').show();

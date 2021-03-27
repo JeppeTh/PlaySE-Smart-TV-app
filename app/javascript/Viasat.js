@@ -986,45 +986,57 @@ Viasat.getDetailsUrl = function(streamUrl) {
     return streamUrl.replace(/\/stream/, '').replace(/(seasons|videos)\?format=([0-9]+).*/, 'formats/$2');
 };
 
-Viasat.getPlayUrl = function(orgStreamUrl, isLive) {
-    var streamUrl = orgStreamUrl.replace(/videos\/([0-9]+)/, 'videos/stream/$1');
-
+Viasat.getPlayUrl = function(orgStreamUrl, isLive, nextStreamUrl) {
+    var streamUrl = nextStreamUrl || orgStreamUrl.replace(/videos\/([0-9]+)/, 'videos/stream/$1');
     requestUrl(streamUrl,
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(orgStreamUrl)) {
-                       var stream = null;
-                       data = JSON.parse(data.responseText);
-                       if (data.streams.hls && data.streams.hls.match(/\.m3u8/))
-                           stream = data.streams.hls;
-                       else if (data.streams.high)
-                           stream = data.streams.high;
-                       else
-                           stream = data.streams.medium;
-                       data = JSON.parse(httpRequest(Viasat.getDetailsUrl(streamUrl),{sync:true}).data);
-                       var srtUrls=[];
-                       if (data.sami_path) srtUrls.push(data.sami_path);
-                       if (data.subtitles_for_hearing_impaired) srtUrls.push(data.subtitles_for_hearing_impaired);
-                       if (data.subtitles_webvtt) srtUrls.push(data.subtitles_webvtt);
-
-                       if (!stream && data.mpx_guid) {
-                           // Quick fix - let's see how APIs evolve...
-                           streamUrl = 'https://viafree.mtg-api.com/stream-links/viafree/web/se/clear-media-guids/' + data.mpx_guid + '/streams';
-                           data = JSON.parse(httpRequest(streamUrl,{sync:true}).data).embedded;
+                       var stream=null, srtUrls=[];
+                       if (!nextStreamUrl) {
+                           data = JSON.parse(data.responseText);
+                           if (data.streams.hls && data.streams.hls.match(/\.m3u8/))
+                               stream = data.streams.hls;
+                           else if (data.streams.high)
+                               stream = data.streams.high;
+                           else
+                               stream = data.streams.medium;
+                           requestUrl(Viasat.getDetailsUrl(streamUrl),
+                                      function(status, data) {
+                                          data = JSON.parse(data.responseText);
+                                          if (!stream && data.mpx_guid) {
+                                              // Quick fix - let's see how APIs evolve...
+                                              nextStreamUrl = 'https://viafree.mtg-api.com/stream-links/viafree/web/se/clear-media-guids/' + data.mpx_guid + '/streams';
+                                              Viasat.getPlayUrl(orgStreamUrl,
+                                                                isLive,
+                                                                nextStreamUrl
+                                                               );
+                                          } else {
+                                              if (data.sami_path)
+                                                  srtUrls.push(data.sami_path);
+                                              if (data.subtitles_for_hearing_impaired)
+                                                  srtUrls.push(data.subtitles_for_hearing_impaired);
+                                              if (data.subtitles_webvtt)
+                                                  srtUrls.push(data.subtitles_webvtt);
+                                              Viasat.playUrl(stream, srtUrls, isLive);
+                                          }});
+                       } else {
+                           data = JSON.parse(data.responseText).embedded;
                            stream = data.prioritizedStreams[0].links.stream.href;
                            for (var i=0; i < data.subtitles.length; i++) {
                                if (data.subtitles[i].data.language == 'sv')
                                    srtUrls.push(data.subtitles[i].link.href);
                            }
-                       };
-                       // Seems Samsung doesn't support the live/sports streams for some reason.
-                       // It seems the variant streams can be used directly here though.
-                       // Means those streams are unsupported in case of 'Auto Bitrate'.
-                       Resolution.getCorrectStream(stream,
-                                                   {list:srtUrls},
-                                                   {useBitrates:!stream.match(/\.isml/), isLive:isLive}
-                                                  );
+                           Viasat.playUrl(stream, srtUrls, isLive);
+                       }
                    }
                });
+};
+
+Viasat.playUrl = function(stream, srtUrls, isLive) {
+    // Seems Samsung doesn't support the live/sports streams for some reason.
+    // It seems the variant streams can be used directly here though.
+    // Means those streams are unsupported in case of 'Auto Bitrate'.
+    Resolution.getCorrectStream(stream, {list:srtUrls}, {useBitrates:true, isLive:isLive});
 };
 
 Viasat.fixThumb = function(thumb, factor) {
