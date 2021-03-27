@@ -33,6 +33,7 @@ var Player = {
     pluginPlayer:0,
     PLUGIN_AVPLAYER:0,
     PLUGIN_VIDEOJS:1,
+    PLUGIN_VIDEOJS_NATIVE:2,
     pluginToggled:false,
 
     state : -1,
@@ -105,7 +106,7 @@ Player.remove = function() {
 
 Player.setVideoURL = function(master, url, srtUrl, extra) {
 
-    Player.checkCorrectPlugin(extra.use_vjs);
+    Player.checkCorrectPlugin(extra);
 
     if (!extra) extra = {};
     videoData = {srt_url:srtUrl, hls_subs:extra.hls_subs};
@@ -1542,21 +1543,26 @@ Player.createPlugin = function(PluginToUse) {
         Player.plugin = AvPlayer;
     else
         Player.plugin = VideoJsPlayer;
-    Player.plugin.create();
+    Player.plugin.create(Player.pluginPlayer == Player.PLUGIN_VIDEOJS_NATIVE);
 };
 
 Player.togglePlugin = function() {
     Player.pluginToggled = true;
     Player.remove();
-    this.pluginPlayer = (this.pluginPlayer+1) % (Player.PLUGIN_VIDEOJS+1);
+    this.pluginPlayer = (this.pluginPlayer+1) % (Player.PLUGIN_VIDEOJS_NATIVE+1);
     Log('Plugin toggled, plugin:' + Player.pluginPlayer);
 };
 
-Player.checkCorrectPlugin = function(UseVjs) {
+Player.checkCorrectPlugin = function(extra) {
     if (Player.pluginToggled)
         return;
 
-    var PluginToUse = (UseVjs) ? Player.PLUGIN_VIDEOJS : Player.PLUGIN_AVPLAYER;
+    var PluginToUse = Player.PLUGIN_AVPLAYER;
+    if (extra.use_vjs)
+        PluginToUse = Player.PLUGIN_VIDEOJS;
+    else if (extra.use_vjs_native)
+        PluginToUse = Player.PLUGIN_VIDEOJS_NATIVE;
+
     if (Player.pluginPlayer != PluginToUse) {
         Player.createPlugin(PluginToUse)
     }
