@@ -1,22 +1,24 @@
 var VideoJsPlayer = {
     player: null,
+    is_native: false,
 
-    state:0,
-    STATE_INIT : 0,
-    STATE_WAITING : 1,
-    STATE_STARTED : 2,
+    state: 0,
+    STATE_INIT: 0,
+    STATE_WAITING: 1,
+    STATE_STARTED: 2,
 
     resuming: false,
-    resume_seeking_started:false,
-    split_seek:false,
-    play_called:false,
-    has_subtitles:false,
+    resume_seeking_started: false,
+    split_seek: false,
+    play_called: false,
+    has_subtitles: false,
+    seek_reload_timer: null,
 
-    aborted:false,
+    aborted: false,
 
     aspectMode: 0,
-    ASPECT_AUTO : 0,
-    ASPECT_FULL : 1,
+    ASPECT_AUTO: 0,
+    ASPECT_FULL: 1,
 
     events: ['ready',
              'emptied',
@@ -45,9 +47,13 @@ var VideoJsPlayer = {
             ]
 };
 
-VideoJsPlayer.create = function() {
-    if (VideoJsPlayer.player)
-        return;
+VideoJsPlayer.create = function(UseNative) {
+    if (VideoJsPlayer.player) {
+        if (VideoJsPlayer.is_native == UseNative)
+            return;
+        else
+            VideoJsPlayer.remove();
+    }
 
     var div = document.createElement('video-js');
     div.id = 'video-player';
@@ -61,10 +67,10 @@ VideoJsPlayer.create = function() {
     var httpOptions = {preload:'auto',
                        hls:{
                            limitRenditionByPlayerDimensions:false,
-                           overrideNative:true
+                           overrideNative:!UseNative
                        },
-                       nativeAudioTracks:false,
-                       nativeVideoTracks:false
+                       nativeAudioTracks:UseNative,
+                       nativeVideoTracks:UseNative
                       };
     VideoJsPlayer.player = videojs('video-player',
                               {
@@ -75,7 +81,7 @@ VideoJsPlayer.create = function() {
                                   html5:httpOptions,
                                   flash:httpOptions
                               });
-
+    VideoJsPlayer.is_native = UseNative;
     // VideoJsPlayer.player.reloadSourceOnError();
     // videojs.log.level('all');
     videojs.log.level('warn');
@@ -93,7 +99,7 @@ VideoJsPlayer.create = function() {
     //     alert('audio change');
     // });
 
-    VideoJsPlayer.tech().on('usage', function(e){
+    VideoJsPlayer.tech({IWillNotUseThisInPlugins:true}).on('usage', function(e){
         VideoJsLog('usage:' + e.name);
     });
 
@@ -119,8 +125,10 @@ VideoJsPlayer.On = function (Event, e) {
         // VideoJsPlayer.logStats();
         VideoJsPlayer.logHistory();
     }
-    if (Event != 'timeupdate')
+    if (Event != 'timeupdate') {
         VideoJsLog(Event);
+        window.clearTimeout(VideoJsPlayer.seek_reload_timer);
+    }
 
     if (VideoJsPlayer.aborted)
         return;
@@ -159,6 +167,10 @@ VideoJsPlayer.On = function (Event, e) {
                 VideoJsPlayer.skip(VideoJsPlayer.resuming);
             else
                 VideoJsPlayer.resume_seeking_started = true;
+        } else if (VideoJsPlayer.is_native) {
+            VideoJsPlayer.seek_reload_timer = window.setTimeout(function() {
+                VideoJsPlayer.reload(videoData, Player.isLive, VideoJsPlayer.player.currentTime());
+            }, 5000);
         }
         break;
 
@@ -352,15 +364,18 @@ VideoJsPlayer.stop = function() {
 VideoJsPlayer.reload = function(videoData, isLive, seconds) {
     Log('VideoJsPlayer.reload');
     this.remove();
-    this.create();
+    this.create(VideoJsPlayer.is_native);
     this.load(videoData),
     this.play(isLive, seconds);
 };
 
 VideoJsPlayer.getResolution  = function() {
-    var resolution = VideoJsPlayer.tech().hls.playlists.media().attributes.RESOLUTION;
-    return (resolution) ? resolution : {width:0, height:0};
-    // return {width:+VideoJsPlayer.player.videoWidth(), height:+VideoJsPlayer.player.videoHeight()};
+    try {
+        var resolution = VideoJsPlayer.tech().hls.playlists.media().attributes.RESOLUTION;
+        return (resolution) ? resolution : {width:0, height:0};
+    } catch (err) {
+        return {width:+VideoJsPlayer.player.videoWidth(), height:+VideoJsPlayer.player.videoHeight()};
+    }
 };
 
 VideoJsPlayer.getDuration  = function() {
@@ -379,10 +394,14 @@ VideoJsPlayer.getBandwith  = function() {
     //     else
     //         Log("disabled bw: " + representations[i].bandwidth);
     // };
-    return VideoJsPlayer.tech().hls.playlists.media().attributes.BANDWIDTH;
-    var levels = VideoJsPlayer.player.qualityLevels();
-    if (levels.selectedIndex_ >= 0)
-        return levels.levels_[levels.selectedIndex_].bitrate;
+    try {
+        return VideoJsPlayer.tech().hls.playlists.media().attributes.BANDWIDTH;
+        var levels = VideoJsPlayer.player.qualityLevels();
+        if (levels.selectedIndex_ >= 0)
+            return levels.levels_[levels.selectedIndex_].bitrate;
+    } catch (error) {
+        alert('VideoJsPlayer.getBandwith failed: ' + error);
+    }
 };
 
 VideoJsPlayer.getAudioStreams = function() {
