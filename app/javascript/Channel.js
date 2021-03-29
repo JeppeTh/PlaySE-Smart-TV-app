@@ -140,7 +140,7 @@ Channel.upgradeUrl = function(channelId, url) {
 
 Channel.redirectUrl = function(url, callback) {
     if (this.impl && this.impl.redirectUrl && getUrlParam(url,'my_redirect')) {
-        this.impl.redirectUrl(url.replace(/[&?]my_redirect.+/,''), callback)
+        this.impl.redirectUrl(url.replace(/[&?]my_redirect.+/,''), callback);
         return true;
     }
     return false;

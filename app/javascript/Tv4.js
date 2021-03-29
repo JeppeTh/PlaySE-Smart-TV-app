@@ -983,7 +983,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
                        license = data.license && data.license.castlabsServer;
                        customData = data.license && data.license.castlabsToken;
                        if (customData) {
-                           data = JSON.parse(JSON.parse(atob(customData.split(".")[1])).optData);
+                           data = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
                            data.authToken = customData;
                            customData = btoa(JSON.stringify(data));
                        }

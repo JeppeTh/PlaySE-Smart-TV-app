@@ -128,6 +128,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.use_offset    = extra.use_offset;
     videoData.license       = extra.license;
     videoData.custom_data   = extra.customdata;
+    videoData.previewThumb  = (deviceYear > 2011) && extra.previewThumb;
     Log('VIDEO URL: ' + videoUrl);
     // Log('LICENSE URL: ' + videoData.license);
     // Log('CustomData:' + videoData.custom_data);
@@ -202,6 +203,7 @@ Player.playVideo = function() {
         Player.plugin.load(videoData);
         Player.setFrontPanelText(Player.FRONT_DISPLAY_PLAY);
         Player.disableScreenSaver();
+        Player.initPreviewThumb();
 
         // Player.plugin.Execute('SetInitialBuffer', 640*1024);
         // Player.plugin.Execute('SetPendingBuffer', 640*1024);
@@ -356,6 +358,7 @@ Player.skipInVideo = function() {
     Log('skip: ' + timediff);
     Player.plugin.skip(timediff);
     skipTimeInProgress = skipTime;
+    $('.previewThumb').hide();
 };
 
 Player.skipForward = function(time) {
@@ -367,7 +370,8 @@ Player.skipForward = function(time) {
         skipTime = ccTime;
     }
     else if (((+skipTime + time) > +duration) && (+ccTime <= +duration)) {
-        return -1;
+        // Just restart skipTimer, time will be re-added below
+        skipTime = +skipTime - time;
     }
     window.clearTimeout(skipTimer);
     this.showControls();
@@ -449,7 +453,8 @@ Player.OnBufferingComplete = function() {
     }
     // Only reset in case no additional skip is in progess
     if (skipTime == skipTimeInProgress) {
-        this.skipState = -1; 
+        $('.previewThumb').hide(); // Just in case...
+        this.skipState = -1;
         skipTime = 0;
         skipTimeInProgress = false;
     }
@@ -550,10 +555,14 @@ Player.showControls = function(){
 
     Player.infoActive = true;
     if (!startup)
-        Player.setResolution(Player.GetResolution());
+        Player.setResolutionText(Player.GetResolution());
     $('.topoverlayresolution').show();
     $('.video-wrapper').show();
     $('.video-footer').show();
+    if (videoData.previewThumb && this.skipState != -1 && !skipTimeInProgress)
+        $('.previewThumb').show();
+    else
+        $('.previewThumb').hide();
     this.setClock();
     Subtitles.showControls();
   // Log('show controls');
@@ -582,6 +591,7 @@ Player.hideControls = function(){
     $('.topoverlayresolution').hide();
     $('.video-wrapper').hide();
     $('.video-footer').hide();
+    $('.previewThumb').hide();
     $('.bottomoverlaybig').html('');
     Player.infoActive = false;
     Subtitles.hideControls();
@@ -714,10 +724,40 @@ Player.updateSeekBar = function(time) {
     if (progress > 100)
         progress = 100;
     $('.progressfull').css('width', progress + '%');
+    Player.updatePreviewThumb(time, progress);
     // Display.setTime(time);
     this.setTotalTime();
-    
-}; 
+};
+
+Player.initPreviewThumb = function() {
+    $('.previewThumb').hide();
+    if (videoData.previewThumb) {
+        $('.previewThumb').css('left', 0);
+        $('.previewThumbContainer').css('width', videoData.previewThumb.width);
+        $('.previewThumbContainer').css('height', videoData.previewThumb.height);
+        var scale = $('.previewThumb').width()/videoData.previewThumb.width;
+        $('.previewThumbScale').css('zoom', Math.round(scale*100)/100);
+        $('.previewThumbContainer .previewThumbImg').css('margin', 0);
+        $('.previewThumbImg').attr('src', videoData.previewThumb.src);
+    } else {
+        $('.previewThumbImg').attr('src', '');
+    }
+};
+
+Player.updatePreviewThumb = function(time, progress) {
+    if (videoData.previewThumb && this.skipState != -1) {
+        var preview = videoData.previewThumb;
+        var index = Math.ceil(time/preview.duration);
+        var row = Math.floor(index/preview.columns);
+        var column = index % preview.columns;
+        if (row < preview.rows) {
+            var margin = (-row*preview.height) + 'px 0 0 ' + (-column*preview.width) + 'px';
+            $('.previewThumbContainer .previewThumbImg').css('margin', margin);
+        }
+        $('.previewThumb').css('left', progress + '%');
+        $('.previewThumb').show();
+    }
+};
 
 Player.BwToString = function(bw) {
     if (!bw)
@@ -986,8 +1026,11 @@ Player.toggleAspectRatio = function() {
 };
 
 Player.setResolution = function (resolution) {
-
     this.setAspectRatio(resolution);
+    Player.setResolutionText(resolution);
+};
+
+Player.setResolutionText = function (resolution) {
     if (resolution.width  > 0 && resolution.height > 0) {
         var aspect = resolution.width / resolution.height;
         if (aspect == 16/9) {
@@ -1105,7 +1148,7 @@ Player.startPlayer = function(url, isLive, startTime) {
 
 Player.initPlayback = function(url, isLive) {
     if (!Channel.redirectUrl(url, function(newUrl) {
-        Player.initPlayback(newUrl, isLive)
+        Player.initPlayback(newUrl, isLive);
     })) {
         requestedUrl = detailsUrl = url;
         Channel.getPlayUrl(url, isLive);

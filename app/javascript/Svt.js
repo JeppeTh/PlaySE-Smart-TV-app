@@ -12,7 +12,7 @@ var SVT_API_BASE = 'https://api.svt.se/contento/graphql?ua=svtplaywebb-play-rend
 var SVT_ALT_API_URL = 'https://api.svt.se/videoplayer-api/video/';
 
 // Temporary? Where to find this URL?
-var SVT_ASSETS_URL = 'https://www.svtstatic.se/play/play6/sass/_i-play-cachemap.52d786864ef5c7019890370999ea4ba0.scss'
+var SVT_ASSETS_URL = 'https://www.svtstatic.se/play/play6/sass/_i-play-cachemap.52d786864ef5c7019890370999ea4ba0.scss';
 
 var Svt = {
     sections:[],
@@ -379,8 +379,8 @@ Svt.getUrl = function(tag, extra) {
         httpRequest(SVT_ASSETS_URL,
                     {cb:function(status,data) {
                         if (data) {
-                            Svt.channel_thumbs = data.match(/\/\/.+channels\/posters\/.+-[0-9]+.+png/mg)
-                            Svt.channel_thumbs = "https:" + Svt.channel_thumbs.join("\nhttps:");
+                            Svt.channel_thumbs = data.match(/\/\/.+channels\/posters\/.+-[0-9]+.+png/mg);
+                            Svt.channel_thumbs = 'https:' + Svt.channel_thumbs.join('\nhttps:');
                         }
                     }});
         return Svt.makeApiLink('StartPage',
@@ -991,6 +991,16 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            video_urls.push(videoReferences[j].url);
                        }
                        alert('video_urls:' + video_urls);
+                       if (data.thumbnailMap)
+                           extra.previewThumb =
+                           {
+                               src:      data.thumbnailMap.url,
+                               width:    data.thumbnailMap.thumbnailwidth,
+                               height:   data.thumbnailMap.thumbnailheight,
+                               rows:     data.thumbnailMap.rows,
+                               columns:  data.thumbnailMap.columns,
+                               duration: data.thumbnailMap.timeBetweenPicturesInMillis
+                           };
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
                        Svt.playUrl();
                    }
@@ -1028,7 +1038,7 @@ Svt.checkFormat = function (a, b) {
     else if (is_a_dash)
         return -1;
     else
-        return 1
+        return 1;
 };
 
 Svt.getStreamRank = function(stream, index_list, srtUrl) {
@@ -1046,6 +1056,8 @@ Svt.getStreamRank = function(stream, index_list, srtUrl) {
         return 2;
     else if (stream.format == 'dash-hbbtv-avc')
         return 3;
+    else if (stream.format == 'dash-avc')
+        return 4;
     else {
         var base = 1000;
         if (stream.format.match(/hevc/))
@@ -1090,8 +1102,8 @@ Svt.playUrl = function() {
 Svt.tryAltPlayUrl = function(failedUrl, cb) {
     if (Svt.play_args.urls.length == 0)
         return false;
-    if (getUrlParam(Svt.play_args.urls[0],"alt")) {
-        Svt.play_args.urls[0] = getUrlParam(Svt.play_args.urls[0],"alt").replace(/\|.+$/,'');
+    if (getUrlParam(Svt.play_args.urls[0],'alt')) {
+        Svt.play_args.urls[0] = getUrlParam(Svt.play_args.urls[0],'alt').replace(/\|.+$/,'');
     } else {
         Svt.play_args.urls.shift();
     }

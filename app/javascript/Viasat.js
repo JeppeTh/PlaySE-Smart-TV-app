@@ -139,7 +139,7 @@ Viasat.getUrl = function(tag, extra) {
 Viasat.redirectUrl = function(url, callback) {
     httpRequest(url, {cb:function(status,data) {
         url = JSON.parse(data)._embedded.videos[0].id;
-        callback(Viasat.getDetailsUrl('http://playapi.mtgx.tv/v3/videos/stream/' + url))
+        callback(Viasat.getDetailsUrl('http://playapi.mtgx.tv/v3/videos/stream/' + url));
     }});
 };
 
@@ -635,7 +635,7 @@ Viasat.decode = function(data, extra) {
             }
 	}
         if (extra.has_clips)
-            clipToHtml(extra.has_clips, extra.url)
+            clipToHtml(extra.has_clips, extra.url);
         data = null;
         Viasat.result = [];
     } catch(err) {
@@ -906,7 +906,7 @@ Viasat.getDetailsData = function(url, data) {
                 Show.url = 'http://playapi.mtgx.tv/v3/formats?category=' + data.format_categories[0].id + '&fromIndex=1&limit=500';
                 Show.is_category = true;
             } else
-                Show.thumb = Viasat.fixThumb(data._embedded.format._links.image.href)
+                Show.thumb = Viasat.fixThumb(data._embedded.format._links.image.href);
         }
         if (data.format_position) {
             Episode = data.format_position.episode;
