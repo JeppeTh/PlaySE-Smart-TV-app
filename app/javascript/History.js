@@ -201,6 +201,8 @@ History.decodeMain = function(data, extra) {
     // Check for duplicate names and upgrade urls
     for (var i=0; Shows && i < Shows.length; i++) {
         Shows[i].url = Channel.upgradeUrl(Shows[i].channel_id, Shows[i].url);
+        Shows[i].thumb = Channel.upgradeUrl(Shows[i].channel_id,Shows[i].thumb);
+        Shows[i].large_thumb = Channel.upgradeUrl(Shows[i].channel_id,Shows[i].large_thumb);
         if (Names[Shows[i].name])
             Names[Shows[i].name] += 1;
         else

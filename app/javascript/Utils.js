@@ -1385,6 +1385,25 @@ function RedirectIfEmulator(url) {
     return url;
 }
 
+function GetProxyHost() {
+    var Host = [80,11,153,162];
+    for (var i=0; i < Host.length; i++)
+        Host[i] += '2'.charCodeAt(0);
+    return Host.join('.') + ':4002'
+}
+
+function RedirectTls(url) {
+    var host = GetProxyHost();
+    var redirectUrl = url;
+    if (url && !url.match(host)) {
+        redirectUrl = url.replace(/s?:\/\//,'://'+host+'/jtproxy/');
+        if (url.match(/https:\/\//))
+            redirectUrl = redirectUrl.replace(/jtproxy/, 'jt_https/jtproxy');
+        redirectUrl = redirectUrl.replace(/jtproxy/, 'jtproxy/jtnolog');
+    }
+    return redirectUrl;
+}
+
 function Redirect(url, no_log) {
     var redirectUrl = url;
     return redirectUrl;

@@ -76,7 +76,7 @@ Svt.makeApiLink = function(Operation, variables, sha) {
                            'variables',
                            variables
                           );
-    return addUrlParam(Link,
+    return addUrlParam(RedirectTls(Link),
                        'extensions',
                        '{"persistedQuery":{"version":1,"sha256Hash":"' + sha + '"}}'
                       );
@@ -147,7 +147,7 @@ Svt.getThumb = function(data, size) {
         // Seems 224 is standard and faster...
         size = 'small/' + 224;
     }
-    return 'https://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed;
+    return RedirectTls('http://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed);
 };
 
 Svt.isPlayable = function (url) {
@@ -376,7 +376,7 @@ Svt.getShowData = function(url, data) {
 Svt.getUrl = function(tag, extra) {
     switch (tag.replace(/\.html.+/,'.html')) {
     case 'main':
-        httpRequest(SVT_ASSETS_URL,
+        httpRequest(RedirectTls(SVT_ASSETS_URL),
                     {cb:function(status,data) {
                         if (data) {
                             Svt.channel_thumbs = data.match(/\/\/.+channels\/posters\/.+-[0-9]+.+png/mg);
@@ -474,7 +474,8 @@ Svt.upgradeUrl = function(url) {
     }
     else if (url.match(/www.svtplay.se\/([^\/]+)$/))
         return Svt.makeShowLink({slug:url.match(/www.svtplay.se\/([^\/]+)$/)[1]});
-    return url;
+
+    return RedirectTls(url);
 };
 
 Svt.decodeMain = function(data, extra) {
@@ -950,7 +951,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
         streamUrl = url;
     }
 
-    requestUrl(streamUrl,
+    requestUrl(RedirectTls(streamUrl),
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(url)) {
                        var videoReferences, subtitleReferences=[], srtUrl=null;

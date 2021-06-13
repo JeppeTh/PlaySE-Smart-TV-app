@@ -13,15 +13,6 @@ Oa.getSectionTitle = function() {
     return 'Senaste';
 };
 
-Oa.getCategoryTitle = function() {
-    switch (Oa.getCategoryIndex().current) {
-    case 0:
-        return 'Kategorier';
-    case 1:
-        return 'Alla Program';
-    }
-};
-
 Oa.getCheckedChannelText = function(button) {
     return Oa.getHeaderPrefix().slice(0,-2);
 };
@@ -39,10 +30,7 @@ Oa.keyRed = function() {
 };
 
 Oa.keyGreen = function() {
-    if (getIndexLocation().match(/categories\.html/))
-        setLocation(Oa.getNextCategory());
-    else
-        setLocation('categories.html');
+    return;
 };
 
 Oa.keyYellow = function() {
@@ -67,9 +55,7 @@ Oa.getAButtonText = function(language) {
 };
 
 Oa.getBButtonText = function(language, catLoaded) {
-    if (getIndexLocation().match(/categories\.html/))
-        return Oa.getNextCategoryText();
-    return null;
+    return '';
 };
 
 Oa.getCButtonText = function(language) {
@@ -100,7 +86,7 @@ Oa.getDetailsData = function(url, data) {
             if (data.programTitle && data.programTitle.length > 0) {
                 Show = {name  : data.programTitle.trim(),
                         url   : Oa.makeTagLink(data),
-                        thumb : data.thumbnailSmall
+                        thumb : RedirectTls(data.thumbnailSmall)
                        };
             }//  else if (data.tagList) {
             //     for (var i=0; i < data.tagList.length; i++) {
@@ -128,7 +114,7 @@ Oa.getDetailsData = function(url, data) {
             if (data.description)
                 Description = data.description.trim();
             Title = Name;
-            ImgLink = data.thumbnailLarge;
+            ImgLink = RedirectTls(data.thumbnailLarge);
             if (data.broadcastDate)
                 AirDate = timeToDate(data.broadcastDate);
             else if (data.activateDate)
@@ -165,7 +151,6 @@ Oa.getDetailsData = function(url, data) {
         Log('AirDate:' + AirDate);
         Log('VideoLength:' + VideoLength);
         Log('Description:' + Description);
-        Log('NotAvailable:' + NotAvailable);
         Log('ImgLink:' + ImgLink);
     }
 };
@@ -182,7 +167,7 @@ Oa.getShowData = function(data) {
         Name = data.programTitle;
         if (!Name || Name.length == 0)
             Name  = data.title;
-        ImgLink = data.thumbnailLarge;
+        ImgLink = RedirectTls(data.thumbnailLarge);
 	Description = data.summary.trim();
         Genre = [];
         for (var i=0; i < data.tagList.length; i++) {
@@ -223,14 +208,8 @@ Oa.getUrl = function(tag, extra) {
     case 'section':
         return 'https://origin-www.svt.se/oppet-arkiv-api/latest?count=50';
 
-    case 'categories':
-        return Oa.getCategoryUrl();
-
     case 'categoryDetail':
         return extra.location;
-
-    // case 'live':
-    //     return 'http://www.svtplay.se/kanaler';
 
     case 'searchList':
         return 'https://origin-www.svt.se/oppet-arkiv-api/search/videos/?count=5000&q=' + extra.query;
@@ -241,13 +220,11 @@ Oa.getUrl = function(tag, extra) {
     }
 };
 
-Oa.getCategoryUrl = function() {
-    switch (Oa.getCategoryIndex().current) {
-    case 1:
-        return 'https://www.oppetarkiv.se/program';
-    default:
-        return 'https://www.oppetarkiv.se/genrer';
+Oa.upgradeUrl = function(url) {
+    if (url.match(/jpg/)) {
+        return RedirectTls(url);
     }
+    return url;
 };
 
 Oa.decodeMain = function(data, extra) {
@@ -263,8 +240,8 @@ Oa.decodeMain = function(data, extra) {
         }
         if (data[i].teaserlist.length)
             categoryToHtml(Name,
-                           data[i].teaserlist[0].thumbnailSmall,
-                           data[i].teaserlist[0].thumbnailLarge,
+                           RedirectTls(data[i].teaserlist[0].thumbnailSmall),
+                           RedirectTls(data[i].teaserlist[0].thumbnailLarge),
                            Oa.getUrl('main', extra)
                           );
     }
@@ -276,54 +253,6 @@ Oa.decodeSection = function(data, extra) {
     data = JSON.parse(data.responseText);
     Oa.decode(data.entries, extra);
 
-    if (extra.cbComplete)
-        extra.cbComplete();
-};
-
-Oa.decodeCategories = function (data, extra) {
-
-    try {
-        var Name;
-        var Term;
-        var Link;
-        var ImgLink;
-
-        switch (Oa.getCategoryIndex().current) {
-        case 0:
-            data = data.responseText.split('data-rt="svtoa_genre-list__link-item"').slice([1]);
-            Link = 'https://origin-www.svt.se/oppet-arkiv-api/search/titles/?sort=alpha&count=1000&genreFacet=';
-            var Categories = [];
-            for (var i=0; i < data.length; i++) {
-                ImgLink = data[i].match(/svtoa_genre-list__link-item-image" src="([^"]+)/)[1];
-                Name = data[i].match(/svtoa_grenre-list__link-item-text">([^<]+)/)[1];
-                Term = data[i].match(/etikett\/genre\/([^\/]+)/)[1];
-                Categories.push({name:        Name,
-                                 link:        Link+Term,
-                                 thumb:       ImgLink,
-                                 large_thumb: ImgLink.replace('small', 'large')
-                                });
-            }
-            Categories.sort(function(a, b){return (a.name > b.name) ? 1 : -1;});
-            for (var l=0; l<Categories.length; l++)
-                categoryToHtml(Categories[l].name,
-                               Categories[l].thumb,
-                               Categories[l].large_thumb,
-                               Categories[l].link
-                              );
-            break;
-        case 1:
-            data = data.responseText.split('svtoa-anchor-list-link').slice([1]);
-            for (var m=0; m < data.length; m++) {
-                Name = data[m].match(/etikett\/titel\/[^>]+>([^<]+)/m)[1];
-                Term = data[m].match(/etikett\/titel\/([^\/]+)/m)[1];
-                showToHtml(Name, null, Oa.makeShowLink(Term));
-            }
-            break;
-        }
-        data = null;
-    } catch(err) {
-        Log('Oa.decodeCategories Exception:' + err.message + ' data:' + JSON.stringify(data));
-    }
     if (extra.cbComplete)
         extra.cbComplete();
 };
@@ -380,7 +309,7 @@ Oa.decodeShowList = function(data, extra) {
                 SeasonNumbers.push(data[j].seasonNumber);
                 Seasons.push({season : +data[j].seasonNumber,
                               name   : 'Säsong ' + data[j].seasonNumber,
-                              thumb  : data[j].thumbnailSmall,
+                              thumb  : RedirectTls(data[j].thumbnailSmall),
                               link   : extra.url
                              });
             }
@@ -391,7 +320,7 @@ Oa.decodeShowList = function(data, extra) {
             Seasons.sort(function(a, b){return a.season-b.season;});
             for (var k=0; k < Seasons.length; k++)
                 seasonToHtml(Seasons[k].name,
-                             Seasons[k].thumb,
+                             RedirectTls(Seasons[k].thumb),
                              extra.url,
                              Seasons[k].season
                         );
@@ -449,30 +378,6 @@ Oa.tryAltPlayUrl = function(failedUrl, cb) {
     Svt.tryAltPlayUrl(failedUrl, cb);
 };
 
-Oa.getNextCategory = function() {
-    return getNextIndexLocation(1);
-};
-
-Oa.getCategoryIndex = function () {
-    return getIndex(1);
-};
-
-Oa.getNextCategoryText = function() {
-    var language = Language.checkLanguage();
-
-    switch (Oa.getCategoryIndex().next) {
-    case 0:
-        // Use default
-        return null;
-    case 1:
-        if (language == 'Swedish')
-            return 'Alla Program';
-        else
-            return 'All Shows';
-        break;
-    }
-};
-
 Oa.decode = function(data, extra, FilterShows) {
     var Show;
     var Name;
@@ -492,7 +397,7 @@ Oa.decode = function(data, extra, FilterShows) {
         for (var k=0; k < data.length; k++) {
             if (!data[k].contentType && data[k].facet == 'titleFacet') {
                 showToHtml(data[k].name.trim(),
-                           data[k].thumbnailSmall,
+                           RedirectTls(data[k].thumbnailSmall),
                            Oa.makeShowLink(data[k].term)
                           );
                 continue;
@@ -515,14 +420,14 @@ Oa.decode = function(data, extra, FilterShows) {
                     Shows.push(data[k].tagList[0].term.trim());
                 } else {
                     LinkPrefix = makeCategoryLinkPrefix();
-                    Link       = fixCategoryLink(Name, data[k].thumbnailLarge, Link);
+                    Link       = fixCategoryLink(Name, RedirectTls(data[k].thumbnailLarge), Link);
                 }
                 toHtml({name:Name,
                         description:Description,
                         link:Link,
                         link_prefix: LinkPrefix,
-                        thumb:data[k].thumbnailSmall,
-                        background:data[k].thumbnailXL
+                        thumb:RedirectTls(data[k].thumbnailSmall),
+                        background:RedirectTls(data[k].thumbnailXL)
                        });
                 break;
 
@@ -538,7 +443,7 @@ Oa.decode = function(data, extra, FilterShows) {
                         continue;
                     } else {
                         Shows.push(FilterName);
-                        showToHtml(Show, data[k].thumbnailSmall, Link);
+                        showToHtml(Show, RedirectTls(data[k].thumbnailSmall), Link);
                         continue;
                     }
                 }
@@ -576,8 +481,8 @@ Oa.decode = function(data, extra, FilterShows) {
                         link:Oa.makeVideoLink(data[k]),
                         link_prefix: '<a href="details.html?ilink=',
                         description:Description,
-                        thumb:data[k].thumbnailSmall,
-                        background:data[k].thumbnailXL,
+                        thumb:RedirectTls(data[k].thumbnailSmall),
+                        background:RedirectTls(data[k].thumbnailXL),
                         season:data[k].seasonNumber,
                         episode:data[k].episodeNumber,
                         show:Show

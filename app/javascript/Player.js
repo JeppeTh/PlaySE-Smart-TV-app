@@ -682,7 +682,7 @@ Player.SetCurTime = function(time) {
 	}
 
         // On 2010 device the device triggers this function even if video is paused
-	if (this.state != this.PAUSED && skipTimeInProgress === false) {
+	if (this.state != this.PAUSED && skipTimeInProgress === false && !startup) {
 	    Subtitles.setCur(ccTime);
         }
         Player.refreshStartData(Details.fetchedDetails);

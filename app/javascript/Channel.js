@@ -129,7 +129,7 @@ Channel.getUrl = function(tag, extra) {
 
 Channel.upgradeUrl = function(channelId, url) {
     channelId = eval($('.channel-content').find('#'+channelId).attr('channel'));
-    if (channelId.upgradeUrl) {
+    if (channelId.upgradeUrl && url) {
         var NewUrl = channelId.upgradeUrl(url);
         if (NewUrl != url)
             Log('Url Upgraded: ' + url + ' -> ' + NewUrl);
