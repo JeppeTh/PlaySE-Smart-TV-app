@@ -1189,7 +1189,7 @@ Svt.getNextCategoryDetailText = function() {
 Svt.GetChannelThumb = function (Id) {
     var ThumbRegexp = new RegExp('^http.+' + Id.replace(/^ch-/i,'') + '.*$','img');
     var Thumb = Svt.channel_thumbs.match(ThumbRegexp);
-    return Thumb && Thumb[0];
+    return RedirectTls(Thumb && Thumb[0]);
 };
 
 Svt.decodeChannels = function(data, BaseUrl) {
