@@ -128,17 +128,18 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
         myTitle = 'mytitle=' + myTitle;
     }
 
-    videoUrl                = url;
-    videoData.component     = videoUrl.match(/\|COMPONENT=([^|]+)/);
-    videoData.component     = videoData.component && videoData.component[1];
-    videoData.bitrates      = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
-    videoData.url           = videoUrl.replace(/\|.+/,'');
-    videoData.audio_streams = extra.audio_streams;
-    videoData.audio_idx     = extra.audio_idx;
-    videoData.subtitles_idx = extra.subtitles_idx;
-    videoData.use_offset    = extra.use_offset;
-    videoData.license       = extra.license;
-    videoData.custom_data   = extra.customdata;
+    videoUrl                 = url;
+    videoData.component      = videoUrl.match(/\|COMPONENT=([^|]+)/);
+    videoData.component      = videoData.component && videoData.component[1];
+    videoData.bitrates       = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
+    videoData.url            = videoUrl.replace(/\|.+/,'');
+    videoData.audio_streams  = extra.audio_streams;
+    videoData.stream_content = extra.stream_content;
+    videoData.audio_idx      = extra.audio_idx;
+    videoData.subtitles_idx  = extra.subtitles_idx;
+    videoData.use_offset     = extra.use_offset;
+    videoData.license        = extra.license;
+    videoData.custom_data    = extra.customdata;
     if (deviceYear > 2011) {
         if (extra.previewThumb)
             videoData.previewThumb = extra.previewThumb;
