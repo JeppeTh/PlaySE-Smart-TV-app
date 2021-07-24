@@ -135,6 +135,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.bitrates       = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
     videoData.url            = videoUrl.replace(/\|.+/,'');
     videoData.audio_streams  = extra.audio_streams;
+    videoData.stream_content = extra.stream_content;
     videoData.audio_idx      = extra.audio_idx;
     videoData.subtitles_idx  = extra.subtitles_idx;
     videoData.use_offset     = extra.use_offset;
