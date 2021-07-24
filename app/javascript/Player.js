@@ -122,18 +122,19 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
         myTitle = 'mytitle=' + myTitle;
     }
 
-    videoUrl                = url;
-    videoData.component     = videoUrl.match(/\|COMPONENT=([^|]+)/);
-    videoData.component     = videoData.component && videoData.component[1];
-    videoData.bitrates      = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
-    videoData.url           = videoUrl.replace(/\|.+/,'');
-    videoData.audio_streams = extra.audio_streams;
-    videoData.audio_idx     = extra.audio_idx;
-    videoData.subtitles_idx = extra.subtitles_idx;
-    videoData.use_offset    = extra.use_offset;
-    videoData.license       = extra.license;
-    videoData.custom_data   = extra.customdata;
-    videoData.previewThumb  = (deviceYear > 2011) && extra.previewThumb;
+    videoUrl                 = url;
+    videoData.component      = videoUrl.match(/\|COMPONENT=([^|]+)/);
+    videoData.component      = videoData.component && videoData.component[1];
+    videoData.bitrates       = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
+    videoData.url            = videoUrl.replace(/\|.+/,'');
+    videoData.audio_streams  = extra.audio_streams;
+    videoData.stream_content = extra.stream_content;
+    videoData.audio_idx      = extra.audio_idx;
+    videoData.subtitles_idx  = extra.subtitles_idx;
+    videoData.use_offset     = extra.use_offset;
+    videoData.license        = extra.license;
+    videoData.custom_data    = extra.customdata;
+    videoData.previewThumb   = (deviceYear > 2011) && extra.previewThumb;
     Log('VIDEO URL: ' + videoUrl);
     Player.audioIdx = (videoData.audio_idx) ? -1 : 0;
     // Log('LICENSE URL: ' + videoData.license);
