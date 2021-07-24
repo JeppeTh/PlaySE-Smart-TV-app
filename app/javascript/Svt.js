@@ -1044,21 +1044,31 @@ Svt.checkFormat = function (a, b) {
 
 Svt.getStreamRank = function(stream, index_list, srtUrl) {
 
-    if (!srtUrl && stream.format == 'dash-avc-51' && deviceYear > 2013)
-        // Seems devices > 2013 supports AC-3, use in case of no subtitles.
-        return 0;
-    else if (!srtUrl && stream.format == 'dash-avc')
-        // 'dash-avc' contains non AC-3 audio stream needed for older devices.
-        // Also more bandwith variants....
-        return 1;
-    else if (stream.format == 'dash-hbbtv')
+    if (!srtUrl) {
+        // The subtitle format used in dash isn't supported, if no subtitles we
+        // can select from more variants.
+        if (deviceYear > 2013) {
+            // Seems devices > 2013 supports AC-3, prefer that
+            if (stream.format == 'dash-avc-51')
+                return 0;
+            else if (stream.format == 'dash-hbbtv-avc')
+                // Not sure if dash-xxx-51 has been ditched.
+                // Seems this one contains AC-3, but not so many bandwiths...
+                return 1;
+        }
+        if (stream.format == 'dash-avc')
+            // 'dash-avc' contains non AC-3 audio stream needed for older devices.
+            // Also more bandwith variants...
+            return 2;
+    }
+    if (stream.format == 'dash-hbbtv')
         // Never contains subtitles which seem to cause issues.
         // In case of AC-3 we're smoked on older devices though.
-        return 2;
-    else if (stream.format == 'dash-hbbtv-avc')
         return 3;
-    else if (stream.format == 'dash-avc')
+    else if (stream.format == 'dash-hbbtv-avc')
         return 4;
+    else if (stream.format == 'dash-avc')
+        return 5;
     else {
         var base = 1000;
         if (stream.format.match(/hevc/))
