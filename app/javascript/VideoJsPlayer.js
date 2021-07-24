@@ -64,11 +64,11 @@ VideoJsPlayer.create = function(UseNative) {
     div.style.position = 'absolute';
     document.getElementById('video-container').appendChild(div);
 
+    var streamOptions = {limitRenditionByPlayerDimensions:false,
+                         overrideNative:!UseNative
+                        };
     var httpOptions = {preload:'auto',
-                       hls:{
-                           limitRenditionByPlayerDimensions:false,
-                           overrideNative:!UseNative
-                       },
+                       vhs:streamOptions,
                        nativeAudioTracks:UseNative,
                        nativeVideoTracks:UseNative
                       };
@@ -216,14 +216,14 @@ VideoJsPlayer.On = function (Event, e) {
 VideoJsPlayer.metaDataLoaded = function() {
     // Why are levels sometimes empty?
     VideoJsLog('metaDataLoaded, levels:' + VideoJsPlayer.player.qualityLevels().length);
-    // VideoJsLog('loadedmetadata, levels:' + VideoJsPlayer.tech().hls.representations().length);
-    // Log('media:' + VideoJsPlayer.tech().hls.playlists.media().attributes.BANDWIDTH);
-    // Log('master:' + JSON.stringify(VideoJsPlayer.tech().hls.playlists.master));
+    // VideoJsLog('loadedmetadata, levels:' + VhsTech().representations().length);
+    // Log('media:' + VhsTech().playlists.media().attributes.BANDWIDTH);
+    // Log('master:' + JSON.stringify(VhsTech().playlists.master));
 
 
     // if (VideoJsPlayer.player.qualityLevels().length == 0) {
     //     // Add manually
-    //     var representations = VideoJsPlayer.tech().hls.representations();
+    //     var representations = VhsTech().representations();
     //     for (var i=0; i < representations.length; i++)
     //         VideoJsPlayer.player.qualityLevels().addQualityLevel(representations[i]);
     //     Log('rep: ' + representations.length + ' new levels:' + VideoJsPlayer.player.qualityLevels().length)
@@ -234,7 +234,7 @@ VideoJsPlayer.metaDataLoaded = function() {
     // for (var i=0; wantedBr && i < levels.length; i++) {
     //     levels[i].enabled = (levels[i].bitrate == wantedBr);
     // }
-    var levels = VideoJsPlayer.tech().hls.representations();
+    var levels = VhsTech().representations();
     for (var i=0; wantedBr && i < levels.length; i++) {
         levels[i].enabled((levels[i].bandwidth == wantedBr));
     }
@@ -260,10 +260,18 @@ VideoJsPlayer.load = function(videoData) {
     VideoJsPlayer.has_subtitles = false;
     VideoJsPlayer.resume_seeking_started = false;
     VideoJsPlayer.aborted = false;
+    var src = videoData.url;
     var type = 'application/x-mpegURL';
-    if (videoData.component == 'HAS')
+    var parser = new m3u8Parser.Parser();
+
+    if (videoData.stream_content) {
+        parser.push(videoData.stream_content);
+        parser.end();
+        src = 'data:application/vnd.videojs.vhs+json,'+JSON.stringify(parser.manifest);
+        type = 'application/vnd.videojs.vhs+json';
+    } else if (videoData.component == 'HAS')
         type = 'application/dash+xml';
-    VideoJsPlayer.player.src({src:videoData.url,
+    VideoJsPlayer.player.src({src:src,
                               type:type,
                               withCredentials:true,
                               handleManifestRedirects:true,
@@ -280,7 +288,7 @@ VideoJsPlayer.load = function(videoData) {
     }
     VideoJsPlayer.player.ready(function() {
         if (ua)
-            VideoJsPlayer.tech().hls.xhr.beforeRequest = function(options) {
+            VhsTech().xhr.beforeRequest = function(options) {
                 options.headers = {'User-Agent':ua};
                 return options;
             };
@@ -371,23 +379,26 @@ VideoJsPlayer.reload = function(videoData, isLive, seconds) {
 
 VideoJsPlayer.getResolution  = function() {
     try {
-        var resolution = VideoJsPlayer.tech().hls.playlists.media().attributes.RESOLUTION;
+        var resolution = VhsTech().playlists.media().attributes.RESOLUTION;
         return (resolution) ? resolution : {width:0, height:0};
     } catch (err) {
+        var levels = VideoJsPlayer.player.qualityLevels();
+        if (levels && levels.selectedIndex_ >= 0) {
+            return levels.levels_[levels.selectedIndex_];
+        }
         return {width:+VideoJsPlayer.player.videoWidth(), height:+VideoJsPlayer.player.videoHeight()};
     }
 };
 
 VideoJsPlayer.getDuration  = function() {
-    var duration = VideoJsPlayer.player.duration();
-    if (duration == 'Infinity') {
-        return 0;
-    }
-    return duration*1000;
+    var duration = VideoJsPlayer.player.duration()*1000;
+    if (isNaN(duration) || duration == 'Infinity')
+        duration = 0;
+    return duration;
 };
 
 VideoJsPlayer.getBandwith  = function() {
-    // var representations = VideoJsPlayer.tech().hls.representations();
+    // var representations = VhsTech().representations();
     // for (var i=0; i < representations.length; i++) {
     //     if (representations[i].enabled())
     //         Log("selected bw: " + representations[i].bandwidth);
@@ -395,7 +406,7 @@ VideoJsPlayer.getBandwith  = function() {
     //         Log("disabled bw: " + representations[i].bandwidth);
     // };
     try {
-        return VideoJsPlayer.tech().hls.playlists.media().attributes.BANDWIDTH;
+        return VhsTech().playlists.media().attributes.BANDWIDTH;
         var levels = VideoJsPlayer.player.qualityLevels();
         if (levels.selectedIndex_ >= 0)
             return levels.levels_[levels.selectedIndex_].bitrate;
@@ -517,7 +528,7 @@ VideoJsPlayer.logHistory = function(debug) {
 };
 
 VideoJsPlayer.logStats = function() {
-    var stats = VideoJsPlayer.tech().hls.stats;
+    var stats = VhsTech().stats;
     for (var k in stats) {
         if (k == 'master') {
             for (var i in stats[k]) {
@@ -541,6 +552,13 @@ VideoJsPlayer.logStats = function() {
         Log('Stats->' + k + ':' + JSON.stringify(stats[k]));
     }
 };
+
+function VhsTech() {
+    if (VideoJsPlayer.tech().vhs)
+        return VideoJsPlayer.tech().vhs
+    else
+        return VideoJsPlayer.tech().hls
+}
 
 function VideoJsLog(Message) {
     Log(Message + ' State:' + VideoJsPlayer.player.readyState() + ' Currenttime:' + VideoJsPlayer.player.currentTime() + ' VS:' + VideoJsPlayer.state);

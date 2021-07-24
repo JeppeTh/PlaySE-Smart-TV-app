@@ -1326,7 +1326,9 @@ Svt.checkFormat = function (a, b, isLive) {
 
 Svt.getStreamRank = function(stream, index_list, isLive) {
 
-    if (isLive && stream.format == 'hls')
+    if (isLive && stream.format == 'hls-cmaf-live')
+        return -2;
+    else if (isLive && stream.format.match(/hls/))
         return -1;
     else if (stream.format == 'dash-avc-51')
         return 0;
@@ -1366,6 +1368,7 @@ Svt.stripDuplicatStreams = function(streams) {
 Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
         Svt.play_args.extra.use_vjs = Svt.play_args.urls[0].match(/\.m3u8/);
+        Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4.*m3u8/);
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,
                                     Svt.play_args.extra
@@ -1397,6 +1400,14 @@ Svt.tryAltPlayUrl = function(failedUrl, cb) {
     }
     else
         return false;
+};
+
+Svt.modifyStream = function (urlPrefix, stream) {
+    // Seems hls-cmaf-live contains some mp4 subtitles, try to swap to webvtt
+    stream = stream.replace('/dash-s0/','/hls-s0/');
+    stream = stream.replace(/URI="([^h])/mg,'URI="'+urlPrefix+'$1');
+    stream = stream.replace(/^([^h#]{2}.+$)/mg,urlPrefix+'$1');
+    return stream;
 };
 
 Svt.getNextCategory = function() {
