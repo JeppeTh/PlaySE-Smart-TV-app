@@ -106,6 +106,10 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                    else if (videoUrl.match(/\.ism/)) {
                        videoUrl = videoUrl + '|COMPONENT=WMDRM';
                    }
+                   if (extra.modify_stream) {
+                       var urlPrefix = getUrlPrefix(videoUrl);
+                       extra.stream_content = Channel.modifyStream(urlPrefix,data.responseText);
+                   }
                    Player.setVideoURL(master, videoUrl, srtUrl, extra);
                    extra.cb();
                },
