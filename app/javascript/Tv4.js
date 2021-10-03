@@ -28,7 +28,9 @@ var Tv4 = {
     live_panels: [],
     live_id: null,
     token: null,
-    failedUpgrades: []
+    failedUpgrades: [],
+    thumbsChecked:false,
+    redirectThumbs:false
 };
 
 Tv4.login = function(cb, attempts) {
@@ -229,6 +231,9 @@ Tv4.upgradeUrl = function(url) {
         var width = getUrlParam(url, 'resize').split('x')[0];
         url = Tv4.fixThumb(source, width/THUMB_WIDTH);
     }
+    if (Tv4.redirectThumbs && url.match(/imageproxy/))
+        return RedirectTls(url);
+
     if (url.match(/graphql.tv4play.se\/graphql\?query/))
         url = Tv4.upgradeOldGraphql(url);
     return url;
@@ -1732,7 +1737,19 @@ Tv4.fixThumb = function(thumb, factor) {
 
     if (!factor) factor = 1;
     var width = Math.round(factor*THUMB_WIDTH);
-    return addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb);
+    thumb = addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb);
+    if (!Tv4.thumbsChecked) {
+        Tv4.thumbsChecked = true;
+        if (deviceYear < 2020) {
+            if (httpRequest(thumb,{sync:true}).data.length == 0)
+                Tv4.redirectThumbs = true;
+        }
+        Log('Tv4.redirectThumbs: ' + Tv4.redirectThumbs);
+    }
+    if (Tv4.redirectThumbs)
+        return RedirectTls(thumb);
+    else
+        return thumb;
 };
 
 Tv4.decodeThumb = function(thumb) {
