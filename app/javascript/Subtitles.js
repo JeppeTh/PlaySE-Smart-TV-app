@@ -405,7 +405,7 @@ Subtitles.parseSrtRecord = function (srtRecord) {
 Subtitles.setCur = function (time) {
     try {
         Subtitles.checkHls();
-        if (subtitlesEnabled && Player.state != Player.STOPPED) {
+        if (Subtitles.isReady() && Player.state != Player.STOPPED) {
             var now = Number(time);
             if (now === lastSetSubtitleTime) {
                 // Seems we get multiple callback for same time...
@@ -461,7 +461,8 @@ Subtitles.hide = function() {
 };
 
 Subtitles.set = function (text, timeout, forced) {
-    if (!forced && !subtitlesEnabled) return;
+    if (!forced && !Subtitles.isReady())
+        return;
     try {
         if (text != '') {
             text = SPACE + text + SPACE;
@@ -474,6 +475,10 @@ Subtitles.set = function (text, timeout, forced) {
     } catch (err) {
         Log('set failed:' + err);
     }
+};
+
+Subtitles.isReady = function() {
+    return (subtitlesEnabled && skipTimeInProgress === false && !startup);
 };
 
 Subtitles.refreshClearTimer = function(timeout) {
