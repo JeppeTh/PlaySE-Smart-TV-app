@@ -1220,6 +1220,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
 
     if (url.match(/=ChannelsQuery/)) {
         extra.use_offset = true;
+        extra.is_channel = deviceYear < 2020;
         streamUrl = SVT_VIDEO_API_URL + getUrlParam(url,'chId');
     } else if(!streamUrl) {
         streamUrl = url;
@@ -1260,7 +1261,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else
                            videoReferences = data.videoReferences;
 
-                       Svt.sortStreams(videoReferences, isLiveStream);
+                       Svt.sortStreams(videoReferences, isLiveStream && !extra.is_channel);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
@@ -1367,8 +1368,9 @@ Svt.stripDuplicatStreams = function(streams) {
 
 Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
-        Svt.play_args.extra.use_vjs = Svt.play_args.urls[0].match(/\.m3u8/);
-        Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4.*m3u8/);
+            Svt.play_args.extra.use_vjs =
+                Svt.play_args.urls[0].match(/\.m3u8/) || Svt.play_args.extra.is_channel;
+            Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4.*m3u8/);
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,
                                     Svt.play_args.extra

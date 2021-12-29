@@ -130,8 +130,15 @@ VideoJsPlayer.On = function (Event, e) {
         window.clearTimeout(VideoJsPlayer.seek_reload_timer);
     }
 
-    if (VideoJsPlayer.aborted)
+    if (VideoJsPlayer.aborted) {
+        alert('ABORTED');
+        // Avoid loop - and also avoid aborting a reload...
+        window.setTimeout(function() {
+            if (VideoJsPlayer.aborted)
+                VideoJsPlayer.stop()
+        }, 0);
         return;
+    }
 
     if (Event == 'loadedmetadata')
         VideoJsPlayer.metaDataLoaded();
