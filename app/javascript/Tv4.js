@@ -545,7 +545,7 @@ Tv4.decodeRecommended = function(data) {
                         description : data[i].cards[k].title,
                         background  : Background
                        });
-            } else {
+            } else if (data[i].cards[k].videoAsset) {
                 if (nids.indexOf(data[i].cards[k].videoAsset.id) != -1)
                     continue;
                 nids.push(data[i].cards[k].videoAsset.id);
