@@ -1483,6 +1483,7 @@ Svt.getVariantName = function(accessService) {
 };
 
 Svt.getSeasonDigits = function(Name) {
+    Name = "" + Name;
     return +(Name.split(/\s*:.+$/)[0].replace(/[^0-9]+/g,''));
 };
 
