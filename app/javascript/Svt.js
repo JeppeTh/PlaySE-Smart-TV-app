@@ -209,6 +209,7 @@ Svt.getDetailsData = function(url, data) {
     var Show = null;
     var isLive = false;
     var Season=null;
+    var AltSeason=null;
     var Episode=null;
     var EpisodeName=null;
     var Variant=null;
@@ -258,6 +259,11 @@ Svt.getDetailsData = function(url, data) {
                        };
             }
             Season = Svt.getSeasonNumber(data);
+            AltSeason = Svt.getInconsistenSeason(data);
+            if (AltSeason && AltSeason != Season && AltSeason != ('Säsong '+Season)) {
+                alert('Season: ' + Season + ' AltSeason:' + AltSeason)
+                Season = AltSeason;
+            }
             Episode = Svt.getEpisodeNumber(data);
             EpisodeName = data.name;
             Variant = data.accessibilities;
@@ -844,7 +850,12 @@ Svt.decodeShowList = function(data, extra) {
                 // Decode upcoming first to avoid messing with multiple episodes
                 // with same episode numbers in case part of a new season.
                 if (upcoming) {
-                    if ((upcoming.season && Svt.isSameSeason(extra.season,upcoming.season)) ||
+                    var alt_season = null;
+                    if (data[j].items && data[j].items.length > 0)
+                        Svt.getSeasonNumber(data[j].items[0]);
+                    if ((upcoming.season &&
+                         (Svt.isSameSeason(extra.season,upcoming.season) ||
+                          Svt.isSameSeason(alt_season,upcoming.season))) ||
                         (!upcoming.season && j==upcoming.last_season_index)) {
                         Svt.decode(upcoming.items, extra);
                     }
@@ -1510,6 +1521,20 @@ Svt.getSeasonNumber = function(data) {
     if (data.item)
         return Svt.getSeasonNumber(data.item);
     return null;
+};
+
+Svt.getInconsistenSeason = function(data) {
+    if (data.videoSvtId && data.associatedContent) {
+        var Seasons = data.associatedContent;
+        for (var i=0; i < Seasons.length; i++) {
+            if (Seasons[i].type != 'Season' || !Seasons[i].items)
+                continue;
+            for (var j=0; j < Seasons[i].items.length; j++) {
+                if (Seasons[i].items[j].item.videoSvtId == data.videoSvtId)
+                    return Seasons[i].name
+            }
+        }
+    }
 };
 
 Svt.getEpisodeNumber = function(data) {
