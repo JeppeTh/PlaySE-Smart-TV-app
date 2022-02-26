@@ -852,7 +852,7 @@ Svt.decodeShowList = function(data, extra) {
                 if (upcoming) {
                     var alt_season = null;
                     if (data[j].items && data[j].items.length > 0)
-                        Svt.getSeasonNumber(data[j].items[0]);
+                        alt_season = Svt.getSeasonNumber(data[j].items[0]);
                     if ((upcoming.season &&
                          (Svt.isSameSeason(extra.season,upcoming.season) ||
                           Svt.isSameSeason(alt_season,upcoming.season))) ||
