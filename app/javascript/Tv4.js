@@ -207,7 +207,7 @@ Tv4.decodeMain = function(data, extra) {
                function(status, data) {
                    recommended = Tv4.decodeRecommended({responseText:recommended});
                    extra.cbComplete = null;
-                   data = JSON.parse(data.responseText).data.startPage.mostViewedPanel.programs;
+                   data = Tv4.findMostViewed(data.responseText);
                    Tv4.decodeShows(data, {is_json:true, nids:recommended, no_sort:true});
                    data = null;
                },
@@ -225,7 +225,6 @@ Tv4.decodeCategories = function(data, extra) {
     var Name;
     var Link;
     var Thumb;
-    var LargeThumb;
 
     try {
         switch (Tv4.getCategoryIndex().current) {
@@ -260,11 +259,13 @@ Tv4.decodeCategories = function(data, extra) {
             break;
 
         case 1:
-            data = JSON.parse(data.responseText).data.startPage.programPanels;
+            data = JSON.parse(data.responseText).data.page.panels2.items
             for (var i=0; i < data.length; i++) {
-                categoryToHtml(data[i].name,
-                               Tv4.fixThumb(data[i].programs[0].image),
-                               Tv4.fixThumb(data[i].programs[0].image, DETAILS_THUMB_FACTOR),
+                if (data[i].__typename == 'Promo') continue;
+                Thumb = data[i].content2.items[0].item.image;
+                categoryToHtml(data[i].title,
+                               Tv4.fixThumb(Thumb),
+                               Tv4.fixThumb(Thumb, DETAILS_THUMB_FACTOR),
                                addUrlParam(extra.url, 'index', i)
                               );
             }
@@ -284,9 +285,9 @@ Tv4.decodeCategories = function(data, extra) {
 };
 
 Tv4.decodeCategoryDetail = function(data, extra) {
-    data = JSON.parse(data.responseText).data;
-    if (data.page) {
-        data = data.page.panels;
+    data = JSON.parse(data.responseText).data.page;
+    if (data.panels) {
+        data = data.panels;
         for (var k=0; k < data.length; k++) {
             if (data[k].__typename == 'ExpandableProgramList') {
                 data = data[k].programs;
@@ -294,7 +295,7 @@ Tv4.decodeCategoryDetail = function(data, extra) {
             }
         }
     } else {
-        data = data.startPage.programPanels[+getUrlParam(extra.url,'index')].programs;
+        data = data.panels2.items[+getUrlParam(extra.url,'index')].content2.items;
     }
     extra.is_json = true;
     Tv4.decodeShows(data, extra);
@@ -717,8 +718,14 @@ Tv4.decodeShows = function(data, extra) {
 
         Tv4.result = [];
         for (var k=0; k < data.length; k++) {
-            if (data[k].__typename == 'PlayableCard') {
-                VideoItem = Tv4.decodeVideo(data[k].videoAsset, getCurrentDate(), extra);
+            if (data[k].item)
+                data[k] = data[k].item;
+            if (data[k].__typename == 'PlayableCard' ||
+                data[k].__typename == 'VideoAsset'
+               ) {
+                if (data[k].videoasset)
+                    data[k] = data[k].videoAsset;
+                VideoItem = Tv4.decodeVideo(data[k], getCurrentDate(), extra);
                 if (VideoItem)
                     videos.push(VideoItem);
                 continue;
@@ -1041,7 +1048,14 @@ Tv4.makeApiLink = function(Params) {
 };
 
 Tv4.makeStartPageLink = function() {
-    return Tv4.makeApiLink('startPage{mostViewedPanel{' + PROGRAMS_PARAMS +'},programPanels{name,' + PROGRAMS_PARAMS + '}}');
+    var Input = 'input:{offset:0,limit:100}';
+    var Link  = 'page(id: "startpage") {panels2(' + Input + ')' +
+        '{__typename ... on PagePanelsResult {items {' +
+        '__typename ... on SwipeModule {title,content2(' + Input + '){items{item{' +
+        '__typename ... on Program' + SHOW_PARAMS + ',' +
+        '__typename ... on VideoAsset' + VIDEO_PARAMS  +
+        '}}}}}}}}';
+    return Tv4.makeApiLink(Link);
 };
 
 Tv4.makeCategoryLink = function(id) {
@@ -1072,6 +1086,15 @@ Tv4.makeLatestLink = function(type) {
 
 Tv4.makeVideoSearchLink = function(type, query) {
     return Tv4.makeApiLink('videoAssetSearch(type:' + type + ',limit:100,q:"' + query + '"){totalHits,videoAssets' + VIDEO_PARAMS + '}');
+};
+
+Tv4.findMostViewed = function(data) {
+    data = JSON.parse(data).data.page.panels2.items;
+    for (var i=0; i < data.length; i++) {
+        if (data[i].__typename == 'Promo') continue;
+        if (data[i].title.match('Mest sedda'))
+            return data[i].content2.items;
+    }
 };
 
 Tv4.fixThumb = function(thumb, factor) {

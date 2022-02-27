@@ -109,13 +109,14 @@ Svt.makeSearchLink = function (query) {
                           );
 };
 
-Svt.makeEpisodeLink = function (data) {
+Svt.makeEpisodeLink = function (data, fallback) {
     var ArticleId = data.articleId;
     if (!ArticleId) {
         ArticleId = data.urls.svtplay.match(/\/(video|klipp)\/([0-9]+)/);
         ArticleId = ArticleId && ArticleId[2];
     }
-
+    if (!ArticleId && fallback)
+        return Svt.makeEpisodeLink(fallback);
     return Svt.makeApiLink('VideoPage',
                            '{"legacyIds":[' + ArticleId + ']}',
                            'ae75c500d4f6f8743f6673f8ade2f8af89fb019d4b23f464ad84658734838c78'
@@ -1391,7 +1392,7 @@ Svt.decode = function(data, extra) {
                 }
                 if (!Link) continue;
             } else if (data[k].variants) {
-                Link = Svt.makeEpisodeLink(data[k].variants[0]);
+                Link = Svt.makeEpisodeLink(data[k].variants[0], data[k]);
             } else if (data[k].episode && data[k].episode.variants) {
                 // Find correct "variant"
                 for (var v=0; v < data[k].episode.variants.length; v++) {
