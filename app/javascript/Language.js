@@ -40,8 +40,7 @@ Language.init = function() {
 	html += '<div class="channel-content">';
 	html += '<ul>';
 	html += '<li class="title"><a href="#">Channel / Kanal:</a></li>';
-	html += '<li id="svt"    channel=Svt    class="checked unselected"><a href="#">Svt</a></li>';
-	html += '<li id="oa"     channel=Oa     class="unselected"><a href="#">Öppet Arkiv</a></li>';
+	html += '<li id="svt"     channel=Svt     class="checked unselected"><a href="#">Svt</a></li>';
 	html += '<li id="viasat"  channel=Viasat  class="unselected"><a href="#">Viasat</a></li>';
 	html += '<li id="tv4"     channel=Tv4     class="unselected"><a href="#">Tv4</a></li>';
 	html += '<li id="dplay"   channel=Dplay   class="unselected"><a href="#">Dplay</a></li>';

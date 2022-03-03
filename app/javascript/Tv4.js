@@ -261,7 +261,7 @@ Tv4.decodeCategories = function(data, extra) {
         case 1:
             data = JSON.parse(data.responseText).data.page.panels2.items
             for (var i=0; i < data.length; i++) {
-                if (data[i].__typename == 'Promo') continue;
+                if (!data[i].content2) continue;
                 Thumb = data[i].content2.items[0].item.image;
                 categoryToHtml(data[i].title,
                                Tv4.fixThumb(Thumb),
@@ -296,6 +296,7 @@ Tv4.decodeCategoryDetail = function(data, extra) {
         }
     } else {
         data = data.panels2.items[+getUrlParam(extra.url,'index')].content2.items;
+        extra.no_sort = true;
     }
     extra.is_json = true;
     Tv4.decodeShows(data, extra);

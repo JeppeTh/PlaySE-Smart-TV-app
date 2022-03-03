@@ -1,5 +1,5 @@
 
-Uppdaterad med support för Öppet Arkiv, Viafree, TV4, Dplay (funkar dock inte).
+Uppdaterad med support för SVT, Viafree, TV4, Dplay (funkar inte sen loginkrav).
 De olika brancherna:
 * master - orginalvarianten
 * hd_version - samma som master fast med 1280x720 upplösning
