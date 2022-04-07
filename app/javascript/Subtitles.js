@@ -185,6 +185,8 @@ Subtitles.parseVtt = function(data, offset, delta) {
     } else if (offset == -1)
         offset = 0;
 
+    data = Subtitles.fixVttFontColors(data);
+    data = data.replace(/^[0-9a-z\-]+(\r)?\n([0-9])/mg,'$2');
     data = data.slice(data.search(/^[0-9]/m));
     data = data.replace(/^([0-9]+:[0-9]+\.[0-9]+ -->)/mg,'00:$1').replace(/--> ([0-9]+:[0-9]+\.[0-9]+)/mg,'--> 00:$1');
     if (!data.match(/^[0-9]+[	 ]*(\r)?\n[0-9]+:/m))
@@ -192,6 +194,25 @@ Subtitles.parseVtt = function(data, offset, delta) {
     if (delta > 0)
         data = Subtitles.addVttOffset(data, delta);
     return {data:data, offset:offset, delta:delta};
+};
+
+Subtitles.fixVttFontColors = function(data) {
+    var fonts = data.match(/cue\(([^)]+)[^c]+color: ([^;]+);/g);
+    if (!fonts)
+        return data;
+
+    try {
+        for (var i=0; i < fonts.length; i++) {
+            var tag = fonts[i].match(/\(\.([^)]+)/)[1];
+            var color = fonts[i].match(/color: ([^;]+)/)[1];
+            data = data.replace(new RegExp('<c\\.' + tag,'g'), '<font color="' + color + '"');
+        }
+        data = data.replace(/<\/c>/g,'</font>');
+        return data.replace(/<c\.([^>]+>)/g,'<font color="$1">');
+    } catch (err) {
+        Log('Subtitles.fixVttFontColors failed:' + err);
+        return data;
+    }
 };
 
 Subtitles.addVttOffset = function (data, delta) {

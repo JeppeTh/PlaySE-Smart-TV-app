@@ -35,6 +35,8 @@ History.checkResume = function(location) {
             return History.findSeason(show, meta);
         else if (!location.match(/[?&]variant=/) && meta.variant)
             return History.findVariant(show, meta);
+        else if (!location.match(/[?&]clips=/) && meta.season)
+            return History.findClips(show, meta);
         else
             return History.findEpisode(show, meta);
     } else {
@@ -84,6 +86,14 @@ History.findSeason = function(show, meta) {
 History.findVariant = function(show, meta) {
     alert('Resume Variant ' + meta.variant + ' season:' + meta.season);
     if (History.findLinkPrefix(show, "variant", new RegExp('^' + meta.variant + '$','i')))
+        return true;
+    else
+        return History.findClips(show, meta)
+};
+
+History.findClips = function(show, meta) {
+    alert('Resume Clips season:' + meta.season);
+    if (History.findLinkPrefix(show, "title", new RegExp('^' + meta.season + '$','i')))
         return true;
     else
         return History.findEpisode(show, meta);
@@ -197,7 +207,13 @@ History.decodeMain = function(data, extra) {
     var UrlParams;
     var Names = [];
     var Shows = Config.read('History');
+    var NewShows;
 
+    // Filter possibly removed channels
+    Shows = Shows.filter(function(Show)
+                         {
+                             return Channel.exists(Show.channel_id);
+                         });
     // Check for duplicate names and upgrade urls
     for (var i=0; Shows && i < Shows.length; i++) {
         Shows[i].url = Channel.upgradeUrl(Shows[i].channel_id, Shows[i].url);

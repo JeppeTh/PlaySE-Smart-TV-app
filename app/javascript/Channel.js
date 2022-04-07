@@ -127,6 +127,10 @@ Channel.getUrl = function(tag, extra) {
     return this.impl.getUrl(tag, extra);
 };
 
+Channel.exists = function(channelId) {
+    return eval($('.channel-content').find('#'+channelId).attr('channel'));
+};
+
 Channel.upgradeUrl = function(channelId, url) {
     channelId = eval($('.channel-content').find('#'+channelId).attr('channel'));
     if (channelId.upgradeUrl && url) {
