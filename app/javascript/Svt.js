@@ -50,7 +50,8 @@ Svt.keyRed = function() {
 };
 
 Svt.keyGreen = function() {
-    if (getIndexLocation().match(/categoryDetail\.html/))
+    var loc = getIndexLocation();
+    if (loc.match(/categoryDetail\.html/) && !loc.match('FionaPage'))
 	setLocation(Svt.getNextCategoryDetail());
     else if (getIndexLocation().match(/categories\.html/))
         setLocation(Svt.getNextCategory());
@@ -83,7 +84,12 @@ Svt.makeApiLink = function(Operation, variables, sha) {
                       );
 };
 
-Svt.makeGenreLink = function (data) {
+Svt.makeGenreLink = function (data, tab) {
+    if (!tab) tab = null;
+    return Svt.makeApiLink('CategoryPageQuery',
+                           '{"includeFullOppetArkiv":true,"id":"'+data.id+'","tab":' + tab + '}',
+                           '8310718ae92359ab2d84968ccbe4a92824dd7684f612119007b1159a4c358ec0'
+                          );
     return Svt.makeApiLink('GenreProgramsAO',
                            '{"genre":["' + data.id + '"]}',
                            '189b3613ec93e869feace9a379cca47d8b68b97b3f53c04163769dcffa509318'
@@ -133,17 +139,6 @@ Svt.makeEpisodeLink = function (data, fallback) {
     } else if (data.urls && data.urls.svtplay) {
         return Svt.makeEpisodeLink(data.urls.svtplay, fallback);
     }
-    var ArticleId = data.articleId;
-    if (!ArticleId) {
-        ArticleId = data.urls.svtplay.match(/\/(video|klipp)\/([0-9]+)/);
-        ArticleId = ArticleId && ArticleId[2];
-    }
-    if (!ArticleId && fallback)
-        return Svt.makeEpisodeLink(fallback);
-    return Svt.makeApiLink('VideoPage',
-                           '{"legacyIds":[' + ArticleId + ']}',
-                           'ae75c500d4f6f8743f6673f8ade2f8af89fb019d4b23f464ad84658734838c78'
-                          );
 };
 
 Svt.getThumb = function(data, size) {
@@ -309,10 +304,9 @@ Svt.getDetailsData = function(url, data) {
                 VideoLength = Math.round((endTime-startTime)/1000);
                 VideoLength = dataLengthToVideoLength(null,VideoLength);
             }
+            NotAvailable = (getCurrentDate() < startTime);
             isLive = data.live && (endTime > getCurrentDate());
-            if (isLive) {
-                NotAvailable = (getCurrentDate() < startTime);
-            } else if (data.validTo) {
+            if (!isLive && data.validTo) {
 		AvailDate = timeToDate(data.validTo);
                 var hoursLeft = Math.floor((AvailDate-getCurrentDate())/1000/3600);
                 AvailDate = dateToHuman(AvailDate);
@@ -652,71 +646,88 @@ Svt.decodeCategoryDetail = function (data, extra) {
         return Svt.decodeCollections(data, extra);
 
     var Name = getUrlParam(getLocation(extra.refresh), 'catName');
-    var Slug = decodeURIComponent(getLocation(extra.refresh)).match(/(genre|cluster)"[^"]+"([^"]+)/)[2];
-    var TabsUrl = Svt.makeApiLink('GenreLists',
-                                  '{"genre":["' + Slug + '"]}',
-                                  '90dca0b51b57904ccc59a418332e43e17db21c93a2346d1c73e05583a9aa598c'
-                                 );
+    var Slug = decodeURIComponent(getLocation(extra.refresh)).match(/id":"([^"]+)"/)[1];
     var DetailIndex = Svt.getCategoryDetailIndex();
-    var DecodeAndComplete = function(data, extra) {
-        Svt.decode(data, extra);
-        if (extra.cbComplete)
-            extra.cbComplete();
-    };
 
-    switch (DetailIndex.current) {
-    case 0:
-        data = JSON.parse(data.responseText).data.genres[0].selectionsForWeb[0].items;
-        // Initiate Tabs before decoding Category Details.
-        requestUrl(TabsUrl,
-                   function(status, tabs_data) {
-                       Svt.decodeCategoryTabs(Name, Slug, tabs_data, TabsUrl);
-                       DecodeAndComplete(data, extra);
-                   }
-                  );
-        break;
-
-    default :
+    // Check if Svt.category_details are up to data
+    if (DetailIndex.current != 0) {
         var Current = Svt.category_details[DetailIndex.current];
         if (!Current || Slug != Current.slug) {
+            alert('WROMG CATEGORY_DETAILS');
             // Wrong Category - must re-initiate Tabs data.
-            return requestUrl(TabsUrl, function(status,data) {
-                Svt.decodeCategoryTabs(Name, Slug, data, TabsUrl);
-                // Now re-fetch current index
-                extra.url = Svt.category_details[DetailIndex.current].url;
-                requestUrl(extra.url, function(status,data) {
-                    Svt.decodeCategoryDetail(data,extra);
-                });
-            });
-        }
-        // Find items matching current Tab
-        data = JSON.parse(data.responseText).data.genres[0];
-        if (data.relatedGenres)
-            data = data.relatedGenres;
-        else {
-            data = data.selectionsForWeb;
-            for (var k=0; k < data.length; k++) {
-                if (Current.id == data[k].id) {
-                    data = data[k].items;
-                    break;
-                }
-            }
-        }
-        if (Current.recommended) {
-            // Fetch recommended and merge with Popular
-            requestUrl(Svt.makeApiLink('GenrePage',
-                                       '{"cluster":["' + Slug + '"]}',
-                                       '5127949eadc41dd7f7c5474dcfc26c2ab6ea0fb10e17c7cd9885df3576759825'
-                                      ),
-                       function(status, recommended_data) {
-                           recommended_data = JSON.parse(recommended_data.responseText).data.genres[0].selectionsForWeb[0].items.slice(0,10);
-                           extra.recommended_links = Svt.decodeRecommended(recommended_data);
-                           DecodeAndComplete(data, extra);
-                       });
-        } else {
-            DecodeAndComplete(data, extra);
+            var SlugUrl = Svt.makeGenreLink({id:Slug});
+            return requestUrl(SlugUrl,
+                              function(status, data) {
+                                  // Re-initiate tabs
+                                  data = JSON.parse(data.responseText).data.categoryPage;
+                                  data = data.lazyLoadedTabs;
+                                  Svt.decodeCategoryTabs(Name, Slug, data, SlugUrl);
+                                  // Re-fetch current index
+                                  extra.url = Svt.category_details[DetailIndex.current].url;
+                                  requestUrl(extra.url, function(status,data) {
+                                      Svt.decodeCategoryDetail(data,extra);
+                                  });
+                              });
         }
     }
+    data = JSON.parse(data.responseText).data.categoryPage.lazyLoadedTabs;
+    if (DetailIndex.current == 0) {
+        if (data.length > 0) {
+            // Start by initiating the tabs.
+            Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
+        } else {
+            // This category has no tabs.
+            Svt.category_details = [];
+            Svt.category_detail_max_index = 0;
+        }
+    }
+
+    if (Svt.category_detail_max_index == 0 || DetailIndex.current == 1) {
+        // A-Ö
+        data = (DetailIndex.current == 1) ? data[1] : data[0];
+        data = data.selections[0].items;
+    } else if (DetailIndex.current == 0) {
+        // Recommended + Popular
+        data = data[0].selections;
+        for (var k=0; k < data.length; k++) {
+            if (data[k].id.match(/recomm/)) {
+                extra.recommended_links = Svt.decodeRecommended(data[k].items);
+                break
+            }
+        }
+        for (var k=0; k < data.length; k++) {
+            if (data[k].id.match(/popul/)) {
+                data = data[k].items;
+                break
+            }
+        }
+    } else if (!Current.related) {
+        // Other Tabs
+        data = data[0].selections;
+        for (var k=0; k < data.length; k++) {
+            if (Current.id == data[k].id) {
+                data = data[k].items;
+                break;
+            }
+        }
+    }
+
+    if (Current && Current.related) {
+        data = data[0].selections;
+        for (var k=0; k < data.length; k++) {
+            if (data[k].analyticsIdentifiers.listType == 'fiona') {
+                categoryToHtml(data[k].name,
+                               Svt.getThumb(data[k].items[0]),
+                               Svt.getThumb(data[k].items[0], 'large'),
+                               Svt.makeCollectionLink(data[k].id)
+                              );
+            }
+        }
+    } else {
+        Svt.decode(data, extra);
+    }
+    if (extra.cbComplete)
+        extra.cbComplete();
 };
 
 Svt.decodeCollections = function (data, extra) {
@@ -728,34 +739,41 @@ Svt.decodeCollections = function (data, extra) {
 };
 
 Svt.decodeCategoryTabs = function (name, slug, data, url) {
-    data = JSON.parse(data.responseText).data.genres[0].selectionsForWeb;
     Svt.category_details = [];
     Svt.category_detail_max_index = 0;
     // Add main view
     Svt.category_details.push({name:name, section:'none', slug:slug, url:url});
-    var recommended;
-    for (var k=0; k < data.length; k++) {
-        if (data[k].items.length > 0) {
-            recommended = data[k].id.match(/popular/);
-            Svt.category_details.push({name:name + ' - ' + data[k].name,
-                                       slug:slug,
-                                       section: data[k].name,
-                                       id: data[k].id,
-                                       url: url,
-                                       recommended:recommended
+    // Add A-Ö
+    if (data.length > 1)
+        Svt.category_details.push(
+            {name: name + ' - ' + data[1].name,
+             slug: slug,
+             section: data[1].name,
+             url: Svt.makeGenreLink({id:slug}, '"' + data[1].slug + '"')
+            }
+        );
+    var selections = data[0].selections;
+    for (var k=0; k < selections.length; k++) {
+        if (selections[k].id.match(/(recomm|popul)/))
+            continue;
+        if (selections[k].analyticsIdentifiers.listType == 'fiona')
+            continue;
+        if (selections[k].items.length > 0) {
+            Svt.category_details.push({name: name + ' - ' + selections[k].name,
+                                       slug: slug,
+                                       section: selections[k].name,
+                                       id: selections[k].id,
+                                       url: url
                                       });
         }
     }
     // Add Related
-    if (Svt.category_details.length > 1)
-        Svt.category_details.push({name:name + ' - Relaterat',
-                                   slug:slug,
-                                   section: 'Relaterat',
-                                   url: Svt.makeApiLink('RelatedGenres',
-                                                        '{"genre":["' + slug + '"]}',
-                                                        '1f49eadb4c7ebd51b66e8975fe24c6eab892c2f57b9154a3760978f239c30534'
-                                                       )
-                                  });
+    Svt.category_details.push({name: name + ' - Relaterat',
+                               slug: slug,
+                               section: 'Relaterat',
+                               url: url,
+                               related: true
+                              });
 
     Svt.category_detail_max_index = Svt.category_details.length-1;
     Language.fixBButton();
@@ -1446,17 +1464,11 @@ Svt.decode = function(data, extra) {
             // if (data[k].contentUrl && data[k].contentType != 'titel') {
             LinkPrefix = '<a href="details.html?ilink=';
             if (IsUpcoming) {
-                LinkPrefix = '<a href="upcoming.html?ilink=';
-                Link = null;
-            } else if (data[k].variants) {
-                Link = Svt.makeEpisodeLink(data[k].variants[0], data[k]);
-            } else if (data[k].episode && data[k].episode.variants) {
-                // Find correct "variant"
-                for (var v=0; v < data[k].episode.variants.length; v++) {
-                    if (data[k].episode.variants[v].id == data[k].id) {
-                        Link = Svt.makeEpisodeLink(data[k].episode.variants[v]);
-                        break;
-                    }
+                if (data[k].urls.svtplay && data[k].urls.svtplay.length > 0) {
+                    Link = Svt.makeEpisodeLink(data[k]);
+                } else {
+                    LinkPrefix = '<a href="upcoming.html?ilink=';
+                    Link = null;
                 }
             } else if (data[k].__typename == 'Single' ||
                        data[k].__typename == 'Episode' ||
@@ -1482,21 +1494,13 @@ Svt.decode = function(data, extra) {
                     continue;
                 }
             }
-
-            // What about variants inside episode - is that another "variant"?
+            // Add variants
             if (!IsUpcoming && !extra.variant && data[k].accessibilities) {
                 for (var m=0; m < data[k].accessibilities.length; m++) {
                     if (Variants.indexOf(data[k].accessibilities[m]) == -1)
                         Variants.push(data[k].accessibilities[m]);
                 }
             }
-            // Why was this done?
-            // if (data[k].versions &&
-            //     data[k].versions.length &&
-            //     data[k].versions[0].accessService &&
-            //     Variants.indexOf(data[k].versions[0].accessService) != -1
-            //    )
-            //     continue;
             if (extra.is_recommended)
                 Links.push(Link);
             Shows.push({name:Name,

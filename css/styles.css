@@ -963,6 +963,7 @@ a.link-button3,
     background: url(../images/button_bg_1.gif) no-repeat;
     float: left;
     margin-left: 80px;
+    white-space: nowrap;
 }
 
 
