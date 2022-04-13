@@ -257,27 +257,21 @@ Svt.getDetailsData = function(url, data) {
             Description = data.description;
             NotAvailable = data.isUpcomingLive;
             AltSeason = Svt.getInconsistenSeason(data);
-            data = data.item;
-            if (data.parent && data.parent.__typename != 'Single') {
-                Show = {name : data.parent.name,
-                        url  : Svt.makeShowLink(data.parent),
-                        thumb: Svt.getThumb(data.parent)
+            if (data.item.parent && data.item.parent.__typename != 'Single') {
+                Show = {name : data.item.parent.name,
+                        url  : Svt.makeShowLink(data.item.parent),
+                        thumb: Svt.getThumb(data.item.parent)
                        };
-            } else if (data.genres && data.genres.length > 0) {
-                Show = data.genres[0];
-                for (var genre in data.genres) {
-                    if (data.genres[genre].type == 'Main')
-                        continue;
-                    Show = data.genres[genre];
-                    break;
-                }
-                Show = {name        : Show.name,
+            } else if (data.categories && data.categories.length > 0) {
+                Show = data.categories[0];
+                Show = {name        : Show.heading,
                         url         : Svt.makeGenreLink(Show),
                         thumb       : Svt.getThumb(data, 'small'),
                         large_thumb : ImgLink,
                         is_category : true
                        };
             }
+            data = data.item;
             Season = Svt.getSeasonNumber(data);
             if (AltSeason && AltSeason != Season && AltSeason != ('Säsong '+Season)) {
                 alert('Season: ' + Season + ' AltSeason:' + AltSeason)
@@ -672,7 +666,7 @@ Svt.decodeCategoryDetail = function (data, extra) {
     }
     data = JSON.parse(data.responseText).data.categoryPage.lazyLoadedTabs;
     if (DetailIndex.current == 0) {
-        if (data.length > 0) {
+        if (data.length > 0 && data[0].slug != 'all') {
             // Start by initiating the tabs.
             Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
         } else {
