@@ -186,7 +186,8 @@ Subtitles.parseVtt = function(data, offset, delta) {
         offset = 0;
 
     data = Subtitles.fixVttFontColors(data);
-    data = data.replace(/^[0-9a-z\-]+(\r)?\n([0-9])/mg,'$2');
+    data = data.replace(/(^(\r)?\n)NOTE.+Copied from.+$/mg,'');
+    data = data.replace(/(^(\r)?\n).+(\r)?\n([0-9:.]+ -->)/mg,'$1$4');
     data = data.slice(data.search(/^[0-9]/m));
     data = data.replace(/^([0-9]+:[0-9]+\.[0-9]+ -->)/mg,'00:$1').replace(/--> ([0-9]+:[0-9]+\.[0-9]+)/mg,'--> 00:$1');
     if (!data.match(/^[0-9]+[	 ]*(\r)?\n[0-9]+:/m))
