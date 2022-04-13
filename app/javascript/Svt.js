@@ -493,6 +493,12 @@ Svt.upgradeUrl = function(url) {
             return Svt.makeShowLink({slug:slug[1]});
         else
             Log('Upgrade failed for:' + url);
+    } else if (url.match(/=GenreProgramsAO/)) {
+        var genre = getUrlParam(url,'variables').match(/genre":\["([^"]+)/);
+        if (genre && genre[1]) {
+            return Svt.makeGenreLink({id:genre[1]});
+        } else
+            Log('Upgrade failed for:' + url);
     }
     return RedirectTls(url);
 };
@@ -664,9 +670,10 @@ Svt.decodeCategoryDetail = function (data, extra) {
                               });
         }
     }
-    data = JSON.parse(data.responseText).data.categoryPage.lazyLoadedTabs;
+    data = JSON.parse(data.responseText).data.categoryPage;
+    data = data && data.lazyLoadedTabs;
     if (DetailIndex.current == 0) {
-        if (data.length > 0 && data[0].slug != 'all') {
+        if (data && data.length > 0 && data[0].slug != 'all') {
             // Start by initiating the tabs.
             Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
         } else {
@@ -678,11 +685,11 @@ Svt.decodeCategoryDetail = function (data, extra) {
 
     if (Svt.category_detail_max_index == 0 || DetailIndex.current == 1) {
         // A-Ö
-        data = (DetailIndex.current == 1) ? data[1] : data[0];
-        data = data.selections[0].items;
+        data = (DetailIndex.current == 1) ? data[1] : data && data[0];
+        data = data && data.selections[0].items;
     } else if (DetailIndex.current == 0) {
         // Recommended + Popular
-        data = data[0].selections;
+        data = data && data[0].selections;
         for (var k=0; k < data.length; k++) {
             if (data[k].id.match(/recomm/)) {
                 extra.recommended_links = Svt.decodeRecommended(data[k].items);
@@ -1351,8 +1358,8 @@ Svt.decode = function(data, extra) {
         var Links = [];
         var IsUpcoming = false;
 
-        if (!extra)
-            extra = {};
+        if (!data) return;
+        if (!extra) extra = {};
         Show = extra.show_name;
         if (extra.strip_show) {
             var Episodes = [];
