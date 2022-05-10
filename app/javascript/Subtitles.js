@@ -1,6 +1,6 @@
 var hlsSubsState = null;
 var subtitles = [];
-var subtitlesEnabled = false;
+var subtitlesEnabled = true;
 var lastSetSubtitleTime = 0;
 var currentSubtitle = 0;
 var clrSubtitleTimer = 0;
@@ -25,7 +25,7 @@ Subtitles.init = function() {
     if (savedValue) {
         subtitlesEnabled = (savedValue == '1');
     } else {
-        subtitlesEnabled = false;
+        subtitlesEnabled = true;
     }
 
 };
@@ -186,7 +186,7 @@ Subtitles.parseVtt = function(data, offset, delta) {
         offset = 0;
 
     data = Subtitles.fixVttFontColors(data);
-    data = data.replace(/(^(\r)?\n)NOTE.+Copied from.+$/mg,'');
+    data = data.replace(/(^(\r)?\n)NOTE .+$(\r)?\n/mg,'$1');
     data = data.replace(/(^(\r)?\n).+(\r)?\n([0-9:.]+ -->)/mg,'$1$4');
     data = data.slice(data.search(/^[0-9]/m));
     data = data.replace(/^([0-9]+:[0-9]+\.[0-9]+ -->)/mg,'00:$1').replace(/--> ([0-9]+:[0-9]+\.[0-9]+)/mg,'--> 00:$1');
