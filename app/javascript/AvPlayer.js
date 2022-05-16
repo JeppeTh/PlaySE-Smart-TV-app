@@ -10,18 +10,19 @@ var AvPlayer = {
         },
 
         onbufferingcomplete: function() {
+            try {
             Player.OnBufferingComplete();
             // Pause during skip doesn't work.
             AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
-            try {
-            Log('CURRENT_BANDWIDTH:' + webapis.avplay.getStreamingProperty('CURRENT_BANDWIDTH'));
-            Log('IS_LIVE:' + webapis.avplay.getStreamingProperty('IS_LIVE'));
-            Log('GET_LIVE_DURATION:' + webapis.avplay.getStreamingProperty('GET_LIVE_DURATION'));
-            Log('WIDEVINE:' + webapis.avplay.getStreamingProperty('WIDEVINE'));
             if (webapis.avplay.getState() != 'IDLE') {
                 Log('setSilentSubtitle(' + (subtitles.length > 0) + '): ' +
                     webapis.avplay.setSilentSubtitle(subtitles.length > 0));
             }
+            Log('CURRENT_BANDWIDTH:' + AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH'));
+            Log('IS_LIVE:' + AvPlayer.getStreamingProperty('IS_LIVE'));
+            Log('GET_LIVE_DURATION:' + AvPlayer.getStreamingProperty('GET_LIVE_DURATION'));
+            Log('Tracks:' + JSON.stringify(webapis.avplay.getTotalTrackInfo()));
+            Log('WIDEVINE:' + AvPlayer.getStreamingProperty('WIDEVINE'));
             } catch (err) {
                 Log('onbufferingcomplete error:' + err);
             }
@@ -32,7 +33,14 @@ var AvPlayer = {
         },
 
         oncurrentplaytime: function(currentTime) {
-            Player.SetCurTime(currentTime);
+            if (AvPlayer.time_offset === null) {
+                if (videoData.use_offset)
+                    AvPlayer.time_offset = currentTime;
+                else
+                    AvPlayer.time_offset = 0;
+                Log('AvPlayer initial time: ' + currentTime + ' use_offset: ' + videoData.use_offset + ' time_offset:' + AvPlayer.time_offset);
+            }
+            Player.SetCurTime(currentTime-AvPlayer.time_offset);
             if (AvPlayer.pause_failed) {
                 if (AvPlayer.isPauseOutOfSync())
                     AvPlayer.pause();
@@ -104,6 +112,7 @@ var AvPlayer = {
                'PLAYER_DISPLAY_MODE_FULL_SCREEN',
                'PLAYER_DISPLAY_MODE_LETTER_BOX'
               ],
+    time_offset : 0,
     load_error : null,
     error_during_pause: false,
     pause_failed: null
@@ -143,6 +152,7 @@ AvPlayer.remove = function() {
 
 AvPlayer.load = function(videoData) {
     try {
+        AvPlayer.time_offset = (videoData.use_offset) ? null : 0;
         AvPlayer.load_error = null;
         AvPlayer.error_during_pause = false;
         webapis.avplay.open(videoData.url);
@@ -195,6 +205,16 @@ AvPlayer.isPauseOutOfSync = function() {
 };
 
 AvPlayer.skip = function(milliSeconds) {
+    milliSeconds = milliSeconds + AvPlayer.time_offset;
+    if (AvPlayer.getStreamingProperty('IS_LIVE') == "1") {
+        var liveWindow = AvPlayer.getStreamingProperty('GET_LIVE_DURATION').split('|');
+        if (milliSeconds > +liveWindow[1]) {
+            milliSeconds = +liveWindow[1] - 1000;
+        }
+        if (milliSeconds < +liveWindow[0]) {
+            milliSeconds = +liveWindow[0]+100;
+        }
+    }
     webapis.avplay.seekTo(milliSeconds, null, Player.OnRenderError);
 };
 
@@ -210,7 +230,9 @@ AvPlayer.reload = function(videoData, isLive, seconds) {
 
 AvPlayer.getResolution  = function() {
     var streamInfo = AvPlayer.GetCurrentVideoStreamInfo();
-    return {width:+streamInfo.Width, height:+streamInfo.Height};
+    return {width:  +(streamInfo.Width  || streamInfo.width),
+            height: +(streamInfo.Height || streamInfo.height)
+           };
 };
 
 AvPlayer.getDuration  = function() {
@@ -219,10 +241,21 @@ AvPlayer.getDuration  = function() {
 };
 
 AvPlayer.getBandwith  = function() {
-    var videoBw = webapis.avplay.getStreamingProperty('CURRENT_BANDWIDTH');
-    if (!videoBw)
-        videoBw = +AvPlayer.GetCurrentVideoStreamInfo().Bit_rate;
+    var videoBw = AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH');
+    // Seems videoBw is not accurate for 2019
+    if (!videoBw || deviceYear == 2019)
+        videoBw = +(AvPlayer.GetCurrentVideoStreamInfo().Bit_rate ||
+                    AvPlayer.GetCurrentVideoStreamInfo().bitrates
+                   );
     return videoBw;
+};
+
+AvPlayer.getStreamingProperty  = function(Property) {
+    try {
+        return webapis.avplay.getStreamingProperty(Property);
+    } catch (err) {
+        return "" + err;
+    }
 };
 
 AvPlayer.setAudioStream = function(index) {
