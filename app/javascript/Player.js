@@ -1788,7 +1788,7 @@ Player.GetHelpText = function() {
     help = InsertHelpRow(help, 'GREEN', 'Audio');
     help = InsertHelpRow(help, 'YELLOW', 'Subtitles');
     help = InsertHelpRow(help, 'BLUE', 'Aspect');
-    help = InsertHelpRow(help, 'UP/DOWN', 'Subtitles Position');
+    help = InsertHelpRow(help, 'UP/DOWN', 'Subtitles Position/Zoom Level');
     help = InsertHelpRow(help, '2/8', 'Subtitles Size');
     help = InsertHelpRow(help, '4/6', 'Subtitles Distance (when background is enabled)');
     return help + '</table>';

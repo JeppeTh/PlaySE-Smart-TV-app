@@ -16,9 +16,11 @@ var VideoJsPlayer = {
 
     aborted: false,
 
+    // Aspects
     aspectMode: 0,
-    ASPECT_AUTO: 0,
-    ASPECT_FULL: 1,
+    ASPECT_AUTO : 0,
+    ASPECT_FULL : 1,
+    ASPECT_ZOOM : 2,
 
     events: ['ready',
              'emptied',
@@ -62,7 +64,7 @@ VideoJsPlayer.create = function(UseNative) {
     div.style.top = '0px';
     div.style.left = '0px';
     div.style.position = 'absolute';
-    document.getElementById('video-container').appendChild(div);
+    document.getElementById('video-plugin').appendChild(div);
 
     var streamOptions = {limitRenditionByPlayerDimensions:false,
                          overrideNative:!UseNative
@@ -227,7 +229,13 @@ VideoJsPlayer.metaDataLoaded = function() {
     // Log('media:' + VhsTech().playlists.media().attributes.BANDWIDTH);
     // Log('master:' + JSON.stringify(VhsTech().playlists.master));
 
+    VideoJsPlayer.selectStream();
 
+    Player.OnStreamInfoReady(true);
+    VideoJsPlayer.initMetaDataChange();
+};
+
+VideoJsPlayer.selectStream = function() {
     // if (VideoJsPlayer.player.qualityLevels().length == 0) {
     //     // Add manually
     //     var representations = VhsTech().representations();
@@ -237,16 +245,40 @@ VideoJsPlayer.metaDataLoaded = function() {
     // }
     var wantedBr = videoData.bitrates && videoData.bitrates.match(/BITRATES=([0-9]+):[0-9]/);
     wantedBr = wantedBr && +wantedBr[1];
-    // var levels = VideoJsPlayer.player.qualityLevels();
-    // for (var i=0; wantedBr && i < levels.length; i++) {
-    //     levels[i].enabled = (levels[i].bitrate == wantedBr);
-    // }
     var levels = VhsTech().representations();
-    for (var i=0; wantedBr && i < levels.length; i++) {
-        levels[i].enabled((levels[i].bandwidth == wantedBr));
+    if (wantedBr && levels.length > 1) {
+        // var levels = VideoJsPlayer.player.qualityLevels();
+        // for (var i=0; wantedBr && i < levels.length; i++) {
+        //     levels[i].enabled = (levels[i].bitrate == wantedBr);
+        // }
+        var bitrates = [];
+        var doesLevelExist = false;
+        for (var i=0; i < levels.length; i++) {
+            bitrates.push(+levels[i].bandwidth);
+            if (levels[i].bandwidth == wantedBr) {
+                doesLevelExist = true;
+                break;
+            }
+        }
+        if (!doesLevelExist) {
+            // Other bitrate levels - find out which one we actually want.
+            bitrates.sort(function(a,b){return a - b;});
+            wantedBr = Resolution.getTarget(Player.isLive);
+            if (wantedBr == 'Min') wantedBr = bitrates[0];
+            if (wantedBr == 'Max') wantedBr = bitrates[bitrates.length-1];
+            for (var i=1; i < bitrates.length; i++) {
+                if (bitrates[i] == wantedBr)
+                    break;
+                else if (bitrates[i] > wantedBr) {
+                    wantedBr = bitrates[i-1];
+                    break;
+                } else if (i == (bitrates.length-1))
+                    wantedBr = bitrates[i]
+            }
+        }
+        for (var i=0; i < levels.length; i++)
+            levels[i].enabled((levels[i].bandwidth == wantedBr));
     }
-    Player.OnStreamInfoReady(true);
-    VideoJsPlayer.initMetaDataChange();
 };
 
 VideoJsPlayer.remove = function() {
@@ -305,9 +337,8 @@ VideoJsPlayer.load = function(videoData) {
 };
 
 VideoJsPlayer.play = function(isLive, seconds) {
-
     var milliSeconds = (seconds) ? seconds*1000 : seconds;
-    if (!milliSeconds && isLive && !videoData.use_offset) {
+    if (!milliSeconds && isLive && !videoData.use_offset && deviceYear < 2019) {
         milliSeconds = 'end';
     }
 
@@ -441,29 +472,61 @@ VideoJsPlayer.setAudioStream = function(index) {
 };
 
 VideoJsPlayer.toggleAspectRatio = function() {
-    // this.aspectMode = (this.aspectMode+1) % (VideoJsPlayer.ASPECT_FULL+1);
+    this.aspectMode = (this.aspectMode+1) % (VideoJsPlayer.ASPECT_ZOOM+1);
 };
 
 VideoJsPlayer.setAspectRatio = function(resolution) {
-    // alert(this.aspectMode);
-    // alert(this.player.aspectRatio());
-    // this.player.fill(this.aspectMode == VideoJsPlayer.ASPECT_FULL);
-    // this.player.fluid(this.aspectMode == VideoJsPlayer.ASPECT_AUTO);
-    // if (this.aspectMode == VideoJsPlayer.ASPECT_FULL)
-    //     this.player.aspectRatio('16:9');
-    // else
-    //     this.player.aspectRatio('4:3');
-
+    if (this.aspectMode == this.ASPECT_FULL)
+        $('#video-plugin').css('transform', 'scaleX(calc(4/3))');
+    else if (this.aspectMode == this.ASPECT_ZOOM) {
+        var zoom = this.getZoomFactor();
+        if (zoom < 1)
+            $('#video-plugin').css('transform', '');
+        else
+            $('#video-plugin').css({'transform-origin':'center',
+                                    'transform':'scale(' + zoom + ')',
+                                   });
+    } else
+        $('#video-plugin').css('transform', '');
 };
 
 VideoJsPlayer.getAspectModeText = function() {
     switch (this.aspectMode) {
-        case VideoJsPlayer.ASPECT_AUTO:
+        case this.ASPECT_AUTO:
         return '';
 
-        case VideoJsPlayer.ASPECT_FULL:
+        case this.ASPECT_FULL:
         return 'FULL';
+
+        case this.ASPECT_ZOOM:
+        return 'ZOOM ' + ((this.getZoomFactor()-1)*100).toFixed(1) + '%';
     }
+};
+
+VideoJsPlayer.isZoomAspect = function() {
+    return this.aspectMode == this.ASPECT_ZOOM;
+};
+
+VideoJsPlayer.changeZoom = function(increase) {
+    var oldZoomFactor = this.getZoomFactor();
+    if (increase)
+        this.saveZoomFactor(oldZoomFactor + 0.01);
+    else if (oldZoomFactor >= 0.005)
+        this.saveZoomFactor(oldZoomFactor - 0.005);
+};
+
+VideoJsPlayer.getZoomFactor = function () {
+    var savedValue = Config.read('zoomFactor');
+    if (savedValue != null) {
+        return Number(savedValue);
+    } else {
+        return 1.125;
+    }
+};
+
+VideoJsPlayer.saveZoomFactor = function (value) {
+    if (value < 1) value = 1;
+    Config.save('zoomFactor', value);
 };
 
 VideoJsPlayer.hasSubtitles = function() {
@@ -472,11 +535,16 @@ VideoJsPlayer.hasSubtitles = function() {
 
 VideoJsPlayer.initMetaDataChange = function() {
     var tracks = VideoJsPlayer.player.textTracks();
+    var lastBwChange = 0;
     for (var i = 0; i < tracks.length; i++) {
         if (tracks[i].on && tracks[i].label==='segment-metadata') {
             tracks[i].on('cuechange', function() {
-                VideoJsLog('cuechange: ' + VideoJsPlayer.getBandwith());
-                Player.OnStreamInfoReady(true);
+                // Seeems we get this over and over without any changes...
+                if (VideoJsPlayer.getBandwith() != lastBwChange) {
+                    lastBwChange = VideoJsPlayer.getBandwith();
+                    VideoJsLog('cuechange: ' + VideoJsPlayer.getBandwith());
+                    Player.OnStreamInfoReady(true);
+                }
             });
             break;
         }
