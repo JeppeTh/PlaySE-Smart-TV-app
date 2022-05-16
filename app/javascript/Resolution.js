@@ -25,7 +25,7 @@ Resolution.getTarget = function(IsLive) {
 Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
     if (!extra) extra  = {};
     if (!extra.cb) extra.cb = function() {Player.playVideo();};
-
+    extra.stream_content = null;
     var prefix = getUrlPrefix(videoUrl);
     var target = Resolution.getTarget(extra.isLive);
     var master = UnRedirect(videoUrl);
@@ -106,7 +106,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                    else if (videoUrl.match(/\.ism/)) {
                        videoUrl = videoUrl + '|COMPONENT=WMDRM';
                    }
-                   if (is_hls && extra.modify_stream) {
+                   if (extra.modify_stream) {
                        var urlPrefix = getUrlPrefix(videoUrl);
                        extra.stream_content = Channel.modifyStream(urlPrefix,data.responseText);
                    }
