@@ -1220,7 +1220,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
 
     if (url.match(/=ChannelsQuery/)) {
         extra.use_offset = true;
-        extra.is_channel = deviceYear < 2020;
+        extra.is_channel = true;
         streamUrl = SVT_VIDEO_API_URL + getUrlParam(url,'chId');
     } else if(!streamUrl) {
         streamUrl = url;
@@ -1238,7 +1238,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            data = JSON.parse(data.responseText);
                        }
 
-                       var isLiveStream = isLive || data.live;
+                       var isLiveStream = isLive || data.live || extra.is_channel;
 
                        if (data.video && data.video.subtitleReferences)
                            subtitleReferences = data.video.subtitleReferences;
@@ -1261,13 +1261,18 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        else
                            videoReferences = data.videoReferences;
 
-                       Svt.sortStreams(videoReferences, isLiveStream && !extra.is_channel);
+                       var preferHls = isLiveStream;
+                       // Seems 2019 and above have some issues about HLS live streams.
+                       if (deviceYear > 2018 && Resolution.getTarget(true) != 'Auto')
+                           preferHls = false;
+                       Svt.sortStreams(videoReferences, preferHls);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
                            video_urls.push(videoReferences[j].url);
                        }
                        alert('video_urls:' + video_urls);
+                       extra.is_live_stream = isLiveStream;
                        if (data.thumbnailMap) {
                            extra.previewThumb =
                            {
@@ -1291,13 +1296,13 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                });
 };
 
-Svt.sortStreams = function(streams, isLive) {
+Svt.sortStreams = function(streams, preferHls) {
     var formatList=[];
     for (var i = 0; i < streams.length; i++) {
         formatList.push(streams[i].format);
     }
     streams.sort(function(a, b){
-        switch (Svt.checkFormat(a,b,isLive)) {
+        switch (Svt.checkFormat(a,b,preferHls)) {
         case -1:
             return -1;
 
@@ -1305,8 +1310,8 @@ Svt.sortStreams = function(streams, isLive) {
             return 1;
 
         case 0:
-            var rank_a = Svt.getStreamRank(a,formatList,isLive);
-            var rank_b = Svt.getStreamRank(b,formatList,isLive);
+            var rank_a = Svt.getStreamRank(a,formatList,preferHls);
+            var rank_b = Svt.getStreamRank(b,formatList,preferHls);
             return (rank_a < rank_b) ? -1 : 1;
         }
     });
@@ -1325,11 +1330,13 @@ Svt.checkFormat = function (a, b, isLive) {
         return 1;
 };
 
-Svt.getStreamRank = function(stream, index_list, isLive) {
+Svt.getStreamRank = function(stream, index_list, preferHls) {
 
-    if (isLive && stream.format == 'hls-cmaf-live')
+    if (preferHls && stream.format == 'hls-cmaf-live-vtt')
+        return -3;
+    else if (preferHls && stream.format == 'hls-cmaf-live')
         return -2;
-    else if (isLive && stream.format.match(/hls/))
+    else if (preferHls && stream.format.match(/hls/))
         return -1;
     else if (stream.format == 'dash-avc-51')
         return 0;
@@ -1368,9 +1375,11 @@ Svt.stripDuplicatStreams = function(streams) {
 
 Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
-            Svt.play_args.extra.use_vjs =
-                Svt.play_args.urls[0].match(/\.m3u8/) || Svt.play_args.extra.is_channel;
-            Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4.*m3u8/);
+        Svt.play_args.extra.use_vjs =
+            Svt.play_args.urls[0].match(/\.m3u8/) ||
+            // Seems AvPlayer supports subtitles for mpd from 2020.
+            (Svt.play_args.extra.is_live_stream && deviceYear < 2020);
+        Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4\.m3u8/);
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,
                                     Svt.play_args.extra

@@ -354,7 +354,9 @@ AvPlayer.reload = function(videoData, isLive, seconds) {
 
 AvPlayer.getResolution  = function() {
     var streamInfo = AvPlayer.GetCurrentVideoStreamInfo();
-    return {width:+streamInfo.Width, height:+streamInfo.Height};
+    return {width:  +(streamInfo.Width  || streamInfo.width),
+            height: +(streamInfo.Height || streamInfo.height)
+           };
 };
 
 AvPlayer.getDuration  = function() {
@@ -364,9 +366,12 @@ AvPlayer.getDuration  = function() {
 };
 
 AvPlayer.getBandwith  = function() {
-    var videoBw = webapis.avplay.getStreamingProperty('CURRENT_BANDWIDTH');
-    if (!videoBw)
-        videoBw = +AvPlayer.GetCurrentVideoStreamInfo().Bit_rate;
+    var videoBw = AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH');
+    // Seems videoBw is not accurate for 2019
+    if (!videoBw || deviceYear == 2019)
+        videoBw = +(AvPlayer.GetCurrentVideoStreamInfo().Bit_rate ||
+                    AvPlayer.GetCurrentVideoStreamInfo().bitrates
+                   );
     return videoBw;
 };
 
