@@ -64,6 +64,7 @@ VideoJsPlayer.create = function(UseNative) {
     div.style.top = '0px';
     div.style.left = '0px';
     div.style.position = 'absolute';
+    // Need an exra level for Zoom to work.
     document.getElementById('video-plugin').appendChild(div);
 
     var streamOptions = {limitRenditionByPlayerDimensions:false,
@@ -154,7 +155,7 @@ VideoJsPlayer.On = function (Event, e) {
             VideoJsPlayer.state = VideoJsPlayer.STATE_WAITING;
         } else if (Event == 'stalled') {
             // retry
-            Log("stalled - retry");
+            Log('stalled - retry');
             VideoJsPlayer.player.play();
         }
         return;
@@ -287,6 +288,7 @@ VideoJsPlayer.remove = function() {
         VideoJsPlayer.player.reset();
         VideoJsPlayer.player.dispose();
         VideoJsPlayer.player = null;
+        $('#video-plugin').css('transform', '');
     }
 };
 
@@ -439,9 +441,9 @@ VideoJsPlayer.getBandwith  = function() {
     // var representations = VhsTech().representations();
     // for (var i=0; i < representations.length; i++) {
     //     if (representations[i].enabled())
-    //         Log("selected bw: " + representations[i].bandwidth);
+    //         Log('selected bw: ' + representations[i].bandwidth);
     //     else
-    //         Log("disabled bw: " + representations[i].bandwidth);
+    //         Log('disabled bw: ' + representations[i].bandwidth);
     // };
     try {
         return VhsTech().playlists.media().attributes.BANDWIDTH;
@@ -484,7 +486,7 @@ VideoJsPlayer.setAspectRatio = function(resolution) {
             $('#video-plugin').css('transform', '');
         else
             $('#video-plugin').css({'transform-origin':'center',
-                                    'transform':'scale(' + zoom + ')',
+                                    'transform':'scale(' + zoom + ')'
                                    });
     } else
         $('#video-plugin').css('transform', '');
