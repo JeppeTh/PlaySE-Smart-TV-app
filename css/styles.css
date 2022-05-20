@@ -1215,8 +1215,8 @@ small {
 
 /*video-overlay*/
 
-#video-container {
-    display: none;
+#video-container,
+#video-plugin {
     position: absolute;
     top: 0;
     left: 0;
@@ -1225,6 +1225,10 @@ small {
     z-index: -2;
     background: black;
     overflow: hidden;
+}
+
+#video-container {
+    display: none;
 }
 
 .video-background {
