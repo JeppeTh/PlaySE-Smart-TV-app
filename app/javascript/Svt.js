@@ -1377,8 +1377,8 @@ Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
         Svt.play_args.extra.use_vjs =
             Svt.play_args.urls[0].match(/\.m3u8/) ||
-            // Seems AvPlayer supports subtitles for mpd from 2020.
-            (Svt.play_args.extra.is_live_stream && deviceYear < 2020);
+            // Seems AvPlayer handles DASH better > 2018.
+            (Svt.play_args.extra.is_live_stream && deviceYear < 2019);
         Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4\.m3u8/);
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,

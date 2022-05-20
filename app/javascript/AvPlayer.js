@@ -15,14 +15,25 @@ var AvPlayer = {
             AvPlayer.stream_ensured = true;
             if (AvPlayer.delayed_skip !== null)
                 return;
-            Player.OnBufferingComplete();
-            // Pause during skip doesn't work.
-            AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
             try {
             Player.OnBufferingComplete();
             if (webapis.avplay.getState() != 'IDLE') {
                 Log('setSilentSubtitle(' + (subtitles.length > 0) + '): ' +
                     webapis.avplay.setSilentSubtitle(subtitles.length > 0));
+            }
+            // Pause during skip doesn't work.
+            AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
+            Log('State:' + webapis.avplay.getState());
+            if (!videoData.drm && webapis.avplay.getState() == 'IDLE') {
+                // Seem to have issues with some live streams...
+                window.setTimeout(function() {
+                    if (webapis.avplay.getState() == 'IDLE') {
+                        // Fallback to VJS
+                        AvPlayer.stop();
+                        Player.createPlugin(Player.PLUGIN_VIDEOJS);
+                        window.setTimeout(Player.reloadVideo, 500);
+                    }
+                }, 1000);
             }
             Log('CURRENT_BANDWIDTH:' + AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH'));
             Log('IS_LIVE:' + AvPlayer.getStreamingProperty('IS_LIVE'));
@@ -195,7 +206,7 @@ AvPlayer.create = function() {
     this.player.style.top = '0px';
     this.player.style.width = MAX_WIDTH + 'px';
     this.player.style.height = MAX_HEIGHT + 'px';
-    document.getElementById('video-container').appendChild(this.player);
+    document.getElementById('video-plugin').appendChild(this.player);
 
     if (tizen.tvwindow)
         tizen.tvwindow.addVideoResolutionChangeListener(AvPlayer.listener.onchanged);
@@ -212,9 +223,9 @@ AvPlayer.remove = function() {
     // // alert('body:' + $('body').html());
     // if (AvPlayer.player) {
     //     // alert(AvPlayer.player.type);
-    //     var videoContainer = document.getElementById('video-container');
+    //     var videoContainer = document.getElementById('video-plugin');
     //     videoContainer.removeChild(videoContainer.childNodes[0]);
-    //     // document.getElementById('video-container').removeChild(AvPlayer.player);
+    //     // document.getElementById('video-plugin').removeChild(AvPlayer.player);
     //     delete AvPlayer.player;
     //     AvPlayer.player = null;
     //     // alert('body:' + $('body').html());
