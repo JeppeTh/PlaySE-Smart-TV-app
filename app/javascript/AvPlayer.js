@@ -12,11 +12,23 @@ var AvPlayer = {
         onbufferingcomplete: function() {
             try {
             Player.OnBufferingComplete();
-            // Pause during skip doesn't work.
-            AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
             if (webapis.avplay.getState() != 'IDLE') {
                 Log('setSilentSubtitle(' + (subtitles.length > 0) + '): ' +
                     webapis.avplay.setSilentSubtitle(subtitles.length > 0));
+            }
+            // Pause during skip doesn't work.
+            AvPlayer.pause_failed = AvPlayer.isPauseOutOfSync();
+            Log('State:' + webapis.avplay.getState());
+            if (!videoData.license && webapis.avplay.getState() == 'IDLE') {
+                // Seem to have issues with some live streams...
+                window.setTimeout(function() {
+                    if (webapis.avplay.getState() == 'IDLE') {
+                        // Fallback to VJS
+                        AvPlayer.stop();
+                        Player.createPlugin(Player.PLUGIN_VIDEOJS);
+                        window.setTimeout(Player.reloadVideo, 500);
+                    }
+                }, 1000);
             }
             Log('CURRENT_BANDWIDTH:' + AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH'));
             Log('IS_LIVE:' + AvPlayer.getStreamingProperty('IS_LIVE'));
@@ -128,7 +140,7 @@ AvPlayer.create = function() {
     this.player.style.top = '0px';
     this.player.style.width = MAX_WIDTH + 'px';
     this.player.style.height = MAX_HEIGHT + 'px';
-    document.getElementById('video-container').appendChild(this.player);
+    document.getElementById('video-plugin').appendChild(this.player);
 
     if (tizen.tvwindow)
         tizen.tvwindow.addVideoResolutionChangeListener(AvPlayer.listener.onchanged);
@@ -141,9 +153,9 @@ AvPlayer.remove = function() {
     // // alert('body:' + $('body').html());
     // if (AvPlayer.player) {
     //     // alert(AvPlayer.player.type);
-    //     var videoContainer = document.getElementById('video-container');
+    //     var videoContainer = document.getElementById('video-plugin');
     //     videoContainer.removeChild(videoContainer.childNodes[0]);
-    //     // document.getElementById('video-container').removeChild(AvPlayer.player);
+    //     // document.getElementById('video-plugin').removeChild(AvPlayer.player);
     //     delete AvPlayer.player;
     //     AvPlayer.player = null;
     //     // alert('body:' + $('body').html());
@@ -206,7 +218,7 @@ AvPlayer.isPauseOutOfSync = function() {
 
 AvPlayer.skip = function(milliSeconds) {
     milliSeconds = milliSeconds + AvPlayer.time_offset;
-    if (AvPlayer.getStreamingProperty('IS_LIVE') == "1") {
+    if (AvPlayer.getStreamingProperty('IS_LIVE') == '1') {
         var liveWindow = AvPlayer.getStreamingProperty('GET_LIVE_DURATION').split('|');
         if (milliSeconds > +liveWindow[1]) {
             milliSeconds = +liveWindow[1] - 1000;
@@ -215,7 +227,15 @@ AvPlayer.skip = function(milliSeconds) {
             milliSeconds = +liveWindow[0]+100;
         }
     }
-    webapis.avplay.seekTo(milliSeconds, null, Player.OnRenderError);
+    webapis.avplay.seekTo(milliSeconds, null, AvPlayer.seekFailed);
+};
+
+AvPlayer.seekFailed = function(Error) {
+    if (AvPlayer.getStreamingProperty('IS_LIVE') == '1') {
+        Player.reloadVideo();
+    } else {
+        Player.OnRenderError(Error);
+    }
 };
 
 AvPlayer.stop = function() {
@@ -254,7 +274,7 @@ AvPlayer.getStreamingProperty  = function(Property) {
     try {
         return webapis.avplay.getStreamingProperty(Property);
     } catch (err) {
-        return "" + err;
+        return '' + err;
     }
 };
 

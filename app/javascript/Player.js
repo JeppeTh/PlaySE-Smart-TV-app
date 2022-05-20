@@ -1414,7 +1414,8 @@ Player.getRepeatText = function() {
 
 Player.createPlugin = function(PluginToUse) {
 
-    if (Player.plugin && Player.pluginPlayer!=PluginToUse)
+    var changePlugin = Player.plugin && Player.pluginPlayer!=PluginToUse;
+    if (changePlugin)
         Player.plugin.remove();
 
     Player.pluginPlayer = PluginToUse;
@@ -1423,6 +1424,8 @@ Player.createPlugin = function(PluginToUse) {
     else
         Player.plugin = VideoJsPlayer;
     Player.plugin.create(Player.pluginPlayer == Player.PLUGIN_VIDEOJS_NATIVE);
+    if (changePlugin)
+        Player.setTopOSDText('')
 };
 
 Player.togglePlugin = function() {
