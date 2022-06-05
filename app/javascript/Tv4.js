@@ -1740,7 +1740,7 @@ Tv4.fixThumb = function(thumb, factor) {
     thumb = addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb);
     if (!Tv4.thumbsChecked) {
         Tv4.thumbsChecked = true;
-        if (deviceYear < 2019) {
+        if (deviceYear < 2018) {
             if (httpRequest(thumb,{sync:true}).data.length == 0)
                 Tv4.redirectThumbs = true;
         }
