@@ -1262,8 +1262,8 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            videoReferences = data.videoReferences;
 
                        var preferHls = isLiveStream;
-                       // Seems 2019 and above have some issues about HLS live streams.
-                       if (deviceYear > 2018 && Resolution.getTarget(true) != 'Auto')
+                       // Seems 2018 and above have some issues about HLS live streams.
+                       if (deviceYear > 2017 && Resolution.getTarget(true) != 'Auto')
                            preferHls = false;
                        Svt.sortStreams(videoReferences, preferHls);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
@@ -1377,8 +1377,8 @@ Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
         Svt.play_args.extra.use_vjs =
             Svt.play_args.urls[0].match(/\.m3u8/) ||
-            // Seems AvPlayer handles DASH better > 2018.
-            (Svt.play_args.extra.is_live_stream && deviceYear < 2019);
+            // Seems AvPlayer handles DASH better > 2017.
+            (Svt.play_args.extra.is_live_stream && deviceYear < 2018);
         Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4\.m3u8/);
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,
