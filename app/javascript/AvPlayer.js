@@ -263,7 +263,7 @@ AvPlayer.getDuration  = function() {
 AvPlayer.getBandwith  = function() {
     var videoBw = AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH');
     // Seems videoBw is not accurate for 2019
-    if (!videoBw || deviceYear == 2019)
+    if (!videoBw || videoBw.match(/Error/i) || deviceYear == 2019)
         videoBw = +(AvPlayer.GetCurrentVideoStreamInfo().Bit_rate ||
                     AvPlayer.GetCurrentVideoStreamInfo().bitrates
                    );
