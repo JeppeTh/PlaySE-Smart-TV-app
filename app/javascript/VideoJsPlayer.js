@@ -340,7 +340,7 @@ VideoJsPlayer.load = function(videoData) {
 
 VideoJsPlayer.play = function(isLive, seconds) {
     var milliSeconds = (seconds) ? seconds*1000 : seconds;
-    if (!milliSeconds && isLive && !videoData.use_offset && deviceYear < 2019) {
+    if (!milliSeconds && isLive && !videoData.use_offset && deviceYear < 2018) {
         milliSeconds = 'end';
     }
 
