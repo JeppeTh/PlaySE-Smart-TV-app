@@ -1084,9 +1084,41 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                                duration: data.thumbnailMap.timeBetweenPicturesInMillis
                            };
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
+                       // AC-3 not supported on older devices.
+                       if (deviceYear < 2014) {
+                           var content;
+                           while (Svt.play_args.urls.length > 1) {
+                               content = httpRequest(Svt.play_args.urls[0], {sync:true}).data;
+                               if (content.match(/codec.+ac-3/i))
+                                   Svt.play_args.urls.shift();
+                               else {
+                                   if (content.match(/text\/vtt/i))
+                                       Svt.play_args.extra.redirect_mpd = true;
+                                   break;
+                               }
+                           }
+                       }
                        Svt.playUrl();
                    }
                });
+};
+
+Svt.redirectMpd = function(url) {
+    var urlPrefix = getUrlPrefix(url);
+    content = httpRequest(url, {sync:true}).data;
+    // Strip Subtitles
+    content = content.replace(/^[ ]*<AdaptationSet[^<]+?contentType="text"(.+\n)+?.*?<\/AdaptationSet>.*?\n?/mg,'');
+    // Need to add urlPrefix as Base.
+    content = content.replace(/((^ +)<AdaptationSet)/m,'$2<BaseURL>'+urlPrefix+'</BaseURL>\n$1');
+    content = content.replace(/(initialization=")/mg,'$1'+urlPrefix);
+    // Upload new content
+    var file =  document.getElementById('pluginNetwork').GetMAC() + '.mpd';
+    var params = {name:file, data:content};
+    var url = 'http://' + GetProxyHost() + '/jtsave/jtnolog';
+    var result = httpRequest(url, {sync:true, no_log:true, params:JSON.stringify(params)});
+    // Redirect to new content
+    url = 'http://' + GetProxyHost() + '/jtread/jtnolog';
+    return addUrlParam(url, 'name', file);
 };
 
 Svt.sortStreams = function(streams, srtUrl) {

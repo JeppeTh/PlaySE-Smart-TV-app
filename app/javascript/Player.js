@@ -117,6 +117,8 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
         myTitle = escape($('.topoverlaybig').html().replace(/[^:]+: /, ''));
         myTitle = 'mytitle=' + myTitle;
     }
+    if (extra.redirect_mpd)
+        url = Channel.redirectMpd(url);
 
     videoUrl                = url;
     videoData.component     = videoUrl.match(/\|COMPONENT=([^|]+)/);

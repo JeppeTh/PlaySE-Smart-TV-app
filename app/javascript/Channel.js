@@ -150,6 +150,11 @@ Channel.redirectUrl = function(url, callback) {
     return false;
 };
 
+Channel.redirectMpd = function(url) {
+    var flags = url.match(/(\|.+)/)[0];
+    return this.impl.redirectMpd(url.replace(/\|.+/,'')) + flags;
+};
+
 Channel.login = function(callback) {
     if (this.impl.login)
         this.impl.login(callback);

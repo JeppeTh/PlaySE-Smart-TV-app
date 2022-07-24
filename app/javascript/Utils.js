@@ -726,7 +726,7 @@ function httpRequest(url, extra) {
         alert('no cache url:' + url);
     }
     if (extra.params) {
-        alert('POST Request params: '+ extra.params);
+        // alert('POST Request params: '+ extra.params);
         xhr.open('POST', url, !extra.sync);
         xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     } else
@@ -761,8 +761,8 @@ function handleHttpResult(url, timer, extra, result) {
     }
     window.clearTimeout(timer);
 
-    if (extra.params)
-        alert(result.xhr.getAllResponseHeaders());
+    // if (extra.params)
+    //     alert(result.xhr.getAllResponseHeaders());
     if (isHttpStatusOk(result.status)) {
         if (!extra.no_log)
             Log('Success:' + url);
