@@ -194,8 +194,8 @@ Tv4.upgradeUrl = function(url) {
         return Tv4.makeShowLink(JSON.parse(getUrlParam(url,'variables')).nid);
     }
     if (url.match(/api.tv4play.se.+&node_nids=([^&]+)$/))
-        url= Tv4.makeShowLink(url.match(/api.tv4play.se.+&node_nids=([^&]+)$/)[1]);
-    return url;
+        url = Tv4.makeShowLink(url.match(/api.tv4play.se.+&node_nids=([^&]+)$/)[1]);
+    return url.match('graphql.tv4play.se') ? RedirectTls(url) : url;
 };
 
 Tv4.decodeMain = function(data, extra) {
@@ -1041,11 +1041,11 @@ Tv4.checkUseOffset = function(streamUrl, cb) {
 
 Tv4.makeApiLink = function(Params) {
 
-    return RedirectIfEmulator(addUrlParam(TV4_API_BASE,
-                                          'query',
-                                          'query{' + Params + '}'
-                                         )
-                             );
+    return RedirectTls(addUrlParam(TV4_API_BASE,
+                                   'query',
+                                   'query{' + Params + '}'
+                                  )
+                      );
 };
 
 Tv4.makeStartPageLink = function() {

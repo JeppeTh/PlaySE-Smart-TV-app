@@ -206,7 +206,7 @@ History.decodeMain = function(data, extra) {
     var LinkPrefix;
     var UrlParams;
     var Names = [];
-    var Shows = Config.read('History');
+    var Shows = Config.read('History') || [];
     var NewShows;
 
     // Filter possibly removed channels
