@@ -207,7 +207,7 @@ Tv4.decodeMain = function(data, extra) {
                function(status, data) {
                    recommended = Tv4.decodeRecommended({responseText:recommended});
                    extra.cbComplete = null;
-                   data = Tv4.findMostViewed(data.responseText);
+                   data = Tv4.findMostViewed(data.responseText) || [];
                    Tv4.decodeShows(data, {is_json:true, nids:recommended, no_sort:true});
                    data = null;
                },
@@ -1093,7 +1093,8 @@ Tv4.findMostViewed = function(data) {
     data = JSON.parse(data).data.page.panels2.items;
     for (var i=0; i < data.length; i++) {
         if (data[i].__typename == 'Promo') continue;
-        if (data[i].title.match('Mest sedda'))
+        if (!data[i].title) continue;
+        if (data[i].title.match('Mest sedda') || data[i].title.match('^Popul'))
             return data[i].content2.items;
     }
 };
