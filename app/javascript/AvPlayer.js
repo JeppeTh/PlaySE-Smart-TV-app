@@ -376,6 +376,16 @@ AvPlayer.getDuration  = function() {
     return isNaN(duration) ? 0 : duration;
 };
 
+AvPlayer.getLiveDuration  = function() {
+    if (AvPlayer.isLive()) {
+        var liveWindow = AvPlayer.getStreamingProperty('GET_LIVE_DURATION').split('|');
+        if (liveWindow && liveWindow.length > 1) {
+            return +liveWindow[1] - AvPlayer.time_offset;
+        }
+    }
+    return 0;
+};
+
 AvPlayer.getBandwith  = function() {
     var videoBw = AvPlayer.getStreamingProperty('CURRENT_BANDWIDTH');
     // Seems videoBw is not accurate for 2019
