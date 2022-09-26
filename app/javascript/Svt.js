@@ -1497,7 +1497,10 @@ Svt.decode = function(data, extra) {
             // if (data[k].contentUrl && data[k].contentType != 'titel') {
             LinkPrefix = '<a href="details.html?ilink=';
             if (IsUpcoming) {
-                if (data[k].urls.svtplay && data[k].urls.svtplay.length > 0) {
+                if (data[k].urls.svtplay &&
+                    data[k].urls.svtplay.length > 0 &&
+                    !data[k].urls.svtplay.match(/null$/)
+                   ) {
                     Link = Svt.makeEpisodeLink(data[k]);
                 } else {
                     LinkPrefix = '<a href="upcoming.html?ilink=';
