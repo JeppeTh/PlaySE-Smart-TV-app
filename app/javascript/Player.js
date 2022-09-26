@@ -1374,8 +1374,8 @@ Player.PlaybackFailed = function(text) {
 };
 
 Player.GetDuration = function() {
-    if (!this.sourceDuration && 
-        Details.fetchedDetails && 
+    if (!this.sourceDuration &&
+        Details.fetchedDetails &&
         Details.fetchedDetails.duration
        )
         Player.setDuration(Details.fetchedDetails.duration);
@@ -1386,12 +1386,17 @@ Player.GetDuration = function() {
             Player.pluginDuration = Player.plugin.getDuration() || 1;
         }
         duration = Player.pluginDuration - Player.durationOffset;
+        if (Player.isLive && !videoData.use_offset) {
+            var liveDuration = Player.plugin.getLiveDuration();
+            if (liveDuration && liveDuration > duration)
+                duration = liveDuration;
+        }
     }
 
     if (this.sourceDuration > duration)
         duration = this.sourceDuration;
 
-    if (ccTime > duration) 
+    if (ccTime > duration)
         duration = ccTime;
 
     return duration;
