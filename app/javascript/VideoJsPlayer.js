@@ -437,6 +437,11 @@ VideoJsPlayer.getDuration  = function() {
     return duration;
 };
 
+VideoJsPlayer.getLiveDuration  = function() {
+    var seek = VideoJsPlayer.player.seekable();
+    return (seek && seek.length > 0) ? +seek.end(seek.length-1)*1000 : 0;
+};
+
 VideoJsPlayer.getBandwith  = function() {
     // var representations = VhsTech().representations();
     // for (var i=0; i < representations.length; i++) {
