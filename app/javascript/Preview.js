@@ -63,11 +63,17 @@ Preview.checkLink = function(Callback) {
             }
         }
     }
-    Preview.update(History.getPreviewData());
+    Preview.update();
     Callback && Callback();
 };
 
-Preview.update = function(data) {
+Preview.update = function() {
+    if (Preview.isUpdating) {
+        Preview.aborted = true;
+        return;
+    }
+
+    data = History.getPreviewData();
     var json = '';
     if (data && data.length > 0) {
         json = [];
@@ -82,39 +88,49 @@ Preview.update = function(data) {
         }
         json = JSON.stringify({'sections':[{'tiles':json}]});
     }
-    if (Preview.isUpdating) {
-        Preview.aborted = true;
-        return
-    }
     Preview.isUpdating = true;
     // Log('Updating: ' + json);
-    Finish = function() {
+    Finish = function(Failed) {
         Preview.isUpdating = false;
-        if (Preview.aborted) {
-            Preview.aborted = false;
-            window.setTimeout(function() { Preview.update(History.getPreviewData());}, 0);
+        if (Failed) {
+            Preview.retry();
+        } else if (Preview.aborted) {
+            window.setTimeout(Preview.update, 0);
         }
+        Preview.aborted = false;
     };
     try {
         Preview.launchService(
             function() {
+                var failed = false;
                 try {
                     var remotePort = tizen.messageport.requestRemoteMessagePort(Preview.bgService,
                                                                                 'PLAYSE_SERVICE_PORT'
                                                                                );
-                    remotePort.sendMessage([{key:'METADATA', value: json}])
+                    remotePort.sendMessage([{key:'METADATA', value: json}]);
                 } catch(e) {
+                    failed = true;
                     Log('Preview.update send failed: ' + e);
                 }
-                Finish();
+                Finish(failed);
             },
             function() {
                 Log('Preview.update launch failed');
-                Finish();
+                Finish(true);
             }
         );
     } catch (e) {
         Log('Preview.update error towards: ' + Preview.bgService + ' ' + e);
-        Finish();
+        Finish(true);
     }
+};
+
+Preview.retry = function() {
+    Log('Preview will retry');
+    Preview.isUpdating = true;
+    window.setTimeout(function() {
+        Preview.isUpdating = false;
+        Preview.aborted = false;
+        Preview.update();
+    }, 5*1000);
 };
