@@ -7,7 +7,11 @@ var localPort = '';
 //onStart Callback
 module.exports.onStart = function() {
     Log('onStart');
-    initMessagePort();
+    try {
+        initMessagePort();
+    } catch (e) {
+        Log('initMessagePort failed: ' + e);
+    }
 };
 
 //onRequest Callback
@@ -45,7 +49,7 @@ function initMessagePort() {
 	});
     }
     localPort = tizen.messageport.requestLocalMessagePort(messagePortName);
-    localPort.addMessagePortListener(onReceived)
+    localPort.addMessagePortListener(onReceived);
 }
 
 function httpRequest(url) {
