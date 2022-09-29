@@ -430,7 +430,7 @@ History.isSameEpisode = function(a, b) {
 
 History.save = function(Shows) {
     Config.save('History', Shows);
-    Preview.update(this.getPreviewData());
+    Preview.update();
 };
 
 History.getPreviewData = function() {
