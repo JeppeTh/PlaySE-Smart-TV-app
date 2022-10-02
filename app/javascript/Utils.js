@@ -367,8 +367,12 @@ function setPosition(pos) {
     } else {
         $('.topitem').eq(0).removeClass('selected');
     }
-    if (pos.top) itemSelected = $('.topitem').eq(pos.col).addClass('selected');
-    else         itemSelected = $('.bottomitem').eq(pos.col).addClass('selected');
+    var row = (pos.top) ? $('.topitem') : $('.bottomitem');
+    if (pos.col >= row.length) {
+        Log('Position out of range: ' + pos.col + ' ' + row.length);
+        pos.col = row.length - 1;
+    }
+    itemSelected = row.eq(pos.col).addClass('selected');
     columnCounter    = pos.col;
     isTopRowSelected = pos.top;
     var newPos = Channel.checkPosition(pos);

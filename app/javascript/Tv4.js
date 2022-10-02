@@ -308,6 +308,10 @@ Tv4.decodeLive = function(data, extra) {
     Tv4.decode(data, extra);
 };
 
+Tv4.useLiveRefresh = function() {
+    return true;
+};
+
 Tv4.decodeShowList = function(data, extra) {
 
     var UserData = extra.user_data && JSON.parse(extra.user_data);

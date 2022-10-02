@@ -793,11 +793,15 @@ Svt.decodeLive = function(data, extra) {
                    Svt.decode(data, extra);
                    data = null;
                },
-               {callLoadFinished:true,
+               {cbComplete: extra.cbComplete,
                 no_cache:true,
                 refresh:extra.refresh
                }
               );
+};
+
+Svt.useLiveRefresh = function() {
+    return true;
 };
 
 Svt.decodeShowList = function(data, extra) {

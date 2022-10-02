@@ -189,6 +189,10 @@ Channel.decodeLive = function(data, extra) {
     this.impl.decodeLive(data, extra);
 };
 
+Channel.useLiveRefresh = function() {
+    return this.impl.useLiveRefresh && this.impl.useLiveRefresh();
+};
+
 Channel.decodeShowList = function(data, extra) {
     this.impl.decodeShowList(data, extra);
 };
