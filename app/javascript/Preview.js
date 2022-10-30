@@ -2,6 +2,7 @@ var Preview  = {
     isInitiated : false,
     isUpdating : false,
     aborted : false,
+    lastUpdate : null,
     bgService : tizen.application.getCurrentApplication().appInfo.id.replace(/\..+$/,'.service')
 };
 
@@ -74,7 +75,7 @@ Preview.update = function() {
     }
 
     data = History.getPreviewData();
-    var json = '';
+    var json = '{}';
     if (data && data.length > 0) {
         json = [];
         for (var i in data) {
@@ -87,6 +88,9 @@ Preview.update = function() {
                       });
         }
         json = JSON.stringify({'sections':[{'tiles':json}]});
+    }
+    if (JSON.stringify(Preview.lastUpdate) == json) {
+        return;
     }
     Preview.isUpdating = true;
     // Log('Updating: ' + json);
@@ -108,6 +112,7 @@ Preview.update = function() {
                                                                                 'PLAYSE_SERVICE_PORT'
                                                                                );
                     remotePort.sendMessage([{key:'METADATA', value: json}]);
+                    Preview.lastUpdate = JSON.parse(json);
                 } catch(e) {
                     failed = true;
                     Log('Preview.update send failed: ' + e);
