@@ -1,6 +1,7 @@
 var skipTime = 0;
 var skipTimeInProgress = false;
 var osdTimer;
+var topOsdLocked = false;
 var clockTimer;
 var skipTimer;
 var detailsTimer;
@@ -39,6 +40,7 @@ var Player = {
     startTime: null,
     offset:0,
     durationOffset:0,
+    audioIdx:0,
 
     bw:'',
 
@@ -125,6 +127,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.component     = videoData.component && videoData.component[1];
     videoData.bitrates      = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
     videoData.url           = videoUrl;
+    videoData.audio_streams = extra.audio_streams;
     videoData.audio_idx     = extra.audio_idx;
     videoData.subtitles_idx = extra.subtitles_idx;
     videoData.use_offset    = extra.use_offset;
@@ -597,6 +600,10 @@ Player.hideControls = function(){
     $('.bottomoverlaybig').html('');
     Player.infoActive = false;
     Subtitles.hideControls();
+    if (topOsdLocked) {
+        topOsdLocked = false;
+        Player.setTopOSDText();
+    }
     // Log('hide controls');
 };
 
@@ -656,6 +663,7 @@ Player.hideDetailedInfo = function(){
 Player.GetResolution = function() {
     return Player.plugin.getResolution();
 };
+
 Player.SetCurTime = function(time) {
         if (this.state == this.STOPPED)
             return;
@@ -997,6 +1005,7 @@ Player.IsAutoBwUsedFor2011 = function() {
 };
 
 Player.setTopOSDText = function(init_text) {
+    if (topOsdLocked) return;
     var resolution_text = init_text;
     if (Player.IsAutoBwUsedFor2011()) {
         resolution_text = '';
@@ -1017,6 +1026,13 @@ Player.updateTopOSD = function(oldTopOsd) {
     }
 };
 
+Player.lockTopOSDText = function(text) {
+    $('.topoverlayresolution').html(text);
+    $('.topoverlayresolution').show();
+    topOsdLocked = true;
+    Player.refreshOsdTimer(3000);
+};
+
 Player.toggleAspectRatio = function() {
 
     Player.plugin.toggleAspectRatio();
@@ -1025,6 +1041,18 @@ Player.toggleAspectRatio = function() {
     this.updateTopOSD();
     if (this.IsAutoBwUsedFor2011())
         $('.topoverlayresolution').html('ASPECT unsupported when AUTO BW');
+};
+
+Player.toggleAudio = function() {
+    if (videoData.audio_streams && videoData.audio_streams.length > 0) {
+        var result = '';
+        if (videoData.audio_streams.length > 1) {
+            Player.audioIdx = (Player.audioIdx+1) % videoData.audio_streams.length;
+            if (!Player.plugin.setAudioStream(Player.audioIdx))
+                result = ' failed';
+        }
+        Player.lockTopOSDText(videoData.audio_streams[Player.audioIdx]+result);
+    }
 };
 
 Player.setResolution = function (resolution) {
@@ -1115,6 +1143,7 @@ Player.startPlayer = function(url, isLive, startTime) {
     Player.offset = 0;
     Player.durationOffset = 0;
     Player.pluginDuration = 0;
+    Player.audioIdx = 0;
 
     videoUrl = '';
     ccTime = 0;
@@ -1127,6 +1156,7 @@ Player.startPlayer = function(url, isLive, startTime) {
     skipTime = 0;
     skipTimeInProgress = false;
     skipTimer = null;
+    topOsdLocked = false;
     this.hideDetailedInfo();
     if (Player.plugin)
         Player.plugin.stop();
@@ -1287,11 +1317,12 @@ Player.GetHelpText = function() {
     var help = '<table style="margin-bottom:40px;width:100%;border-collapse:collapse;margin-left:auto;margin-right:auto;">';
     help = InsertHelpRow(help, 'INFO', 'Details');
     help = InsertHelpRow(help, 'RED', 'Repeat');
+    help = InsertHelpRow(help, 'GREEN', 'Audio');
     help = InsertHelpRow(help, 'YELLOW', 'Subtitles');
     help = InsertHelpRow(help, 'BLUE', 'Aspect');
     help = InsertHelpRow(help, 'UP/DOWN', 'Subtitles Position/Zoom Level');
     help = InsertHelpRow(help, '2/8', 'Subtitles Size');
-    help = InsertHelpRow(help, '4/6', 'Subtitles Distance (if background is used)');
+    help = InsertHelpRow(help, '4/6', 'Subtitles Distance (when background is enabled)');
     return help + '</table>';
 };
 

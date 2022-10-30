@@ -655,6 +655,10 @@ Buttons.keyHandleForPlayer = function() {
     case tvKey.KEY_RED:
 	Player.toggleRepeat();
 	break;
+    case tvKey.KEY_GREEN:
+    case tvKey.KEY_MTS:
+	Player.toggleAudio();
+	break;
     case tvKey.KEY_BLUE:
     case tvKey.KEY_ASPECT:
     case tvKey.KEY_CALLER_ID:

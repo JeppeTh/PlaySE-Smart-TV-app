@@ -47,6 +47,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        } else if (videoUrl.match(/\.ism/)) {
                            streams = Resolution.getIsmStreams(videoUrl, data, prefix);
                        }
+                       extra.audio_streams = streams.audio_streams;
                        extra.audio_idx     = streams.audio_idx;
                        extra.subtitles_idx = streams.subtitles_idx;
                        extra.hls_subs      = streams.hls_subs;
@@ -190,7 +191,16 @@ Resolution.getIsmStreams = function (videoUrl, data, prefix) {
 
 Resolution.getHasStreams = function (videoUrl, data, prefix) {
     data = data.responseText;
+    var name, codec, audio_streams = [];
     data = (data.match(/contentType/)) ? data.split(/contentType/mg) : data.split(/mimeType/mg);
+    for (var h = 0; h < data.length; h++) {
+        if (data[h].match(/^[^=]?=.*audio/i)) {
+            name = data[h].match(/Label>([^<]+)<\/Label/);
+            name = name || data[h].match(/lang="([^"]+)/) || ["","Audio"];
+            codec = data[h].match(/codecs="([^"]+)/) || ["","codec unknown"];
+            audio_streams.push([name[1],codec[1]].join('&nbsp;/&nbsp;'));
+        }
+    }
     for (var i = 0; i < data.length; i++) {
         if (data[i].match(/^[^=]?=.*video/i)) {
             data = data[i];
@@ -206,7 +216,7 @@ Resolution.getHasStreams = function (videoUrl, data, prefix) {
                      }
                     );
     }
-    return {streams:streams};
+    return {streams:streams, audio_streams:audio_streams};
 };
 
 Resolution.setRes = function(value) {

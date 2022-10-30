@@ -160,6 +160,12 @@ SefPlayer.getBandwith  = function() {
     return SefPlayer.player.Execute('GetCurrentBitrates');
 };
 
+SefPlayer.setAudioStream = function(index) {
+    var result = SefPlayer.player.Execute('SetStreamID', 1, index);
+    Log('SetStreamID Audio: ' + index + ' res: ' + result);
+    return result == 1;
+};
+
 SefPlayer.toggleAspectRatio = function() {
     if (!Player.IsAutoBwUsedFor2011()) {
         this.aspectMode = (this.aspectMode+1) % (SefPlayer.ASPECT_ZOOM+1);

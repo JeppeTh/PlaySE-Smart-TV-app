@@ -996,7 +996,7 @@ Svt.decodeSearchList = function (data, extra) {
         var Episodes = [];
         data = JSON.parse(data.responseText).data.searchPage.flat;
         // Group hits
-        data = (data.hits) ? data.hits : [];
+        data = (data && data.hits) ? data.hits : [];
         for (var k=0; k < data.length; k++) {
             if (data[k].categoryTeaser)
                 Genres.push(data[k].categoryTeaser);
