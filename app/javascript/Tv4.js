@@ -1105,9 +1105,21 @@ Tv4.findMostViewed = function(data) {
 
 Tv4.fixThumb = function(thumb, factor) {
     if (!thumb) return thumb;
+    if (thumb.match('composed-images')) {
+        thumb = Tv4.decodeThumb(thumb);
+    }
     if (!factor) factor = 1;
     var size = Math.round(factor*THUMB_WIDTH) + 'x' + Math.round(factor*THUMB_HEIGHT);
     return RedirectIfEmulator(addUrlParam('https://imageproxy.b17g.services/?format=jpeg&quality=80&resize=' + size + '&retina=false&shape=cut', 'source', thumb));
+};
+
+Tv4.decodeThumb = function(thumb) {
+    try {
+        var encoded = thumb.match(/([^/]+)\.[^/]+$/)[1].replace(/_/g, '/');
+        return atob(encoded).match(/source=([^&]+)/)[1];
+    } catch (e) {
+        return thumb
+    }
 };
 
 Tv4.tagToName = function(string) {
