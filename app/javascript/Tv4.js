@@ -965,7 +965,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
 
     var asset = decodeURIComponent(streamUrl).match(/id:"([^"]+)/)[1];
     var protocol = (wmdrm || isLive) ? '&device=samsung-orsay&protocol=mss' : '&device=browser&protocol=dash';
-    var reqUrl = 'https://playback-api.b17g.net/media/' + asset + '?service=tv4&drm=playready' + protocol;
+    var reqUrl = 'https://playback2.a2d.tv/play/' + asset + '?service=tv4&drm=playready' + protocol;
     hlsUrl = hlsUrl || reqUrl.replace(/dash/,'hls');
 
     // if (isLive)
