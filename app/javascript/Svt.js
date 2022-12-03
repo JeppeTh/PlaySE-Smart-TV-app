@@ -279,7 +279,10 @@ Svt.getDetailsData = function(url, data) {
             }
             Episode = Svt.getEpisodeNumber(data);
             EpisodeName = data.name;
-            Variant = data.accessibilities;
+            if (data.__typename && data.__typename == "Episode")
+                Variant = null;
+            else
+                Variant = data.accessibilities;
             if (Variant && Variant[0] != 'Default')
                 Variant = Variant[0];
             else
