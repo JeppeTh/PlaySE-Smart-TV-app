@@ -1,15 +1,27 @@
 var History = {
     started_by_preview: false,
     resume_index: -1,
+    preview_item: null
 };
 
 History.savePosition = function(pos) {
-    var tmp_channel = itemSelected && itemSelected.find('.ilink').attr('href').match(/tmp_channel_id=([^&]+)/);
+    var tmp_channel=null, name;
+    if (History.started_by_preview) {
+        name = History.preview_item.name.trim();
+        tmp_channel = History.getTmpChannelId(History.preview_item.link_prefix);
+        History.started_by_preview = false;
+        History.preview_item = null;
+    } else if (itemSelected) {
+        var tmp_channel = History.getTmpChannelId(itemSelected.find('.ilink').attr('href'));
+        name = itemSelected.find('.scroll-item-name').text();
+    }
+
     if (tmp_channel) {
-        pos.name       = itemSelected.find('.scroll-item-name').text();
-        pos.channel_id = tmp_channel[1];
+        pos.name       = name;
+        pos.channel_id = tmp_channel;
         alert('savePosition:' + JSON.stringify(pos));
     }
+
     return pos;
 };
 
@@ -295,6 +307,7 @@ History.decodeMain = function(data, extra) {
             checkSetTmpChannel(resumeLink);
             Buttons.playItem();
         } else {
+            History.preview_item = items[ResumedIndex];
             setLocation(resumeLink);
         }
     } else {
@@ -322,8 +335,7 @@ History.keyBlue = function() {
     if (!showName && itemSelected) {
         showName = itemSelected.find('.ilink').attr('href').match(/[?&]show_name=([^&]+)/);
         if (showName) {
-            channelId = itemSelected.find('.ilink').attr('href').match(/tmp_channel_id=([^&]+)/);
-            channelId = channelId && channelId[1];
+            channelId = History.getTmpChannelId(itemSelected.find('.ilink').attr('href'));
         }
     }
     if (!showName) {
@@ -423,6 +435,11 @@ History.lookup = function(showName) {
 
 History.isSameEpisode = function(a, b) {
     return a.season==b.season && a.episode==b.episode && a.episode_name==b.episode_name;
+};
+
+History.getTmpChannelId = function(link) {
+    var tmp_channel_id = link.match(/tmp_channel_id=([^&]+)/);
+    return tmp_channel_id && tmp_channel_id[1];
 };
 
 History.save = function(Shows) {
