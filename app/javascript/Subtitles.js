@@ -483,9 +483,11 @@ Subtitles.hide = function() {
 };
 
 Subtitles.set = function (text, timeout, forced) {
+    // Log('Subtitles.set text before:' + text + ' is_space:' + (text==' '));
     if (!forced && !Subtitles.isReady())
         return;
     try {
+        text = text.trim();
         if (text != '') {
             text = SPACE + text + SPACE;
             text = text.replace(/(<br ?\/>)/g,SPACE + '$1' + SPACE);
@@ -503,8 +505,12 @@ Subtitles.isReady = function() {
     return (subtitlesEnabled && skipTimeInProgress === false && !startup);
 };
 
-Subtitles.refreshClearTimer = function(timeout) {
+Subtitles.stopClearTimer = function(timeout) {
     window.clearTimeout(clrSubtitleTimer);
+};
+
+Subtitles.refreshClearTimer = function(timeout) {
+    Subtitles.stopClearTimer();
     clrSubtitleTimer = window.setTimeout(function () {
         // Log('Clearing srt due to timer');
         Subtitles.clear();
@@ -516,7 +522,7 @@ Subtitles.resume = function() {
 };
 
 Subtitles.pause = function() {
-    window.clearTimeout(clrSubtitleTimer);
+    Subtitles.stopClearTimer();
 };
 
 Subtitles.getSize = function () {

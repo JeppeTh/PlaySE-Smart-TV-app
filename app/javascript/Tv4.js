@@ -975,8 +975,8 @@ Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
         if (!stream) {
             $('.bottomoverlaybig').html('Not Available!');
         } else {
-            Resolution.getCorrectStream(stream.toHttp(),
-                                        srtUrl,
+            Resolution.getCorrectStream(RedirectIfEmulator(stream),
+                                        RedirectIfEmulator(srtUrl),
                                         {useBitrates:true,
                                          license:license,
                                          customdata:customData,
@@ -1004,7 +1004,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
                            return Tv4.getPlayUrl(streamUrl, isLive, true, hlsUrl);
                        } else if (!isLive) {
                            hlsUrl = (wmdrm) ? hlsUrl : stream.replace(/\.mpd/,'.m3u8');
-                           Tv4.getSrtUrl(asset,
+                           Tv4.getSrtUrl(hlsUrl,
                                          function(srtUrl){
                                              cbComplete(stream, srtUrl, license, customData);
                                          });
@@ -1020,18 +1020,25 @@ Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
               );
 };
 
-Tv4.getSrtUrl = function (asset, cb) {
-    var url = 'https://playback-api.b17g.net/subtitles/' + asset + '?service=tv4&format=webvtt';
+Tv4.getSrtUrl = function (hlsUrl, cb) {
     var srtUrl = null;
-    requestUrl(RedirectIfEmulator(url),
+    requestUrl(RedirectIfEmulator(hlsUrl),
                function(status, data) {
                    try {
-                       srtUrl = JSON.parse(data.responseText)[0].url.toHttp();
+                       if (hlsUrl.match(/protocol=hls/)) {
+                           data = JSON.parse(data.responseText).playbackItem.manifestUrl;
+                           Tv4.getSrtUrl(data, cb);
+                       } else {
+                           srtUrl = data.responseText.match(/TYPE=SUBTITLES.+URI="([^"]+)/)[1];
+                           if (!srtUrl.match(/^http/))
+                               srtUrl = getUrlPrefix(hlsUrl) + srtUrl;
+                           cb(srtUrl.replace('.m3u8', '.webvtt'));
+                       }
                    } catch (err) {
-                       Log('No subtitles: ' + err + ' url:' + url);
+                       Log('No HLS subtitles: ' + err + ' hlsUrl:' + hlsUrl);
+                       cb(null);
                    }
-               },
-               {cbComplete: function() {cb(srtUrl);}}
+               }
               );
 };
 
