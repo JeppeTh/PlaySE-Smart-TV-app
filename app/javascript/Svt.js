@@ -279,7 +279,7 @@ Svt.getDetailsData = function(url, data) {
             }
             Episode = Svt.getEpisodeNumber(data);
             EpisodeName = data.name;
-            if (data.__typename && data.__typename == "Episode")
+            if (data.__typename && data.__typename == 'Episode')
                 Variant = null;
             else
                 Variant = data.accessibilities;
@@ -700,7 +700,7 @@ Svt.decodeCategoryDetail = function (data, extra) {
             }
         }
         for (var k=0; k < data.length; k++) {
-            if (data[k].id.match(/popul/)) {
+            if (data[k].name.match(/^popul/i)) {
                 data = data[k].items;
                 break
             }
@@ -719,7 +719,9 @@ Svt.decodeCategoryDetail = function (data, extra) {
     if (Current && Current.related) {
         data = data[0].selections;
         for (var k=0; k < data.length; k++) {
-            if (data[k].analyticsIdentifiers.listType == 'fiona') {
+            if (data[k].analyticsIdentifiers.listType == 'fiona' &&
+                !data[k].name.match(/(senaste$|^popul)/i)
+               ) {
                 categoryToHtml(data[k].name,
                                Svt.getThumb(data[k].items[0]),
                                Svt.getThumb(data[k].items[0], 'large'),
@@ -760,8 +762,10 @@ Svt.decodeCategoryTabs = function (name, slug, data, url) {
     for (var k=0; k < selections.length; k++) {
         if (selections[k].id.match(/(recomm|popul)/))
             continue;
-        if (selections[k].analyticsIdentifiers.listType == 'fiona')
-            continue;
+        if (selections[k].analyticsIdentifiers.listType == 'fiona') {
+            if (!selections[k].name.match(/senaste$/i))
+                continue;
+        }
         if (selections[k].items.length > 0) {
             Svt.category_details.push({name: name + ' - ' + selections[k].name,
                                        slug: slug,
