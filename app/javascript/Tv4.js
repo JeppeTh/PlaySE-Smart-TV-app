@@ -1005,7 +1005,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive, wmdrm, hlsUrl) {
                        } else if (!isLive) {
                            hlsUrl = (wmdrm) ? hlsUrl : stream.replace(/\.mpd/,'.m3u8');
                            Tv4.getSrtUrl(hlsUrl,
-                                         function(srtUrl){
+                                         function(srtUrl) {
                                              cbComplete(stream, srtUrl, license, customData);
                                          });
                        } else {
@@ -1038,6 +1038,12 @@ Tv4.getSrtUrl = function (hlsUrl, cb) {
                        Log('No HLS subtitles: ' + err + ' hlsUrl:' + hlsUrl);
                        cb(null);
                    }
+               },
+               {dont_show_errors:true,
+                cbError:function() {
+                    Log('Failed to fetch HLS subtitles from ' + hlsUrl);
+                    cb(null);
+                }
                }
               );
 };
@@ -1105,7 +1111,7 @@ Tv4.findMostViewed = function(data) {
     for (var i=0; i < data.length; i++) {
         if (data[i].__typename == 'Promo') continue;
         if (!data[i].title) continue;
-        if (data[i].title.match('Mest sedda') || data[i].title.match('^Popul'))
+        if (data[i].title.match('^Popul[^ ]*$'))
             return data[i].content2.items;
     }
 };
