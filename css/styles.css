@@ -1315,6 +1315,7 @@ small {
     text-align: right;
 }
 
+.scroll-item-label,
 .topoverlay,
 .bottomoverlay,
 .topoverlayred,
@@ -1339,6 +1340,18 @@ small {
 .bottomoverlay,
 .bottomoverlayred {
     top: 18px;
+}
+
+.scroll-item-label {
+    top: 0;
+    width: auto;
+    height: auto;
+    z-index: 1;
+    color: white;
+    line-height: 16px;
+    padding: 0 4px 0 2px;
+    border-radius: 0 0 4px 0;
+    background: red;
 }
 
 .scroll-item-play-icon {

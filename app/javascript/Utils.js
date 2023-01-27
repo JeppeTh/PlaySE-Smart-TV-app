@@ -932,7 +932,7 @@ function categoryToHtml(Name, Thumb, LargeThumb, Link, UrlParams) {
            });
 }
 
-function showToHtml(Name, Thumb, Link, LinkPrefix) {
+function showToHtml(Name, Thumb, Link, LinkPrefix, Label) {
     if (!LinkPrefix)
         LinkPrefix = makeShowLinkPrefix();
 
@@ -940,8 +940,8 @@ function showToHtml(Name, Thumb, Link, LinkPrefix) {
             link: Link,
             link_prefix: LinkPrefix,
             thumb: Thumb,
-            description: '',
-            duration:''
+            duration:'',
+            label: Label
            });
 }
 
@@ -1047,6 +1047,8 @@ function itemToHtml(Item, OnlyReturn) {
         else
             html += '<div class="scroll-item-play-icon"/>';
     }
+    if (Item.label && Item.label != "")
+        html += '<div class="scroll-item-label">' + Item.label + '</div>'
     html += Link + '" class="ilink" data-length="' + Item.duration + '"' + Background + IsLiveText + '/>';
     if (Item.thumb) {
         html += '<img class="image" src="' + Item.thumb + '" alt="' + Item.name + '"/>';

@@ -1,5 +1,5 @@
 var TV4_API_BASE = 'https://graphql.tv4play.se/graphql';
-var SHOW_PARAMS = '{description,displayCategory,image,name,nid}';
+var SHOW_PARAMS = '{description,displayCategory,image,name,nid,label{announcement,label}}';
 var PROGRAMS_PARAMS = 'programs' + SHOW_PARAMS;
 var VIDEO_PARAMS = '{broadcastDateTime,clip,daysLeftInService,description,duration,episode,expireDateTime,humanBroadcastDateTime,id,image,live,program' + SHOW_PARAMS + ',season,startOver,title}';
 var VIDEO_LIST_PARAMS = 'videoList(offset:0,limit:100){totalHits,videoAssets' + VIDEO_PARAMS + '}';
@@ -134,7 +134,7 @@ Tv4.getUrl = function(tag, extra) {
 
     switch (tag) {
     case 'main':
-        return Tv4.makeApiLink('indexPage{showcase{__typename ... on TopCarousel' + CARD_UNION + ' ... on ShowcaseMosaic' + CARD_UNION + '}}');
+        return Tv4.makeStartPageLink();
 
     case 'section':
         var type = 'EPISODE';
@@ -199,20 +199,13 @@ Tv4.upgradeUrl = function(url) {
 };
 
 Tv4.decodeMain = function(data, extra) {
-
-    var recommended = data.responseText;
+    data = JSON.parse(data.responseText).data.page.panels2.items;
+    var recommended = Tv4.decodeRecommended({items:data});
+    data = Tv4.findMostViewed(data) || [];
+    var cbComplete = extra.cbComplete;
+    extra = {is_json:true, nids:recommended, no_sort:true, cbComplete:cbComplete},
+    Tv4.decodeShows(data, extra);
     data = null;
-    // Recommended fetched - lookup Most Viewed shows.
-    requestUrl(Tv4.makeStartPageLink(),
-               function(status, data) {
-                   recommended = Tv4.decodeRecommended({responseText:recommended});
-                   extra.cbComplete = null;
-                   data = Tv4.findMostViewed(data.responseText) || [];
-                   Tv4.decodeShows(data, {is_json:true, nids:recommended, no_sort:true});
-                   data = null;
-               },
-               {cbComplete:extra.cbComplete}
-              );
 };
 
 Tv4.decodeSection = function(data, extra) {
@@ -525,42 +518,42 @@ Tv4.decodeRecommended = function(data) {
     var Link;
     var LinkPrefix;
     var Background;
-    data = JSON.parse(data.responseText).data.indexPage.showcase;
+    var Description;
+    var Label;
+    data = data.items;
     for (var i=0; i < data.length; i++) {
-        for (var k=0; k < data[i].cards.length; k++) {
-            if (data[i].cards[k].__typename == 'URLPitchCard')
+        if (data[i].__typename != 'Promo')
+            continue;
+        Description = data[i].shortPitch || data[i].pitch;
+        if (data[i].videoAsset) {
+            if (nids.indexOf(data[i].videoAsset.id) != -1)
                 continue;
-            if (data[i].cards[k].program) {
-                if (nids.indexOf(data[i].cards[k].program.nid) != -1)
-                    continue;
-                nids.push(data[i].cards[k].program.nid);
-                Link = Tv4.getMovieLink(data[i].cards[k].program.nid);
-                if (Link) {
-                    LinkPrefix = '<a href="details.html?ilink=';
-                    Background = Tv4.fixThumb(data[i].cards[k].program.image, BACKGROUND_THUMB_FACTOR);
-                } else {
-                    Link = Tv4.makeShowLink(data[i].cards[k].program.nid);
-                    LinkPrefix = makeShowLinkPrefix();
-                    Background = null;
-                }
-
-                toHtml({name        : data[i].cards[k].program.name,
-                        link        : Link,
-                        link_prefix : LinkPrefix,
-                        thumb       : Tv4.fixThumb(data[i].cards[k].program.image),
-                        description : data[i].cards[k].title,
-                        background  : Background
-                       });
-            } else if (data[i].cards[k].videoAsset) {
-                if (nids.indexOf(data[i].cards[k].videoAsset.id) != -1)
-                    continue;
-                nids.push(data[i].cards[k].videoAsset.id);
-                data[i].cards[k] =
-                    jQuery.extend(data[i].cards[k],
-                                  data[i].cards[k].videoAsset
-                                 );
-                Tv4.decode([data[i].cards[k]]);
+            nids.push(data[i].videoAsset.id);
+            data[i].videoAsset.description = Description;
+            Tv4.decode([data[i].videoAsset]);
+        } else if (data[i].program) {
+            if (nids.indexOf(data[i].program.nid) != -1)
+                continue;
+            nids.push(data[i].program.nid);
+            Link = Tv4.getMovieLink(data[i].program.nid);
+            if (Link) {
+                Label = null;
+                LinkPrefix = '<a href="details.html?ilink=';
+                Background = Tv4.fixThumb(data[i].program.image, BACKGROUND_THUMB_FACTOR);
+            } else {
+                Label = Tv4.getLabel(data[i].program.label);
+                Link = Tv4.makeShowLink(data[i].program.nid);
+                LinkPrefix = makeShowLinkPrefix();
+                Background = null;
             }
+            toHtml({name        : data[i].title,
+                    description : Description,
+                    label       : Label,
+                    link        : Link,
+                    link_prefix : LinkPrefix,
+                    thumb       : Tv4.fixThumb(data[i].program.image),
+                    background  : Background
+                   });
         }
     }
     return nids;
@@ -707,10 +700,8 @@ Tv4.sortOnAirDate = function(a,b) {
 Tv4.decodeShows = function(data, extra) {
     try {
         var Name;
-        var Description;
         var LinkPrefix;
         var Link;
-        var ImgLink;
         var Background;
         var IsMovie;
         var VideoItem;
@@ -749,8 +740,6 @@ Tv4.decodeShows = function(data, extra) {
                 // Only drm/premium episodes
                 continue;
 
-            ImgLink = Tv4.fixThumb(data[k].image);
-            Description = data[k].description;
             LinkPrefix = null;
             Background = null;
             Link = Tv4.getMovieLink(data[k].nid);
@@ -761,10 +750,11 @@ Tv4.decodeShows = function(data, extra) {
             } else
                 Link = Tv4.makeShowLink(data[k].nid);
             Tv4.result.push({name        : Name,
-                             description : Description,
+                             description : data[k].description,
+                             label       : Tv4.getLabel(data[k].label),
                              link_prefix : LinkPrefix,
                              link        : Link,
-                             thumb       : ImgLink,
+                             thumb       : Tv4.fixThumb(data[k].image),
                              background  : Background,
                              is_movie    : IsMovie
                             });
@@ -787,7 +777,9 @@ Tv4.decodeShows = function(data, extra) {
             else
                 showToHtml(Tv4.result[l].name,
                            Tv4.result[l].thumb,
-                           Tv4.result[l].link
+                           Tv4.result[l].link,
+                           null,
+                           Tv4.result[l].label
                           );
         }
 
@@ -839,7 +831,7 @@ Tv4.getDetailsData = function(url, data) {
     var AirDate='';
     var VideoLength = '';
     var AvailDate=null;
-    var Description='';
+    var Description;
     var NotAvailable=false;
     var isLive=false;
     var Show=null;
@@ -881,6 +873,7 @@ Tv4.getDetailsData = function(url, data) {
                        };
             } else {
                 Show = {name  : Show.name,
+                        label : Tv4.getLabel(Show.label),
                         url   : Tv4.makeShowLink(Show.nid),
                         thumb : Tv4.fixThumb(Show.image)
                        };
@@ -1069,6 +1062,8 @@ Tv4.makeStartPageLink = function() {
     var Input = 'input:{offset:0,limit:100}';
     var Link  = 'page(id: "startpage") {panels2(' + Input + ')' +
         '{__typename ... on PagePanelsResult {items {' +
+        '__typename ... on Promo {title,pitch,shortPitch,program' + SHOW_PARAMS + ',videoAsset' +
+        VIDEO_PARAMS + '}' + 
         '__typename ... on SwipeModule {title,content2(' + Input + '){items{item{' +
         '__typename ... on Program' + SHOW_PARAMS + ',' +
         '__typename ... on VideoAsset' + VIDEO_PARAMS  +
@@ -1107,7 +1102,6 @@ Tv4.makeVideoSearchLink = function(type, query) {
 };
 
 Tv4.findMostViewed = function(data) {
-    data = JSON.parse(data).data.page.panels2.items;
     for (var i=0; i < data.length; i++) {
         if (data[i].__typename == 'Promo') continue;
         if (!data[i].title) continue;
@@ -1166,4 +1160,8 @@ Tv4.requestNextPage = function(url, callback) {
 
 Tv4.getHeaders = function() {
     return [{key:'platform', value:'web'}];
+};
+
+Tv4.getLabel = function(Label) {
+    return Label && (Label.label || Label.announcement);
 };

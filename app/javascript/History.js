@@ -244,7 +244,8 @@ History.decodeMain = function(data, extra) {
             showToHtml(Shows[j].name,
                        Shows[j].thumb,
                        Shows[j].url,
-                       makeShowLinkPrefix(UrlParams)
+                       makeShowLinkPrefix(UrlParams),
+                       Shows[j].label
                       );
     }
     if (History.resume_index) {
@@ -333,6 +334,7 @@ History.addShow = function(details, percentage) {
         savedShows = [];
     savedShows.unshift({channel_id   : Channel.id(),
                         name         : details.parent_show.name,
+                        label        : details.parent_show.label,
                         thumb        : details.parent_show.thumb,
                         large_thumb  : details.parent_show.large_thumb,
                         url          : details.parent_show.url,
