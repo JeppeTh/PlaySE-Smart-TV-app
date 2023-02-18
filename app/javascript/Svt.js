@@ -265,7 +265,7 @@ Svt.getDetailsData = function(url, data) {
             } else if (data.categories && data.categories.length > 0) {
                 Show = data.categories[0];
                 Show = {name        : Show.heading,
-                        url         : Svt.makeGenreLink(Show),
+                        url         : Svt.makeGenreLink(Show, '"all"'),
                         thumb       : Svt.getThumb(data, 'small'),
                         large_thumb : ImgLink,
                         is_category : true
@@ -675,6 +675,8 @@ Svt.decodeCategoryDetail = function (data, extra) {
     }
     data = JSON.parse(data.responseText).data.categoryPage;
     data = data && data.lazyLoadedTabs;
+    // In case of History resume we end up directly in A-Ö
+    if (Channel.main_id() == 'history') DetailIndex.current = 1;
     if (DetailIndex.current == 0) {
         if (data && data.length > 0 && data[0].slug != 'all') {
             // Start by initiating the tabs.
@@ -699,12 +701,14 @@ Svt.decodeCategoryDetail = function (data, extra) {
                 break
             }
         }
+        var popular_index = -1;
         for (var k=0; k < data.length; k++) {
             if (data[k].name.match(/^popul/i)) {
-                data = data[k].items;
+                popular_index = k;
                 break
             }
         }
+        data = (popular_index != -1) ? data[popular_index].items : [];
     } else if (!Current.related) {
         // Other Tabs
         data = data[0].selections;

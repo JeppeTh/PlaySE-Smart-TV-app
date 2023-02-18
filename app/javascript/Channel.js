@@ -15,6 +15,10 @@ Channel.id = function() {
     return this.ch_id;
 };
 
+Channel.main_id = function() {
+    return this.main_ch_id;
+};
+
 Channel.set = function(newChannel, newId) {
     if (this.main_ch_id != newId || 
         this.main_ch_id != this.ch_id ||
