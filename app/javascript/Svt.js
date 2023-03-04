@@ -1475,7 +1475,10 @@ Svt.decode = function(data, extra) {
             }
 
             if (!extra.strip_show) {
-                Show = data[k].parent && data[k].parent.name;
+                Show = data[k].parent;
+                if (extra.is_recommended && Show && Show.svtId)
+                    Links.push(Show.svtId);
+                Show = Show && Show.name;
                 if (!Show || !Show.length) Show = null;
                 if (Show || !Name.match(/(avsnitt|del)/i,'')) {
                     if (Episode || Season) 
@@ -1540,7 +1543,8 @@ Svt.decode = function(data, extra) {
 
             // TODO check how this was done initially...
             if (extra.recommended_links) {
-                if (extra.recommended_links.indexOf(Link) != -1) {
+                if (extra.recommended_links.indexOf(Link) != -1 ||
+                    extra.recommended_links.indexOf(data[k].svtId) != -1) {
                     alert(Name + ' found in recommended_links');
                     continue;
                 }
