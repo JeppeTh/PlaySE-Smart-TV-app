@@ -125,7 +125,7 @@ Svt.makeShowLink = function (data) {
 
 Svt.makeSearchLink = function (query) {
     return Svt.makeApiLink('SearchPage',
-                           '{"querystring":["' + query + '"]}',
+                           '{"querystring":"' + query + '"}',
                            'ab8c604fc76d14885dcedd0f377b76afae9aabcde73b3324676f60ca86d12606'
                           );
 };
@@ -1461,6 +1461,9 @@ Svt.decode = function(data, extra) {
                     IsLive = getCurrentDate() < timeToDate(data[k].live.plannedEnd);
                 }
                 IsRunning = data[k].live.liveNow || getCurrentDate() > starttime
+            }
+            if (IsLive && !starttime && data[k].name.match(/[0-9]+:[0-9]+/)) {
+                starttime = data[k].name.replace(/[^0-9:]+/g, '');
             }
 
             IsUpcoming = extra.strip_show && (data[k].is_next || (starttime > getCurrentDate()));
