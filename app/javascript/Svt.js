@@ -182,6 +182,10 @@ Svt.getHighlightThumb = function(id) {
     return RedirectTls('https://www.svtstatic.se/image/' + size + '/' + id);
 };
 
+Svt.makePreviewThumb = function(image) {
+    return image.replace(/\/small\/[0-9]+/, '/wide/' + PREVIEW_THUMB_WIDTH);
+};
+
 Svt.isPlayable = function (url) {
     return url.match(/(video|klipp)/);
 };
