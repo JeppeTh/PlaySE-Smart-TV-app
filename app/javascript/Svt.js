@@ -260,7 +260,8 @@ Svt.getDetailsData = function(url, data) {
             if (data.item.parent && data.item.parent.__typename != 'Single') {
                 Show = {name : data.item.parent.name,
                         url  : Svt.makeShowLink(data.item.parent),
-                        thumb: Svt.getThumb(data.item.parent)
+                        thumb: Svt.getThumb(data.item.parent),
+                        label : Svt.getNextAirDay(data)
                        };
             } else if (data.categories && data.categories.length > 0) {
                 Show = data.categories[0];
@@ -651,12 +652,13 @@ Svt.decodeCategoryDetail = function (data, extra) {
     var Name = getUrlParam(getLocation(extra.refresh), 'catName');
     var Slug = decodeURIComponent(getLocation(extra.refresh)).match(/id":"([^"]+)"/)[1];
     var DetailIndex = Svt.getCategoryDetailIndex();
+    var variables = null;
 
     // Check if Svt.category_details are up to data
     if (DetailIndex.current != 0) {
         var Current = Svt.category_details[DetailIndex.current];
         if (!Current || Slug != Current.slug) {
-            alert('WROMG CATEGORY_DETAILS');
+            alert('WRONG CATEGORY_DETAILS');
             // Wrong Category - must re-initiate Tabs data.
             var SlugUrl = Svt.makeGenreLink({id:Slug});
             return requestUrl(SlugUrl,
@@ -675,8 +677,12 @@ Svt.decodeCategoryDetail = function (data, extra) {
     }
     data = JSON.parse(data.responseText).data.categoryPage;
     data = data && data.lazyLoadedTabs;
-    // In case of History resume we end up directly in A-Ö
-    if (Channel.main_id() == 'history') DetailIndex.current = 1;
+    // In case of History resume/Details we end up directly in A-Ö (tab=all)
+    if (DetailIndex.current == 0) {
+        variables = getUrlParam(extra.url,'variables') || {};
+        if (JSON.parse(variables).tab == 'all')
+            DetailIndex.current = 1;
+    }
     if (DetailIndex.current == 0) {
         if (data && data.length > 0 && data[0].slug != 'all') {
             // Start by initiating the tabs.
@@ -844,7 +850,7 @@ Svt.decodeShowList = function(data, extra) {
                    )
                     useSeasonName = true;
                 seasons.push(data[i].name);
-            } else if (data[i].id == 'clips') {
+            } else if (data[i].id.match(/^clips/)) {
                 hasClips = true;
             } else if (data[i].selectionType.match(/accessibility/i)) {
                 continue;
@@ -902,7 +908,7 @@ Svt.decodeShowList = function(data, extra) {
 
     if (extra.season===0 || extra.season || extra.is_clips || (seasons.length && seasons.length < 2)) {
         for (var j=0; j < data.length; j++) {
-            if (extra.is_clips && data[j].id=='clips') {
+            if (extra.is_clips && data[j].id.match(/^clips/)) {
                 data = data[j].items;
                 break;
             } else if (Svt.isSameSeason(extra.season, data[j].name) ||
@@ -1269,9 +1275,9 @@ Svt.getNextCategoryDetail = function() {
     var category_detail = Svt.getCategoryDetailIndex();
     if (category_detail.next == 0)
         return 'categories.html';
-    var old_detail     = Svt.category_details[category_detail.current].section;
-    var new_detail     = Svt.category_details[category_detail.next].section;
-    nextLocation =  nextLocation.replace(new RegExp(old_detail+'/$'), '');
+    var old_detail = Svt.category_details[category_detail.current].section;
+    var new_detail = Svt.category_details[category_detail.next].section;
+    nextLocation = nextLocation.replace(new RegExp(old_detail+'/$'), '');
     return nextLocation + new_detail + '/';
 };
 
@@ -1638,9 +1644,15 @@ Svt.getSeasonNumber = function(data) {
         if (Season)
             return +Season[1];
     }
+
+    if (data.heading) {
+        Season = data.heading.match(/^s[^s]+song ([0-9]+):/i);
+        Season = (Season) ? +Season[1] : null;
+    }
+
     if (data.item)
-        return Svt.getSeasonNumber(data.item);
-    return null;
+        return Svt.getSeasonNumber(data.item) || Season;
+    return Season;
 };
 
 Svt.getInconsistenSeason = function(data) {
@@ -1713,6 +1725,28 @@ Svt.getAirDate = function(data) {
         return data.next_date;
     else
         return null;
+};
+
+Svt.getNextAirDay = function(data) {
+    if (data.associatedContent) {
+        var contents = data.associatedContent;
+        for (var i=0; i < contents.length; i++) {
+            if (contents[i].selectionType.match(/Upcoming/i)) {
+                // Sort by date, most upcoming first...
+                contents[i].items.sort(function(a,b) {
+                    var start_a = Svt.getAirDate(a.item);
+                    var start_b = Svt.getAirDate(b.item);
+                    if (start_a > start_b)
+                        return 1;
+                    else if (start_a < start_b)
+                        return -1;
+                    else
+                        return 0;
+                });
+                return getDay(Svt.getAirDate(contents[i].items[0].item))
+            }
+        }
+    }
 };
 
 Svt.sortEpisodes = function(Episodes, Names, IgnoreEpisodes) {
