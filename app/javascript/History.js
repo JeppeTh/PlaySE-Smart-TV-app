@@ -1,5 +1,6 @@
 var History = {
-    resume_index: null
+    started_by_preview: false,
+    resume_index: -1,
 };
 
 History.savePosition = function(pos) {
@@ -210,8 +211,13 @@ History.getHeaderPrefix = function(MainName) {
     return '';
 };
 
-History.getStartPage = function() {
-    return 'index.html?tmp_channel_clr=1&pos_by_item=1';
+History.getStartPage = function(preview) {
+    var url = 'index.html?tmp_channel_clr=1';
+    if (preview) {
+        History.started_by_preview = true;
+        History.resume_index = preview.index;
+    }
+    return url;
 };
 
 History.getUrl = function(tag, extra) {
@@ -224,6 +230,7 @@ History.decodeMain = function(data, extra) {
     var Names = [];
     var Shows = History.getShows();
     var NewShows;
+    var ResumedIndex;
 
     // Check for duplicate names and upgrade urls
     for (var i=0; Shows && i < Shows.length; i++) {
@@ -236,7 +243,7 @@ History.decodeMain = function(data, extra) {
             Names[Shows[i].name] = 1;
     }
     // Save again in case of upgraded links
-    Config.save('History', Shows);
+    History.save(Shows);
 
     for (var j=0; Shows && j < Shows.length; j++) {
         UrlParams = 'show_name=' + encodeURIComponent(Shows[j].name) +
@@ -267,7 +274,8 @@ History.decodeMain = function(data, extra) {
                        Shows[j].label
                       );
     }
-    if (History.resume_index) {
+
+    if (History.resume_index > -1) {
         if (History.resume_index >= Shows.length)
             History.resume_index = Shows.length-1;
         selectItemIndex(History.resume_index);
@@ -275,10 +283,23 @@ History.decodeMain = function(data, extra) {
                  top     : isTopRowSelected,
                  section : htmlSection
                 };
-        History.resume_index = null;
+        ResumedIndex = History.resume_index;
+        History.resume_index = -1;
     }
-    if (extra.cbComplete)
-        extra.cbComplete();
+
+    if (History.started_by_preview) {
+        var resumeLink = itemToLink(items[ResumedIndex]);
+        if (Buttons.isPlayable(resumeLink)) {
+            History.started_by_preview = false;
+            setPosition(myPos, true);
+            checkSetTmpChannel(resumeLink);
+            Buttons.playItem();
+        } else {
+            setLocation(resumeLink);
+        }
+    } else {
+        extra.cbComplete && extra.cbComplete();
+    }
 };
 
 History.keyRed = function() {
@@ -369,7 +390,7 @@ History.addShow = function(details, percentage) {
                         is_movie     : details.parent_show.is_movie,
                         watched      : percentage
                        });
-    Config.save('History', savedShows.slice(0,30));
+    History.save(savedShows.slice(0,30));
     Channel.updateResumed(History.fixResumePercentage(percentage));
 };
 
@@ -386,7 +407,7 @@ History.removeShow = function(showName, channelId, noSave) {
     if (noSave)
         return savedShows;
     else
-        Config.save('History', savedShows);
+        History.save(savedShows);
     return i;
 };
 
@@ -402,6 +423,26 @@ History.lookup = function(showName) {
 
 History.isSameEpisode = function(a, b) {
     return a.season==b.season && a.episode==b.episode && a.episode_name==b.episode_name;
+};
+
+History.save = function(Shows) {
+    Config.save('History', Shows);
+    Preview.update(this.getPreviewData());
+};
+
+History.getPreviewData = function() {
+    var Shows = History.getShows().slice(0,8);
+    var Preview = [];
+    var Thumb;
+
+    for (var i=0; i < Shows.length; i++) {
+        Thumb = Channel.makePreviewThumb(Shows[i].channel_id, Shows[i].thumb);
+        Preview.push({title    : Shows[i].name,
+                      thumb    : Thumb,
+                      is_movie : Shows[i].is_movie || false
+                     });
+    }
+    return Preview;
 };
 
 History.getShows = function() {

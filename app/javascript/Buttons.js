@@ -831,7 +831,7 @@ Buttons.handleMenuKeys = function(keyCode){
     }
 };
 
-Buttons.changeChannel = function (channel) {
+Buttons.changeChannel = function (channel, preview) {
     var oldButton, newButton;
     for(var i=0; i < channelButton.length; i++) {
         if ($(channelButton[i]).hasClass('checked')) {
@@ -846,7 +846,7 @@ Buttons.changeChannel = function (channel) {
     Language.hide();
     oldButton.removeClass('checked');
     Channel.setUnCheckedChannelText(oldButton);
-    setChannel(channel, newButton.attr('id'));
+    setChannel(channel, newButton.attr('id'), preview);
     Channel.setCheckedChannelText(newButton);
     newButton.addClass('checked');
 };

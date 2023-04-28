@@ -5,6 +5,8 @@ var THUMB_WIDTH = 480;
 var THUMB_HEIGHT = 270;
 var DETAILS_THUMB_FACTOR = 1200/THUMB_WIDTH;
 var BACKGROUND_THUMB_FACTOR = MAX_WIDTH/THUMB_WIDTH;
+var PREVIEW_THUMB_WIDTH = 444;
+var PREVIEW_THUMB_HEIGHT = 250;
 var recommendedLinks = [];
 var isEmulator = false;
 var isTizenEmulator = false;
@@ -15,9 +17,11 @@ var Main = {
 };
 
 Main.onLoad = function(refresh) {
-    if (!Config.init(function() {Main.onLoad(refresh);}))
+    var Callback = function() {Main.onLoad(refresh);};
+    if (!Preview.init(Callback) || !Config.init(Callback))
         // Need to wait
-        return
+        return;
+
     Channel.init();
     Language.fixAButton();
     if (!refresh) {
@@ -25,6 +29,7 @@ Main.onLoad = function(refresh) {
 	Header.display(document.title);
     }
     if (!this.loaded) {
+        this.loaded = true;
         $('#page-cover').hide();
         var model = webapis.productinfo.getRealModel();
         isTizenEmulator = (webapis.productinfo.getModel()=='TIZEN_SIM');
@@ -37,7 +42,6 @@ Main.onLoad = function(refresh) {
         Main.setClock();
         checkDateFormat();
         Footer.display();
-        this.loaded = true;
 	Search.init();
 	Language.init();
 	ConnectionError.init();
@@ -46,11 +50,11 @@ Main.onLoad = function(refresh) {
         Player.enableScreenSaver();
         setOffsets();
         fixCss();
-	this.loadXml(refresh);	
+        Preview.checkLink(function() {Main.loadXml(refresh);});
 	// Enable key event processing
 	Buttons.enableKeys();
     } else if (!detailsOnTop) {
-	this.loadXml(refresh);	
+	this.loadXml(refresh);
     }
 };
 
