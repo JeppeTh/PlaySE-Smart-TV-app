@@ -36,16 +36,16 @@ function checkClrTmpChannel(location) {
         Channel.clearTmp();
 }
 
-function setChannel(newChannel, newId) {
-    if (Channel.set(newChannel, newId)) {
-        initChannel();
+function setChannel(newChannel, newId, preview) {
+    if (Channel.set(newChannel,newId) || preview) {
+        initChannel(preview);
     }
 }
 
-function initChannel() {
+function initChannel(preview) {
     myLocation = null;
-    setLocation(Channel.getStartPage(), undefined);
-    myHistory = []; 
+    setLocation(Channel.getStartPage(preview), undefined);
+    myHistory = [];
     Language.setLang();
 }
 
@@ -367,7 +367,7 @@ function getNextIndexLocation(MaxIndex, IndexToSkip) {
     }
 }
 
-function setPosition(pos) {
+function setPosition(pos, hide) {
     if (getItemCounter() == 0) {
         Log('setPosition without items?');
         return;
@@ -388,7 +388,7 @@ function setPosition(pos) {
     var newPos = Channel.checkPosition(pos);
     if (newPos == pos)
         // Log('Position set to '  + columnCounter + ' ' + isTopRowSelected);
-        Buttons.sscroll();
+        Buttons.sscroll(hide);
     else
         setPosition(newPos);
 }
