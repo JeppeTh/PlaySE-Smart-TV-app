@@ -555,6 +555,8 @@ Player.showControls = function(){
     if (Player.infoActive)
         return;
 
+    Player.pluginDuration = Player.plugin.getDuration();
+
     if (startup===false && !Player.bw && videoBw != Player.plugin.getBandwith())
         Player.OnStreamInfoReady(true);
 
@@ -979,8 +981,10 @@ Player.GetDuration = function() {
         Player.setDuration(Details.fetchedDetails.duration);
 
     var duration = this.sourceDuration;
-    if (Player.plugin && !Player.pluginDuration ) {
-        Player.pluginDuration = Player.plugin.getDuration();
+    if (Player.plugin) {
+        if (!Player.pluginDuration) {
+            Player.pluginDuration = Player.plugin.getDuration() || 1;
+        }
         duration = Player.pluginDuration - Player.durationOffset;
     }
 

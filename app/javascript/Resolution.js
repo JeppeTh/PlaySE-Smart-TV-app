@@ -28,7 +28,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
 
     var prefix = getUrlPrefix(videoUrl);
     var target = Resolution.getTarget(extra.isLive);
-    var master = videoUrl;
+    var master = UnRedirect(videoUrl);
     requestUrl(videoUrl,
                null,
                {cbComplete:function(status, data) {
@@ -50,7 +50,8 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        extra.audio_streams = streams.audio_streams;
                        extra.audio_idx     = streams.audio_idx;
                        extra.subtitles_idx = streams.subtitles_idx;
-                       extra.hls_subs      = streams.hls_subs;
+                       if (!extra.isLive)
+                           extra.hls_subs = streams.hls_subs;
                    }
                    if (target != 'Auto') {
                        streams = streams.streams;

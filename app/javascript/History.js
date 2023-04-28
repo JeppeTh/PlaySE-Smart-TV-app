@@ -206,14 +206,9 @@ History.decodeMain = function(data, extra) {
     var LinkPrefix;
     var UrlParams;
     var Names = [];
-    var Shows = Config.read('History') || [];
+    var Shows = History.getShows();
     var NewShows;
 
-    // Filter possibly removed channels
-    Shows = Shows.filter(function(Show)
-                         {
-                             return Channel.exists(Show.channel_id);
-                         });
     // Check for duplicate names and upgrade urls
     for (var i=0; Shows && i < Shows.length; i++) {
         Shows[i].url = Channel.upgradeUrl(Shows[i].channel_id, Shows[i].url);
@@ -350,16 +345,13 @@ History.addShow = function(details, percentage) {
 };
 
 History.removeShow = function(showName, channelId, noSave) {
-
-    var savedShows = Config.read('History');
+    var savedShows = History.getShows();
     var i;
-    if (savedShows) {
-        for (i=0; i < savedShows.length; i++) {
-            if (savedShows[i].channel_id == channelId &&
-                savedShows[i].name == showName) {
-                savedShows.splice(i, 1);
-                break;
-            }
+    for (i=0; i < savedShows.length; i++) {
+        if (savedShows[i].channel_id == channelId &&
+            savedShows[i].name == showName) {
+            savedShows.splice(i, 1);
+            break;
         }
     }
     if (noSave)
@@ -370,18 +362,23 @@ History.removeShow = function(showName, channelId, noSave) {
 };
 
 History.lookup = function(showName) {
-
-    var savedShows = Config.read('History');
-    if (savedShows) {
-        for (var i=0; i < savedShows.length; i++) {
-            if (savedShows[i].channel_id == Channel.id() &&
-                savedShows[i].name == showName)
-                return savedShows[i];
-        }
+    var savedShows = History.getShows();
+    for (var i=0; i < savedShows.length; i++) {
+        if (savedShows[i].channel_id == Channel.id() &&
+            savedShows[i].name == showName)
+            return savedShows[i];
     }
     return null;
 };
 
 History.isSameEpisode = function(a, b) {
     return a.season==b.season && a.episode==b.episode && a.episode_name==b.episode_name;
+};
+
+History.getShows = function() {
+    var Shows = Config.read('History') || [];
+    // Filter possibly removed channels
+    return Shows.filter(function(Show) {
+        return Channel.exists(Show.channel_id);
+    });
 };

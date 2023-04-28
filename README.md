@@ -1,5 +1,5 @@
 
-Uppdaterad med support för SVT, Viafree, TV4, Dplay (funkar inte sen loginkrav).
+Uppdaterad med support för SVT, Pluto, TV4, Dplay (funkar inte sen loginkrav).
 De olika brancherna:
 * master - orginalvarianten
 * hd_version - samma som master fast med 1280x720 upplösning

@@ -41,7 +41,7 @@ Language.init = function() {
 	html += '<ul>';
 	html += '<li class="title"><a href="#">Channel / Kanal:</a></li>';
 	html += '<li id="svt"     channel=Svt     class="checked unselected"><a href="#">Svt</a></li>';
-	html += '<li id="viasat"  channel=Viasat  class="unselected"><a href="#">Viasat</a></li>';
+	html += '<li id="pluto"   channel=Pluto   class="unselected"><a href="#">Pluto</a></li>';
 	html += '<li id="tv4"     channel=Tv4     class="unselected"><a href="#">Tv4</a></li>';
 	html += '<li id="dplay"   channel=Dplay   class="unselected"><a href="#">Dplay</a></li>';
 	html += '<li id="history" channel=History class="unselected"><a href="#">Historik</a></li>';
@@ -159,6 +159,13 @@ Language.checkLanguage = function() {
 
 Language.setLanguage = function(value) {
 	Config.save('language', value);
+};
+
+Language.fixButtons = function() {
+    this.fixAButton();
+    this.fixBButton();
+    this.fixCButton();
+    this.fixDButton();
 };
 
 Language.fixAButton = function(language) {

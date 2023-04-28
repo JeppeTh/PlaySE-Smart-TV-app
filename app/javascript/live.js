@@ -2,19 +2,20 @@ var live = {
     refresh_timer : null
 };
 
-live.onLoad = function(refresh) {
+live.onLoad = function(location, refresh) {
     if (!refresh) {
-        document.title = Channel.getLiveTitle();
+        document.title = Channel.getLiveTitle(location);
 	Header.display(document.title);
     }
     if (!detailsOnTop)
-	this.loadXml(refresh);
+	this.loadXml(location, refresh);
 //	widgetAPI.sendReadyEvent();
 };
 
-live.loadXml = function(refresh, oldPos) {
+live.loadXml = function(location, refresh, oldPos) {
     $('#content-scroll').hide();
-    var url = Channel.getUrl('live', {refresh:refresh});
+    var url = getUrlParam(location,'url');
+    url = Channel.getUrl('live', {refresh:refresh, location:url});
     var cbComplete = function(status){
         if (oldPos) myPos = oldPos;
         loadFinished(status, refresh);
@@ -47,7 +48,8 @@ live.startRefresh = function() {
 
 live.refresh = function() {
     var refresh = detailsOnTop;
-    if (getIndexLocation().match(/live.html/)) {
+    var location = getIndexLocation();
+    if (location.match(/live.html/)) {
         var oldPos = {col     : columnCounter,
                       top     : isTopRowSelected,
                       section : htmlSection
@@ -55,7 +57,7 @@ live.refresh = function() {
         $('#topRow').html('');
         $('#bottomRow').html('');
         items = [];
-        live.loadXml(refresh, oldPos);
+        live.loadXml(location, refresh, oldPos);
         // Keep htmlSection
     }
 };

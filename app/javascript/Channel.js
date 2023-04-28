@@ -173,6 +173,16 @@ Channel.isLoggedIn = function() {
         return true;
 };
 
+Channel.waitForLogin = function(cb, retry) {
+    if (!retry) retry=0;
+    if (Channel.isLoggedIn() || retry > 10)
+        cb();
+    else
+        window.setTimeout(function() {
+            Channel.waitForLogin(cb, retry+1);
+        }, 500);
+};
+
 Channel.decodeMain = function(data, extra) {
     this.impl.decodeMain(data, extra);
 };
@@ -209,8 +219,8 @@ Channel.getDetailsUrl = function(name) {
     return this.impl.getDetailsUrl(name);
 };
 
-Channel.getDetailsData = function(url, data) {
-    return this.impl.getDetailsData(url, data);
+Channel.getDetailsData = function(url, data, user_data) {
+    return this.impl.getDetailsData(url, data, user_data);
 };
 
 Channel.getPlayUrl = function(url, isLive) {
@@ -309,9 +319,9 @@ Channel.getCategoryTitle = function() {
 };
 
 // TODO  - is very similar to button text - re-use?
-Channel.getLiveTitle = function() {
+Channel.getLiveTitle = function(location) {
     if (this.impl.getLiveTitle)
-        return this.impl.getLiveTitle();
+        return this.impl.getLiveTitle(location);
     else
         return 'Kanaler & livesändningar';
 };

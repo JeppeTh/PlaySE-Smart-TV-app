@@ -156,8 +156,7 @@ function loadingStop() {
 function refreshLocation(entry) {
     myRefreshLocation = entry.loc;
     checkClrTmpChannel(myRefreshLocation);
-    Language.fixAButton();
-    Language.fixBButton();
+    Language.fixButtons();
     dispatch(myRefreshLocation, true);
 }
 
@@ -204,8 +203,7 @@ function setLocation(location, oldPos, skipHistory) {
             detailsOnTop = false;
         }
     } else {
-        Language.fixAButton();
-        Language.fixBButton();
+        Language.fixButtons();
     }
     if ((isDetails && !detailsOnTop) || !detailsOnTop) {
         itemSelected = null;
@@ -215,7 +213,11 @@ function setLocation(location, oldPos, skipHistory) {
     }
     resetHtml(oldPos, isDetails);
     loadingStart();
-    dispatch(myLocation);
+
+    if (getUrlParam(myLocation,"tmp_channel_id"))
+        Channel.waitForLogin(function(){dispatch(myLocation);});
+    else
+        dispatch(myLocation);
 
     if (detailsOnTop && oldPos) {
         restorePosition();
@@ -239,7 +241,7 @@ function dispatch(NewLocation, Refresh) {
         break;
 
     case 'live':
-        live.onLoad(Refresh);
+        live.onLoad(NewLocation, Refresh);
         break;
 
     case 'categories':
@@ -525,6 +527,7 @@ function dateToHuman(date) {
 }
 
 function getDay(Date) {
+    if (!Date) return Date;
     var days = (Language.getisSwedish()) ?
         ['Söndag', 'Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag']:
         ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -680,7 +683,7 @@ function addUrlParam(url, key, value) {
 
 function getUrlParam(url, key, raw) {
     var Value = new RegExp('[?&]' + key + '=([^?&]+)');
-    Value = url.match(Value);
+    Value = url && url.match(Value);
     Value = Value && Value[1];
     if (Value) {
         if (raw)
@@ -688,6 +691,12 @@ function getUrlParam(url, key, raw) {
         else
             return decodeURIComponent(Value);
     }
+}
+
+function removeUrlParam(url, key) {
+    url = url.replace(new RegExp('\\?' + key + '=[^&]+&'), '?');
+    url = url.replace(new RegExp('\\?' + key + '=[^&]+'), '');
+    return url.replace(new RegExp('&' + key + '=[^&]+'), '');
 }
 
 function getUrlPrefix(url) {
@@ -940,6 +949,7 @@ function showToHtml(Name, Thumb, Link, LinkPrefix, Label) {
             link: Link,
             link_prefix: LinkPrefix,
             thumb: Thumb,
+            description: '',
             duration:'',
             label: Label
            });
@@ -1399,6 +1409,12 @@ function GetProxyHost() {
 }
 
 function RedirectTls(url) {
+    if (url && url.match(/https:/))
+        url = Redirect(url);
+    return url;
+}
+
+function Redirect(url) {
     var host = GetProxyHost();
     var redirectUrl = url;
     if (url && !url.match(host)) {
@@ -1410,9 +1426,13 @@ function RedirectTls(url) {
     return redirectUrl;
 }
 
-function Redirect(url, no_log) {
-    var redirectUrl = url;
-    return redirectUrl;
+function UnRedirect(url) {
+    if (!url || !url.match(/\/\/[0-9.]+:[0-9]+\/jt/))
+        return url;
+    if (url.match('jt_https'))
+        url = url.replace(/^http:/, 'https:');
+    url = url.replace(/\/\/[0-9.]+:[0-9]+\/jt/, '//jt');
+    return url.replace(/(\/jt[^/]+)+/g,'');
 }
 
 function Log(msg, timeout) {

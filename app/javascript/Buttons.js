@@ -10,7 +10,7 @@ var itemSelected;
 var resButton = ['#resauto', '#res1', '#res2', '#res3', '#res4', '#res5', '#res6'];
 var reslButton = ['#reslauto', '#resl1', '#resl2', '#resl3', '#resl4', '#resl5', '#resl6'];
 var langButton = ['#english', '#swedish'];
-var channelButton = ['#svt', '#viasat', '#tv4', '#dplay', '#history'];
+var channelButton = ['#svt', '#pluto', '#tv4', '#dplay', '#history'];
 var menuId = 0;
 var menu = [{id:'.language-content .title', button:langButton},
             {id:'.res-content .title', button:resButton},
@@ -783,7 +783,7 @@ Buttons.handleMenuKeys = function(keyCode){
     case tvKey.KEY_3:
     case tvKey.KEY_6:
     case tvKey.KEY_8:
-        Buttons.changeChannel(Viasat);
+        Buttons.changeChannel(Pluto);
         break;
     case tvKey.KEY_4:
         Buttons.changeChannel(Tv4);

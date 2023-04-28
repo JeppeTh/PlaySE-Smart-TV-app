@@ -66,10 +66,12 @@ Details.loadXml = function(isBackground) {
                        });
         window.setTimeout(loadingStop, 0);
     } else {
-        requestUrl(this.getUrl(),
+        var details_url = this.getUrl();
+        var user_data = getUrlParam(details_url, 'my_user_data');
+        requestUrl(removeUrlParam(details_url, 'my_user_data'),
                    function(status, data, url) {
                        var html;
-                       var programData = Details.getData(url, data);
+                       var programData = Details.getData(url, data, user_data);
                        if (!isBackground) {
 		           Language.setDetailLang();
                            Player.setNowPlaying(programData.name);
@@ -177,9 +179,11 @@ Details.loadImage = function(detailsUrl) {
 };
 
 Details.fetchData = function(detailsUrl, refresh, preload) {
-    httpRequest(this.getUrl(detailsUrl),
+    detailsUrl = this.getUrl(detailsUrl);
+    var user_data = getUrlParam(detailsUrl, 'my_user_data');
+    httpRequest(removeUrlParam(detailsUrl, 'my_user_data'),
                 {cb: function(status, data, xhr, url) {
-                    data = Details.getData(url,{responseText:data}, preload);
+                    data = Details.getData(url, {responseText:data}, user_data, preload);
                     if (preload && data)
                         loadImage(data.thumb)
                 },
@@ -188,8 +192,8 @@ Details.fetchData = function(detailsUrl, refresh, preload) {
                 });
 };
 
-Details.getData = function(url, data, preload) {
-    data = Channel.getDetailsData(url,data);
+Details.getData = function(url, data, user_data, preload) {
+    data = Channel.getDetailsData(url, data, user_data);
     if (data.description && data.description.length > 0)
         data.description = data.description.replace(/\\\"/g, '"');
     if (!data.show)
