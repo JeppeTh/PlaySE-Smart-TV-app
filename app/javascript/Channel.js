@@ -20,7 +20,7 @@ Channel.main_id = function() {
 };
 
 Channel.set = function(newChannel, newId) {
-    if (this.main_ch_id != newId || 
+    if (this.main_ch_id != newId ||
         this.main_ch_id != this.ch_id ||
         Channel.isSubChannelSet()) {
         Channel.setTmp(newChannel, newId, true);
@@ -120,9 +120,9 @@ Channel.getHeaders = function() {
         return null;
 };
 
-Channel.getStartPage = function() {
+Channel.getStartPage = function(preview) {
     if (this.main_impl.getStartPage)
-        return this.main_impl.getStartPage();
+        return this.main_impl.getStartPage(preview);
     else
         return 'index.html';
 };
@@ -151,6 +151,15 @@ Channel.upgradeUrl = function(channelId, url) {
         return NewUrl;
     }
     return url;
+};
+
+Channel.makePreviewThumb = function(channelId, thumb) {
+    thumb = Channel.upgradeUrl(channelId, thumb);
+    channelId = eval($('.channel-content').find('#'+channelId).attr('channel'));
+    if (channelId.makePreviewThumb && thumb) {
+        return channelId.makePreviewThumb(thumb);
+    }
+    return thumb;
 };
 
 Channel.redirectUrl = function(url, callback) {

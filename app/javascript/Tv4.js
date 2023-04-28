@@ -1715,6 +1715,10 @@ Tv4.decodeThumb = function(thumb) {
     }
 };
 
+Tv4.makePreviewThumb = function(thumb) {
+    return thumb.replace(/([?&]width)=[0-9]+/, '$1=' + PREVIEW_THUMB_WIDTH);
+};
+
 Tv4.isViewable = function (data, extra, isLive, currentDate) {
     extra = extra || {};
     if (data.video && data.video.access && data.video.access.hasAccess === false)
