@@ -1,6 +1,6 @@
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://github.com/JeppeTh/PlaySE-Smart-TV-app" version="0.3.0" viewmodes="fullscreen">
     <access origin="*" subdomains="true"></access>
-    <tizen:application id="vd1XfUivSQ.PlaySE" package="vd1XfUivSQ" required_version="2.1"/>
+    <tizen:application id="vd1XfUivSQ.PlaySE" package="vd1XfUivSQ" required_version="2.3"/>
     <tizen:category name="http://samsung.com/category/video"/>
     <content src="index.html"/>
     <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
@@ -9,9 +9,25 @@
     <feature name="http://tizen.org/feature/tv.display"/>
     <icon src="icon.png"/>
     <name>PlaySE</name>
+    <tizen:app-control>
+      <tizen:src name="index.html" reload="disable"/>
+      <tizen:operation name="http://samsung.com/appcontrol/operation/eden_resume"/>
+    </tizen:app-control>
 
+    <tizen:service id="vd1XfUivSQ.service">
+      <tizen:content src="service/service.js"/>
+      <tizen:name>service</tizen:name>
+      <tizen:description>Service Application</tizen:description>
+      <tizen:metadata key="meta-key" value="meta-value"/>
+      <tizen:category name="http://tizen.org/category/service"/>
+    </tizen:service>
+
+    <tizen:metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4"/>
+    <tizen:metadata key="http://samsung.com/tv/metadata/use.preview" value="bg_service"/>
+    <tizen:metadata key="http://samsung.com/tv/metadata/prelaunch.support" value="true"/>
     <tizen:metadata key="tv4Token" value="ey.............."/>
 
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
     <tizen:privilege name="http://developer.samsung.com/privilege/widgetdata"/>
     <tizen:privilege name="http://tizen.org/privilege/application.info"/>
     <tizen:privilege name="http://tizen.org/privilege/download"/>
