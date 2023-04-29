@@ -564,7 +564,7 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
     var Duration;
     var IsLive;
     var IsRunning;
-    var starttime;
+    var start;
     var Link;
     var Description;
     var ImgLink;
@@ -597,8 +597,8 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
 
     Tv4.reCheckUnavailableShows(data);
 
-    starttime = (IsLive || data.is_upcoming) ? timeToDate(data.broadcastDateTime) : null;
-    IsRunning = IsLive && starttime && (getCurrentDate() > starttime);
+    start = (IsLive || data.is_upcoming) ? timeToDate(data.broadcastDateTime) : null;
+    IsRunning = IsLive && start && (getCurrentDate() > start);
 
     Description = (data.description) ? data.description.trim() : '';
     if (extra.strip_show) {
@@ -629,7 +629,7 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
             airDate:AirDate,
             link_prefix:'<a href="details.html?ilink=',
             is_live:IsLive,
-            starttime:starttime,
+            start:start,
             is_running:IsRunning,
             is_upcoming:data.is_upcoming
            };
@@ -898,7 +898,7 @@ Tv4.getDetailsData = function(url, data) {
             is_live       : isLive,
             air_date      : AirDate,
             avail_date    : AvailDate,
-            start_time    : AirDate,
+            start         : AirDate,
             duration      : VideoLength,
             description   : Description,
             not_available : NotAvailable,

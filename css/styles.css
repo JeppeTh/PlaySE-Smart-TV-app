@@ -603,6 +603,11 @@ ul.dropdown .root-item {
     border-color: #58b827;
 }
 
+.scroll-content-item.running .scroll-item-border {
+    border-top: 3px solid red;
+    padding-top: 0;
+}
+
 .scroll-content-item.selected .scroll-item-border {
     border-top: 3px solid #58b827;
     padding-top: 0;

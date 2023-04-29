@@ -632,12 +632,12 @@ Dplay.decodeEpisode = function (data, includes, extra) {
     var Episode=null;
     var IsLive=false;
     var IsUpcoming=false;
-    var StartTime = null;
+    var Start = null;
 
     Show = Dplay.findShowName(data, includes);
     Name = Dplay.determineEpisodeName(data, Show);
-    StartTime = extra.strip_show && Dplay.getUpcomingDate(data);
-    IsUpcoming = StartTime && Dplay.isFree(Name,data) && Dplay.isCorrectChannel(Name,data);
+    Start = extra.strip_show && Dplay.getUpcomingDate(data);
+    IsUpcoming = Start && Dplay.isFree(Name,data) && Dplay.isCorrectChannel(Name,data);
     if (!IsUpcoming && !Dplay.isItemOk(Name,data)) {
         return
     }
@@ -663,7 +663,7 @@ Dplay.decodeEpisode = function (data, includes, extra) {
     Season  = (data.attributes.seasonNumber) ? data.attributes.seasonNumber : null;
     Episode = data.attributes.episodeNumber;
     IsLive = data.attributes.videoType.match(/LIVE/);
-    StartTime = (IsLive) ? Dplay.getAirDate(data) : StartTime;
+    Start = (IsLive) ? Dplay.getAirDate(data) : Start;
     Dplay.result.push(
         {name:Name,
          show:Show,
@@ -677,8 +677,8 @@ Dplay.decodeEpisode = function (data, includes, extra) {
          airDate:AirDate,
          isFollowUp:data.attributes.videoType.match(/FOLLOWUP/),
          is_live : IsLive,
-         starttime : StartTime,
-         is_running : getCurrentDate() > StartTime,
+         start : Start,
+         is_running : getCurrentDate() > Start,
          is_upcoming : IsUpcoming
         });
 };
@@ -872,7 +872,7 @@ Dplay.getDetailsData = function(url, data) {
             is_live       : isLive,
             air_date      : AirDate,
             avail_date    : AvailDate,
-            start_time    : AirDate,
+            start         : AirDate,
             duration      : VideoLength,
             description   : Description,
             not_available : IsUnavailable,

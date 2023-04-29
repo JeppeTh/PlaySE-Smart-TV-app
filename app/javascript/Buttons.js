@@ -819,7 +819,7 @@ Buttons.playItem = function() {
     var duration     = itemSelected.find('.ilink').attr('data-length');
     var isLive       = (itemSelected.find('.ilink').attr('is-live') != null);
     var notAvailable = (itemSelected.find('.ilink').attr('not-yet-available') != null);
-    var starttime    = 0;
+    var start        = 0;
     var itemLink     = itemSelected.find('.ilink').attr('href');
 
     if (notAvailable) {
@@ -828,20 +828,20 @@ Buttons.playItem = function() {
     }
     if (isLive) {
         if (itemSelected.html().indexOf('bottomoverlay') == -1) {
-            starttime = itemSelected.find('a').text().match(/([0-9][0-9][:.][0-9]+)-[0-9]/);
-            starttime = (starttime) ? starttime[1] : 0;
+            start = itemSelected.find('a').text().match(/([0-9][0-9][:.][0-9]+)-[0-9]/);
+            start = (start) ? start[1] : 0;
         } else if (itemSelected.html().indexOf('bottomoverlayred') != -1) {
-            starttime = itemSelected.html().match(/bottomoverlayred">[^<]*([0-9][0-9][:.][0-9]+)</);
-            starttime = (starttime) ? starttime[1] : 0;
+            start = itemSelected.html().match(/bottomoverlayred">[^<]*([0-9][0-9][:.][0-9]+)</);
+            start = (start) ? start[1] : 0;
         }
     }
-    // Log('isLive:' + isLive + ' starttime:' + starttime);
+    // Log('isLive:' + isLive + ' start:' + start);
     if (duration.search(/[hsekmin]/) == -1) {
         duration = duration + ' sek';
     }
     Player.setDuration(duration);
     Player.setNowPlaying(itemSelected.find('a').text());
-    Player.startPlayer(Buttons.getLinkUrl(itemLink), isLive, starttime);
+    Player.startPlayer(Buttons.getLinkUrl(itemLink), isLive, start);
     preloadAdjacentItems(true);
     return 0;
 };

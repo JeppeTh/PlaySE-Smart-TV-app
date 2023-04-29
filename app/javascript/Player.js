@@ -37,7 +37,7 @@ var Player = {
     detailsActive:false,
     helpActive:false,
     isLive:false,
-    startTime: null,
+    start: null,
     offset:0,
     durationOffset:0,
     audioIdx:0,
@@ -681,8 +681,8 @@ Player.SetCurTime = function(time) {
 	    Audio.setCurrentMode(smute);
             if (videoData.use_offset) {
                 Player.refreshDetailsTimer();
-                if (+Player.startTime != 0) {
-                    Player.updateOffset(Player.startTime);
+                if (+Player.start != 0) {
+                    Player.updateOffset(Player.start);
                 }
             }
             Player.setResolution(Player.GetResolution());
@@ -1133,7 +1133,7 @@ Player.createPlugin = function() {
     }
 };
 
-Player.startPlayer = function(url, isLive, startTime) {
+Player.startPlayer = function(url, isLive, start) {
     var oldKeyHandleID = Buttons.getKeyHandleID();
     var background     = itemSelected.find('.ilink').attr('data-background');
 
@@ -1142,7 +1142,7 @@ Player.startPlayer = function(url, isLive, startTime) {
     startup = true;
     retries = 0;
     window.clearTimeout(detailsTimer);
-    Player.startTime = startTime;
+    Player.start = start;
     Player.isLive = isLive;
     Player.offset = 0;
     Player.durationOffset = 0;
@@ -1231,20 +1231,20 @@ Player.hideVideoBackground = function() {
 };
 
 Player.refreshStartData = function(details) {
-    if (videoData.use_offset && details && details.start_time != 0 && details.start_time != Player.startTime) {
-        Log('refreshStartData, new start:' + details.start_time + ' old start:' + Player.startTime);
+    if (videoData.use_offset && details && details.start != 0 && details.start != Player.start) {
+        Log('refreshStartData, new start:' + details.start + ' old start:' + Player.start);
         Player.setNowPlaying(details.title);
         Player.pluginDuration = Player.plugin.getDuration();
         Player.setDuration(details.duration);
-        Player.updateOffset(details.start_time);
+        Player.updateOffset(details.start);
         Player.setDetailsData(details);
     } else if (!Player.sourceDuration && details.duration)
         Player.setDuration(details.duration);
 };
 
-Player.updateOffset = function (startTime) {
-    var start_mins     = Player.startTimeToMinutes(startTime);
-    var old_start_mins = Player.startTimeToMinutes(Player.startTime);
+Player.updateOffset = function (start) {
+    var start_mins     = Player.startToMinutes(start);
+    var old_start_mins = Player.startToMinutes(Player.start);
     var diff_mins      = 0;
     if (old_start_mins != 0) {
         diff_mins = start_mins - old_start_mins;
@@ -1253,7 +1253,7 @@ Player.updateOffset = function (startTime) {
             diff_mins = diff_mins + 24*60;
     }
     if (diff_mins > 0) {
-        Log('New startTime:' + startTime + ' old:' + Player.startTime + ' diff:' + diff_mins + ' offset:' + Player.offset + ' durationOffset:' + Player.durationOffset);
+        Log('New start:' + start + ' old:' + Player.start + ' diff:' + diff_mins + ' offset:' + Player.offset + ' durationOffset:' + Player.durationOffset);
 
         Player.offset = Player.offset - (diff_mins*60*1000);
         Player.durationOffset = Player.durationOffset + (diff_mins*60*1000);
@@ -1267,14 +1267,14 @@ Player.updateOffset = function (startTime) {
             now_secs = now_secs + (24*3600);
         Player.offset = (now_secs - (start_mins*60))*1000;
     }
-    Player.startTime = startTime;
+    Player.start = start;
 };
 
-Player.startTimeToMinutes = function (startTime) {
-    if (!startTime)
+Player.startToMinutes = function (start) {
+    if (!start)
         return 0;
-    var start_mins = startTime.match(/([0-9]+)[:.]/)[1]*60;
-    return (start_mins + startTime.match(/[:.]([0-9]+)/)[1]*1);
+    var start_mins = start.match(/([0-9]+)[:.]/)[1]*60;
+    return (start_mins + start.match(/[:.]([0-9]+)/)[1]*1);
 };
 
 Player.checkPlayUrlStillValid = function(gurl) {

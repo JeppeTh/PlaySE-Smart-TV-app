@@ -6,14 +6,14 @@ var downCounter;
 var Details = {
     duration:null,
     isLive:false,
-    startTime:0,
+    start:0,
     fetchedDetails:null
 };
 
 Details.init = function() {
     Details.isLive = false;
     Details.duration = null;
-    Details.startTime = 0;
+    Details.start = 0;
     Details.fetchedDetails = null;
 };
 
@@ -197,15 +197,15 @@ Details.getData = function(url, data, user_data, preload) {
     if (data.description && data.description.length > 0)
         data.description = data.description.replace(/\\\"/g, '"');
     if (!data.show)
-        data.start_time = dateToClock(data.start_time);
+        data.start = dateToClock(data.start);
 
     if (!preload) {
         Details.init();
         Details.fetchedDetails = data;
         if (!data.show) {
-            Details.duration  = data.duration;
-            Details.isLive    = data.is_live;
-            Details.startTime = data.start_time;
+            Details.duration = data.duration;
+            Details.isLive   = data.is_live;
+            Details.start    = data.start;
         }
     }
     return data;
@@ -213,8 +213,8 @@ Details.getData = function(url, data, user_data, preload) {
 
 Details.startPlayer = function() {
     Player.setDuration(Details.duration);
-    // Log('isLive:' + isLive + ' startTime:' + Details.startTime);
-    Player.startPlayer(this.getUrl(), Details.isLive, this.startTime);
+    // Log('isLive:' + isLive + ' start:' + Details.start);
+    Player.startPlayer(this.getUrl(), Details.isLive, this.start);
 };
 
 function dataLengthToVideoLength($video, duration) {

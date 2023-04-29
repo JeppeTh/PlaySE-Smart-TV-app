@@ -414,8 +414,8 @@ Pluto.decodeLive = function(data, extra) {
         var Link;
         var ImgLink;
         var Background;
-        var starttime;
-        var endtime;
+        var start;
+        var end;
 
         for (var k in data) {
             ImgLink = Pluto.getChannel(data[k].channelId).thumb;
@@ -425,13 +425,13 @@ Pluto.decodeLive = function(data, extra) {
             if (data[k].episode && data[k].episode.series.type == 'film')
                 Background = data[k].episode.poster.path;
             Background = Pluto.fixThumb(Background, BACKGROUND_THUMB_FACTOR);
-            starttime = timeToDate(data[k].start);
-            endtime = timeToDate(data[k].stop);
-            Duration = Math.round((endtime-starttime)/1000);
+            start = timeToDate(data[k].start);
+            end = timeToDate(data[k].stop);
+            Duration = Math.round((end-start)/1000);
             Name = data[k].episode.name;
-            Name = dateToClock(starttime) + '-' + dateToClock(endtime) + ' ' + Name;
+            Name = dateToClock(start) + '-' + dateToClock(end) + ' ' + Name;
             toHtml({name:Name,
-                    start_time: starttime,
+                    start:start,
                     duration:Duration,
                     is_channel:true,
                     link:Link,
@@ -470,9 +470,9 @@ Pluto.useLiveRefresh = function() {
 
 Pluto.getCurrentTimeline = function(data) {
     for (var k in data.timelines) {
-        starttime = timeToDate(data.timelines[k].start);
-        endtime   = timeToDate(data.timelines[k].stop);
-        if (getCurrentDate() > starttime && endtime > getCurrentDate()) {
+        start = timeToDate(data.timelines[k].start);
+        end   = timeToDate(data.timelines[k].stop);
+        if (getCurrentDate() > start && end > getCurrentDate()) {
             return data.timelines[k];
         }
     }
@@ -883,7 +883,7 @@ Pluto.getDetailsData = function(url, data, user_data) {
             is_live       : IsLive,
             air_date      : AirDate,
             avail_date    : AvailDate,
-            start_time    : AirDate,
+            start         : AirDate,
             duration      : VideoLength,
             description   : Description,
             not_available : false,
@@ -931,8 +931,8 @@ Pluto.getLiveData = function(url, data) {
     var AirDate='';
     var VideoLength = '';
     var Description='';
-    var startTime=0;
-    var endTime=0;
+    var start=0;
+    var end=0;
     var isLive = false;
     var Episode=null, Season=null;
     try {
@@ -953,11 +953,11 @@ Pluto.getLiveData = function(url, data) {
         }
         Description += data.episode.description;
         ImgLink = Pluto.fixThumb(ImgLink, DETAILS_THUMB_FACTOR);
-        startTime = timeToDate(data.start);
-        endTime = timeToDate(data.stop);
-        VideoLength = Math.round((endTime-startTime)/1000);
+        start = timeToDate(data.start);
+        end = timeToDate(data.stop);
+        VideoLength = Math.round((end-start)/1000);
         VideoLength = dataLengthToVideoLength(null,VideoLength);
-        AirDate = dateToClock(startTime) + '-' + dateToClock(endTime);
+        AirDate = dateToClock(start) + '-' + dateToClock(end);
         Title = AirDate + ' ' + Name;
         isLive = true;
     } catch(err) {
@@ -969,16 +969,16 @@ Pluto.getLiveData = function(url, data) {
         Log('ImgLink:' + ImgLink);
     }
     data = null;
-    return {name          : Name.trim(),
-            title         : Title.trim(),
-            is_live       : isLive,
-            air_date      : AirDate,
-            start_time    : startTime,
-            duration      : VideoLength,
-            description   : Description,
-            thumb         : ImgLink,
-            episode       : Episode,
-            season        : Season
+    return {name        : Name.trim(),
+            title       : Title.trim(),
+            is_live     : isLive,
+            air_date    : AirDate,
+            start       : start,
+            duration    : VideoLength,
+            description : Description,
+            thumb       : ImgLink,
+            episode     : Episode,
+            season      : Season
            };
 };
 

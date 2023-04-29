@@ -475,7 +475,7 @@ function setDateOffset() {
         }
         dateOffset = Math.round((actualSeconds-tsSeconds)/3600)*3600*1000;
         if (checkOffsetCounter == -1) {
-            Log('dateOffset (hours):' + dateOffset/3600/1000 + ' actualDate:' + actualDateString + ' tsDate:' + tsDateString + ' tsDate:' + tsDate + ' data:' + data + ' starttime:' + actualData[0]);
+            Log('dateOffset (hours):' + dateOffset/3600/1000 + ' actualDate:' + actualDateString + ' tsDate:' + tsDateString + ' tsDate:' + tsDate + ' data:' + data + ' start:' + actualData[0]);
         }
 	window.clearTimeout(setDateOffsetTimer);
     });
@@ -1026,10 +1026,24 @@ function itemToHtml(Item, OnlyReturn) {
     var IsLiveText;
     var Background='';
     var Link = itemToLink(Item);
-    var itemRow = (itemCounter % 2 == 0) ? 'topitem' : 'bottomitem';
-    var borderStyle = (Item.watched) ? ' style="width:' + Item.watched + '%;"' : '';
+    var itemRow = (itemCounter % 2 == 0) ? ' topitem' : ' bottomitem';
+    var borderStyle;
+    var watched = Item.watched;
 
-    itemRow = ((Item.watched) ? ' resumed' : '') + ' ' + itemRow;
+    if (Item.start && Item.duration) {
+        if (Item.is_channel || Item.is_running) {
+            watched = (getCurrentDate()-Item.start)/1000/Item.duration;
+            watched = Math.round(watched*100);
+            if (!isNaN(watched)) {
+                itemRow += ' running';
+                if (watched > 100) watched = 100;
+                if (watched < 3) watched = 3;
+            } else {
+                watched = null
+            }
+        }
+    }
+    itemRow += (Item.watched) ? ' resumed' : '';
     if(itemCounter % 2 == 0) {
 	if(itemCounter > 0 || htmlSection){
 	    html = '<div class="scroll-content-item' + itemRow  + '">';
@@ -1074,18 +1088,19 @@ function itemToHtml(Item, OnlyReturn) {
         loadImage(Item.thumb);
     }
     thumbsLoaded[itemsIndex] = 1;
-    Item.starttime = dateToHuman(Item.starttime);
+    Item.start = dateToHuman(Item.start);
     if (Item.is_live && !Item.is_running) {
 	html += '<div class="topoverlay">LIVE';
-	html += '<div class="bottomoverlay">' + Item.starttime + '</div></div>';
+	html += '<div class="bottomoverlay">' + Item.start + '</div></div>';
     }
     else if (Item.is_live){
 	html += '<div class="topoverlayred">LIVE';
-        if (Item.starttime)
-	    html += '<div class="bottomoverlayred">' + Item.starttime + '</div>';
+        if (Item.start)
+	    html += '<div class="bottomoverlayred">' + Item.start + '</div>';
         html += '</div>';
     } else if (Item.is_upcoming)
-        html += '<div class="upcomingoverlay"><span>' + Item.starttime + '</span></div>';
+        html += '<div class="upcomingoverlay"><span>' + Item.start + '</span></div>';
+    borderStyle = (watched) ? ' style="width:' + watched + '%;"' : '';
     html += '</div><div class="scroll-item-border"' + borderStyle + '/>';
     Item.name = Item.name.trim();
     html += '<div class="scroll-item-name">';

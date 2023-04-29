@@ -219,8 +219,8 @@ Svt.getDetailsData = function(url, data) {
     var AvailDate=null;
     var Description='';
     var NotAvailable=false;
-    var startTime=0;
-    var endTime=0;
+    var start=0;
+    var end=0;
     var Show = null;
     var isLive = false;
     var Season=null;
@@ -243,14 +243,14 @@ Svt.getDetailsData = function(url, data) {
             ImgLink = Svt.getThumb(data.running, 'large');
             if (!ImgLink)
 	        ImgLink = Svt.GetChannelThumb(data.id);
-            startTime = timeToDate(data.running.start);
-            endTime = timeToDate(data.running.end);
-            VideoLength = Math.round((endTime-startTime)/1000);
+            start = timeToDate(data.running.start);
+            end = timeToDate(data.running.end);
+            VideoLength = Math.round((end-start)/1000);
             VideoLength = dataLengthToVideoLength(null,VideoLength)
-            AirDate = dateToClock(startTime) + '-' + dateToClock(endTime);
+            AirDate = dateToClock(start) + '-' + dateToClock(end);
             Title = AirDate + ' ' + Name;
             isLive = true;
-            NotAvailable = (startTime - getCurrentDate()) > 60*1000;
+            NotAvailable = (start - getCurrentDate()) > 60*1000;
         } else {
             data = JSON.parse(data.responseText).data.detailsPageByPath;
             ImgLink = Svt.getThumb(data, 'large');
@@ -295,15 +295,15 @@ Svt.getDetailsData = function(url, data) {
             AirDate = Svt.getAirDate(data);
             VideoLength = data.durationFormatted;
             VideoLength = VideoLength && VideoLength.replace(/ tim/,' h');
-            startTime = AirDate;
+            start = AirDate;
             if (data.validTo)
-                endTime = timeToDate(data.validTo);
-            if (!VideoLength && startTime && endTime) {
-                VideoLength = Math.round((endTime-startTime)/1000);
+                end = timeToDate(data.validTo);
+            if (!VideoLength && start && end) {
+                VideoLength = Math.round((end-start)/1000);
                 VideoLength = dataLengthToVideoLength(null,VideoLength);
             }
-            NotAvailable = (getCurrentDate() < startTime);
-            isLive = data.live && (endTime > getCurrentDate());
+            NotAvailable = (getCurrentDate() < start);
+            isLive = data.live && (end > getCurrentDate());
             if (!isLive && data.validTo) {
 		AvailDate = timeToDate(data.validTo);
                 var hoursLeft = Math.floor((AvailDate-getCurrentDate())/1000/3600);
@@ -330,7 +330,7 @@ Svt.getDetailsData = function(url, data) {
             is_live       : isLive,
             air_date      : AirDate,
             avail_date    : AvailDate,
-            start_time    : startTime,
+            start         : start,
             duration      : VideoLength,
             description   : Description,
             not_available : NotAvailable,
@@ -1343,8 +1343,8 @@ Svt.decodeChannels = function(data, BaseUrl) {
         var Link;
         var ImgLink;
         var Background;
-        var starttime;
-        var endtime;
+        var start;
+        var end;
 
         for (var k in data) {
             Name = data[k].name.trim();
@@ -1353,11 +1353,12 @@ Svt.decodeChannels = function(data, BaseUrl) {
             Background = Svt.getThumb(data[k].running, 'extralarge');
             if (!Background)
                 Background = ImgLink;
-            starttime = timeToDate(data[k].running.start);
-            endtime   = timeToDate(data[k].running.end);
-            Duration  = Math.round((endtime-starttime)/1000);
-            Name = dateToClock(starttime) + '-' + dateToClock(endtime) + ' ' + data[k].running.name.trim();
+            start = timeToDate(data[k].running.start);
+            end   = timeToDate(data[k].running.end);
+            Duration  = Math.round((end-start)/1000);
+            Name = dateToClock(start) + '-' + dateToClock(end) + ' ' + data[k].running.name.trim();
             toHtml({name:Name,
+                    start: start,
                     duration:Duration,
                     is_live:false,
                     is_channel:true,
@@ -1397,7 +1398,7 @@ Svt.decode = function(data, extra) {
         var ImgLink;
         var LargeImgLink;
         var Background;
-        var starttime;
+        var start;
         var IsLive;
         var IsRunning;
         var Season;
@@ -1460,20 +1461,22 @@ Svt.decode = function(data, extra) {
                 data[k] = data[k].item;
             Description = Svt.stripHtml(Description || data[k].longDescription);
             Duration = data[k].duration;
-            starttime = Svt.getAirDate(data[k]);
+            start = Svt.getAirDate(data[k]);
             if (data[k].live) {
                 IsLive = true;
                 if (data[k].live.plannedEnd) {
                     IsLive = getCurrentDate() < timeToDate(data[k].live.plannedEnd);
                 }
-                IsRunning = data[k].live.liveNow || getCurrentDate() > starttime
+                IsRunning = data[k].live.liveNow || getCurrentDate() > start
             }
-            if (IsLive && !starttime && data[k].name.match(/[0-9]+:[0-9]+/)) {
-                starttime = data[k].name.replace(/[^0-9:]+/g, '');
+            if (IsLive && !start && data[k].name.match(/[0-9]+:[0-9]+/)) {
+                start = data[k].name.replace(/[^0-9:]+/g, '');
             }
+            if (!Duration && start && data[k].live && data[k].live.plannedEnd)
+                Duration = timeToDate(data[k].live.plannedEnd) - start;
 
-            IsUpcoming = extra.strip_show && (data[k].is_next || (starttime > getCurrentDate()));
-            starttime = (IsLive || IsUpcoming) ? starttime : null;
+            IsUpcoming = extra.strip_show && (data[k].is_next || (start > getCurrentDate()));
+            start = (IsLive || IsUpcoming) ? start : null;
             if (extra.strip_show && !IgnoreEpisodes) {
                 if (!Name.match(/(avsnitt|del)\s*([0-9]+)/i) && Episode) {
                     Description = Name.replace(SEASON_REGEXP, '$4');
@@ -1573,7 +1576,7 @@ Svt.decode = function(data, extra) {
                         is_channel:false,
                         is_running:IsRunning,
                         is_upcoming:IsUpcoming,
-                        starttime:starttime,
+                        start:start,
                         link:Link,
                         link_prefix:LinkPrefix,
                         description:Description,
@@ -1751,8 +1754,8 @@ Svt.getNextAirDay = function(data) {
 
 Svt.sortEpisodes = function(Episodes, Names, IgnoreEpisodes) {
     Episodes.sort(function(a, b){
-        if (a.is_upcoming && b.is_upcoming && +a.starttime != +b.starttime) {
-            return (a.starttime > b.starttime) ? -1 : 1;
+        if (a.is_upcoming && b.is_upcoming && +a.start != +b.start) {
+            return (a.start > b.start) ? -1 : 1;
         }
         if (Svt.IsClip(a) && Svt.IsClip(b)) {
             // Keep SVT sorting amongst clips
