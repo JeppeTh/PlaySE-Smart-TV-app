@@ -166,7 +166,7 @@ Svt.getThumb = function(data, size) {
         // Seems 224 is standard and faster...
         size = 'small/' + 224;
     }
-    return RedirectTls('http://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed);
+    return RedirectTls('https://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed);
 };
 
 Svt.isPlayable = function (url) {
