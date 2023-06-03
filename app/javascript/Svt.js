@@ -1503,7 +1503,7 @@ Svt.decode = function(data, extra) {
                         Description = 'Säsong ' + Season;
                     if (Show) {
                         Name = Name.replace(/^(((avsnitt|del) [0-9]+)|[0-9.]+\.)/i,'');
-                        if (Name.length && !Name.match(new RegExp(Show, 'i')))
+                        if (Name.length && !safeMatch(Name, Show))
                             Name = Show + ' - ' + Name;
                         else if (!Name.length)
                             Name = Show;

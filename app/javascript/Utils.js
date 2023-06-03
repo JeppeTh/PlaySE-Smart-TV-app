@@ -130,6 +130,15 @@ if (!String.prototype.startsWith) {
     };
 }
 
+function safeMatch(A, B) {
+    try {
+        return A.match(new RegExp(B, 'i'));
+    } catch (err) {
+        alert('RegExp err: ' + err + ' ' + B);
+        return A == B;
+    }
+}
+
 function loadingStart() {
     if (isEmulator) return;
     try {
@@ -988,7 +997,12 @@ function itemToLink(Item, UrlParams) {
 
     var myTitle=null;
     if (Item.link_prefix.match(/\?ilink/) && Item.show) {
-        var showRegexp = new RegExp(Item.show + '[\\-. 	]*','i');
+        var showRegexp;
+        try {
+            showRegexp = new RegExp(Item.show + '[\\-. 	]*','i');
+        } catch (e) {
+            showRegexp = new RegExp('');
+        }
         if (Item.season && Item.episode) {
             myTitle = Item.show + '.s' + Item.season + 'e' + Item.episode + '.';
             myTitle = myTitle + Item.name.replace(/s[0-9]+e[0-9]+[\-. 	]*/i,'').replace(showRegexp, '');
