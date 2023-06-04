@@ -677,16 +677,16 @@ Svt.decodeCategoryDetail = function (data, extra) {
     }
     data = JSON.parse(data.responseText).data.categoryPage;
     data = data && data.lazyLoadedTabs;
-    // In case of History resume/Details we end up directly in A-Ö (tab=all)
-    if (DetailIndex.current == 0) {
-        variables = getUrlParam(extra.url,'variables') || {};
-        if (JSON.parse(variables).tab == 'all')
-            DetailIndex.current = 1;
-    }
+
     if (DetailIndex.current == 0) {
         if (data && data.length > 0 && data[0].slug != 'all') {
-            // Start by initiating the tabs.
-            Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
+            // In case of History resume/Details we end up directly in A-Ö (tab=all)
+            variables = getUrlParam(extra.url,'variables') || {};
+            if (JSON.parse(variables).tab == 'all')
+                DetailIndex.current = 1;
+            else
+                // Start by initiating the tabs.
+                Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
         } else {
             // This category has no tabs.
             Svt.category_details = [];
