@@ -195,6 +195,11 @@ Tv4.upgradeUrl = function(url) {
     }
     if (url.match(/api.tv4play.se.+&node_nids=([^&]+)$/))
         url = Tv4.makeShowLink(url.match(/api.tv4play.se.+&node_nids=([^&]+)$/)[1]);
+    if (url.match(/imageproxy.b17g.services/)) {
+        var source = getUrlParam(url, 'source');
+        var width = getUrlParam(url, 'resize').split('x')[0];
+        return Tv4.fixThumb(source, width/THUMB_WIDTH);
+    }
     return url.match('graphql.tv4play.se') ? RedirectTls(url) : url;
 };
 
@@ -1116,8 +1121,8 @@ Tv4.fixThumb = function(thumb, factor) {
         thumb = Tv4.decodeThumb(thumb);
     }
     if (!factor) factor = 1;
-    var size = Math.round(factor*THUMB_WIDTH) + 'x' + Math.round(factor*THUMB_HEIGHT);
-    return RedirectIfEmulator(addUrlParam('https://imageproxy.b17g.services/?format=jpeg&quality=80&resize=' + size + '&retina=false&shape=cut', 'source', thumb));
+    var width = Math.round(factor*THUMB_WIDTH);
+    return RedirectIfEmulator(addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb));
 };
 
 Tv4.decodeThumb = function(thumb) {
