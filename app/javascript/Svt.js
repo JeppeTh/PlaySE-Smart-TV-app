@@ -479,6 +479,15 @@ Svt.getCategoryDetailsUrl = function(location) {
 };
 
 Svt.upgradeUrl = function(url) {
+    // sha256Hash
+    // CategoryPageQuery
+    url =  url.replace('8310718ae92359ab2d84968ccbe4a92824dd7684f612119007b1159a4c358ec0',
+                       '00be06320342614f4b186e9c7710c29a7fc235a1936bde08a6ab0f427131bfaf'
+                      );
+    // DetailsPageQuery
+    url =  url.replace('d4539b09f69378792486cf87e676af62e9f8ac6de274de616c58b93e86b26da1',
+                       'e240d515657bbb54f33cf158cea581f6303b8f01f3022ea3f9419fbe3a5614b0'
+                      );
 
     if (url.match(/\/genre\//))
         return Svt.makeGenreLink({id:url.replace(/.*\/genre\//,'')});
