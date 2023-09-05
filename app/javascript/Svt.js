@@ -88,7 +88,7 @@ Svt.makeGenreLink = function (data, tab) {
     if (!tab) tab = null;
     return Svt.makeApiLink('CategoryPageQuery',
                            '{"includeFullOppetArkiv":true,"id":"'+data.id+'","tab":' + tab + '}',
-                           '8310718ae92359ab2d84968ccbe4a92824dd7684f612119007b1159a4c358ec0'
+                           '00be06320342614f4b186e9c7710c29a7fc235a1936bde08a6ab0f427131bfaf'
                           );
     return Svt.makeApiLink('GenreProgramsAO',
                            '{"genre":["' + data.id + '"]}',
@@ -99,14 +99,14 @@ Svt.makeGenreLink = function (data, tab) {
 Svt.makeSectionLink = function (id) {
     return Svt.makeApiLink('GridPage',
                            '{"includeFullOppetArkiv":true,"selectionId":"'+id+'"}',
-                           'b30578b1b188242ce190c8a2cefe3d4694efafd17a929d08d273ae224a302b24'
+                           'a8248fc130da34208aba94c4d5cc7bd44187b5f36476d8d05e03724321aafb40'
                           );
 };
 
 Svt.makeCollectionLink = function (id) {
     return Svt.makeApiLink('FionaPage',
                            '{"includeFullOppetArkiv":true,"selectionId":"'+id+'"}',
-                           '0d50e0ae57df3a99f8b7fb0b94e1159fea64f04297d7dcb7c75f0358f09a1a48'
+                           'dc8f85e195903fe6227a76ec1e1d300d470ee8ea123bea6bee26215cc6e4959d'
                           );
 };
 
@@ -119,14 +119,14 @@ Svt.makeShowLink = function (data) {
 
     return Svt.makeApiLink('DetailsPageQuery',
                            '{"includeFullOppetArkiv":true,"path":"/' + Link + '"}',
-                           'd4539b09f69378792486cf87e676af62e9f8ac6de274de616c58b93e86b26da1'
+                           'e240d515657bbb54f33cf158cea581f6303b8f01f3022ea3f9419fbe3a5614b0'
                           );
 };
 
 Svt.makeSearchLink = function (query) {
     return Svt.makeApiLink('SearchPage',
-                           '{"querystring":"' + query + '"}',
-                           'ab8c604fc76d14885dcedd0f377b76afae9aabcde73b3324676f60ca86d12606'
+                           '{"query":"' + query + '"}',
+                           'f097c31299aa9b4ecdc4aaaf98a14444efda5dfbbc8cdaaeb7c3be37ae2b036a'
                           );
 };
 
@@ -134,7 +134,7 @@ Svt.makeEpisodeLink = function (data, fallback) {
     if (typeof(data) === 'string') {
         return Svt.makeApiLink('DetailsPageQuery',
                                '{"includeFullOppetArkiv":true,"path":"' + data + '"}',
-                               'd4539b09f69378792486cf87e676af62e9f8ac6de274de616c58b93e86b26da1'
+                               'e240d515657bbb54f33cf158cea581f6303b8f01f3022ea3f9419fbe3a5614b0'
                               );
     } else if (data.urls && data.urls.svtplay) {
         return Svt.makeEpisodeLink(data.urls.svtplay, fallback);
@@ -414,7 +414,7 @@ Svt.getUrl = function(tag, extra) {
     case 'live':
         return Svt.makeApiLink('ChannelsQuery',
                                '{}',
-                               '210be4b72f03223b990f031d9a2e3501ff9284f8d2c66b01b255a807775f0b19'
+                               'bb1706ce58d8d90eb2dbbaa249aaba7fa2f509e3aff4939f26b907cfefe1d758'
                               );
 
     case 'searchList':
@@ -429,7 +429,7 @@ Svt.getUrl = function(tag, extra) {
 Svt.getStartPageUrl = function() {
     return Svt.makeApiLink('StartPage',
                            '{"includeFullOppetArkiv":true}',
-                           'b2a022f7353fbe891696aacd173a74c964a5f382f6f9153f0fcf129cecd4b9ac'
+                           'c5c2abc16e150b98857cf7e6e51be52e22e47b0187795b428a24bbeab937c63a'
                           );
 }
 Svt.getSectionUrl = function(location) {
@@ -447,7 +447,7 @@ Svt.getCategoryUrl = function() {
     case 0:
         return Svt.makeApiLink('MainGenres',
                                '{}',
-                               '66fea23f05ac32bbb67e32dbd7b9ab932692b644b90fdbb651bc039f43e387ff'
+                               '65b3d9bccd1adf175d2ad6b1aaa482bb36f382f7bad6c555750f33322bc2b489'
                               );
     case 1:
         return Svt.getStartPageUrl();
@@ -460,7 +460,7 @@ Svt.getCategoryUrl = function() {
     case 3:
         return Svt.makeApiLink('ProgramsListing',
                                '{"includeFullOppetArkiv":true}',
-                               '9c8e99e55febdfd84ccf64beb8de1182a0feab9217f461d99b144c273f3b3456'
+                               '17252e11da632f5c0d1b924b32be9191f6854723a0f50fb2adb35f72bb670efa'
                               );
     }
 };
@@ -577,7 +577,7 @@ Svt.decodeCategories = function (data, extra) {
         case 0:
         case 2:
             if (Index == 0)
-                data = data.genres;
+                data = data.genresInMain.genres;
             else
                 data = data.genresSortedByName.genres;
 
