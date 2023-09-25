@@ -36,11 +36,12 @@ showList.loadXml = function(refresh) {
     };
     requestUrl(url,
                function(status, data) {
-                   Channel.decodeShowList(data, 
-                                          {url:url, 
+                   Channel.decodeShowList(data,
+                                          {url:url,
                                            loc:location,
                                            refresh:refresh,
                                            strip_show:true,
+                                           is_related:(location.indexOf('related=1') != -1),
                                            is_clips:(location.indexOf('clips=1') != -1),
                                            season:season,
                                            variant:variant,

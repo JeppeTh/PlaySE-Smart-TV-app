@@ -4,8 +4,12 @@ var Section = {
 
 Section.onLoad = function(location, refresh) {
     if (!refresh) {
-        document.title = Channel.getSectionTitle(location);
-	Header.display(document.title);
+        if (getUrlParam(location,'keep_title')) {
+            PathHistory.GetPath();
+        } else {
+            document.title = Channel.getSectionTitle(location);
+	    Header.display(document.title);
+        }
     }
     if (!detailsOnTop) {
 	this.loadXml(location, refresh);	
@@ -21,6 +25,7 @@ Section.loadXml = function(location, refresh) {
                    Channel.decodeSection(data, 
                                          {url:url, 
                                           refresh:refresh,
+                                          is_related:(location.indexOf('related.html') != -1),
                                           cbComplete:function(){cbComplete(status);}
                                          });
                    data = null;

@@ -109,7 +109,9 @@ Details.toHtml = function (programData) {
                         };
             } else if (getOldLocation() && !getOldLocation().match(/categoryDetail\.html/) &&
                        !getOldLocation().match(/showList\.html/) && programData.parent_show &&
-                       programData.parent_show.is_category) {
+                       programData.parent_show.is_category &&
+                       !programData.related
+                      ) {
                 extra = {loc: makeCategoryLink(programData.parent_show.name,
                                                programData.parent_show.large_thumb,
                                                programData.parent_show.url
@@ -123,16 +125,17 @@ Details.toHtml = function (programData) {
 		html+='<div class="project-meta border"><a id="available" type="text">Tillgänglig till: </a><a>'+dateToHuman(programData.avail_date)+'</a></div>';
             if (programData.duration)
 		html+='<div class="project-meta"><a id="duration" type="text">Längd: </a><a>'+programData.duration+'</a></div>';
-            else 
+            else
                 html+='<div class="project-meta"><a id="duration" type="text"></a><a>'+programData.duration+'</a></div>';
         }
+        if (programData.related)
+            extra = {loc:programData.related, name:'Relaterat'};
 	html+='<div class="project-desc">'+programData.description+'</div>';
 	html+='</div>';
 	html+='<div class="bottom-buttons">';
         if (programData.category) {
             html+='<a href="#" id="enterShowButton" class="link-button selected">Till Kategorin</a>';
-        }
-        else if (programData.show) {
+        } else if (programData.show) {
             var title = getUrlParam(myLocation,'title') || 'Programmet';
             html+='<a href="#" id="enterShowButton" class="link-button selected">Till ' + title + '</a>';
         } else if (programData.not_available) {

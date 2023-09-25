@@ -17,7 +17,10 @@ Header.urldecode = function(str) {
 Header.insertTitle = function(path) {
     var title;
     var html = '';
-    while(path.indexOf('/')>0){
+    if (path.length > 100) {
+         path = path.replace(/^([^/]+\/[^/]+\/).*(\/[^/]+\/[^/]+\/)$/,'$1...$2');
+    }
+    while(path.indexOf('/')>0) {
 	title = path.substring(0, path.indexOf('/'));
 	title = this.urldecode(title);
 	if(title.length > 30){

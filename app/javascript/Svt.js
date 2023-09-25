@@ -228,6 +228,7 @@ Svt.getDetailsData = function(url, data) {
     var Episode=null;
     var EpisodeName=null;
     var Variant=null;
+    var Related=null;
     try {
         if (url.match(/=ChannelsQuery/)) {
             data = JSON.parse(data.responseText).data.channels.channels;
@@ -271,6 +272,8 @@ Svt.getDetailsData = function(url, data) {
                         large_thumb : ImgLink,
                         is_category : true
                        };
+                if (Svt.getRelatedData(data))
+                    Related = makeRelatedLink(url);
             }
             data = data.item;
             Season = Svt.getSeasonNumber(data);
@@ -339,7 +342,8 @@ Svt.getDetailsData = function(url, data) {
             variant       : Variant,
             episode       : Episode,
             episode_name  : EpisodeName,
-            parent_show   : Show
+            parent_show   : Show,
+            related       : Related
     };
 };
 
@@ -349,6 +353,7 @@ Svt.getShowData = function(url, data) {
     var Genre = Name;
     var ImgLink='';
     var Description='';
+    var Related = null;
 
     try {
         data = JSON.parse(data.responseText).data.detailsPageByPath;
@@ -358,6 +363,11 @@ Svt.getShowData = function(url, data) {
             Name = 'Klipp';
         } else
             Name = data.item.name.trim();
+
+        if (!myLocation.match(/(related|variant|season|clips)=/)) {
+            if (Svt.getRelatedData(data))
+                Related = makeRelatedLink(url);
+        }
 
         ImgLink = Svt.getThumb(data, 'large');
 	Description = data.item.shortDescription;
@@ -386,8 +396,20 @@ Svt.getShowData = function(url, data) {
             name          : Name,
             description   : Description,
             genre         : Genre,
-            thumb         : ImgLink
+            thumb         : ImgLink,
+            related       : Related
            };
+};
+
+Svt.getRelatedData = function(data) {
+    if (data.associatedContent) {
+        for (var i in data.associatedContent) {
+            if (data.associatedContent[i].id == 'related') {
+                return data.associatedContent[i];
+            }
+        }
+    }
+    return null
 };
 
 Svt.getUrl = function(tag, extra) {
@@ -433,9 +455,8 @@ Svt.getStartPageUrl = function() {
                           );
 }
 Svt.getSectionUrl = function(location) {
-    if (location.match(/similar.html\?url=/)) {
-        PathHistory.GetPath();
-        return location.match(/similar.html\?url=([^&]+)/)[1];
+    if (location.match(/related\.html/)) {
+        return getUrlParam(location, 'url');
     }
 
     var index = location.match(/tab_index=([0-9]+)/)[1];
@@ -472,8 +493,13 @@ Svt.getCategoryDetailsUrl = function(location) {
         return location;
 
     default:
-        if (DetailIndex.current > Svt.category_detail_max_index)
-            return Svt.category_details[0].url; // Lets sort it when response is received.
+        if (DetailIndex.current > Svt.category_detail_max_index) {
+            // Lets sort it when response is received.
+            if (Svt.category_details.length > 0)
+                return Svt.category_details[0].url;
+            else
+                return location;
+        }
         return Svt.category_details[DetailIndex.current].url;
     }
 };
@@ -557,6 +583,10 @@ Svt.decodeMain = function(data, extra) {
 };
 
 Svt.decodeSection = function(data, extra) {
+    if (extra.is_related) {
+        return Svt.decodeRelated(data, extra);
+    }
+
     // An alertnative is to use GridPage - but slower.
     // data = JSON.parse(data.responseText).data.selectionById.items;
     // Svt.decode(data, extra);
@@ -755,6 +785,21 @@ Svt.decodeCategoryDetail = function (data, extra) {
         extra.cbComplete();
 };
 
+Svt.decodeRelated = function (data, extra) {
+    data = JSON.parse(data.responseText).data.detailsPageByPath;
+    Svt.decode(Svt.getRelatedData(data).items, extra);
+    for (var i in data.categories) {
+        categoryToHtml(data.categories[i].heading,
+                       Svt.getThumb(data),
+                       Svt.getThumb(data, 'large'),
+                       Svt.makeGenreLink({id:data.categories[i].id})
+                      );
+    }
+    data = null;
+    if (extra.cbComplete)
+        extra.cbComplete();
+};
+
 Svt.decodeCollections = function (data, extra) {
     data = JSON.parse(data.responseText).data.selectionById.items;
     Svt.decode(data);
@@ -831,11 +876,16 @@ Svt.useLiveRefresh = function() {
 };
 
 Svt.decodeShowList = function(data, extra) {
+    if (extra.is_related)
+        return Svt.decodeRelated(data, extra);
+
     data = JSON.parse(data.responseText).data.detailsPageByPath;
 
     var showThumb = Svt.getThumb(data);
     var seasons = [];
     var hasClips = false;
+    var hasRelated = false;
+    var relatedThumb = null;
     var hasZeroSeason = false;
     var useSeasonName = false;
     var showName;
@@ -861,6 +911,9 @@ Svt.decodeShowList = function(data, extra) {
                 seasons.push(data[i].name);
             } else if (data[i].id.match(/^clips/)) {
                 hasClips = true;
+            } else if (data[i].id == 'related' && data[i].items.length > 0) {
+                hasRelated = true;
+                relatedThumb = Svt.getThumb(data[i].items[0]);
             } else if (data[i].selectionType.match(/accessibility/i)) {
                 continue;
             } else if (!data[i].selectionType.match(/Upcoming/i)) {
@@ -953,6 +1006,9 @@ Svt.decodeShowList = function(data, extra) {
     if (hasClips)
         clipToHtml(showThumb, extra.url);
 
+    if (hasRelated)
+        relatedToHtml(relatedThumb, extra.url);
+
     if (extra.cbComplete)
         extra.cbComplete();
 };
@@ -1011,7 +1067,7 @@ Svt.findVariantSeason = function(data, index, variant) {
         if (data[k].name.match(SeasonName))
             return data[k];
     }
-    Log(SeasonName + ' for ' + variant + ' not found!');
+    alert(SeasonName + ' for ' + variant + ' not found!');
     return data[index];
 };
 
@@ -1525,9 +1581,7 @@ Svt.decode = function(data, extra) {
 
             if (!IsUpcoming && extra.variant) {
                 // Make sure variant is correct
-                if (!data[k].accessibilities ||
-                    data[k].accessibilities[0] != extra.variant
-                   ) {
+                if (!Svt.setupVariant(data[k], extra.variant)) {
                     Log('Wrong variant!');
                     continue;
                 }
@@ -1571,8 +1625,10 @@ Svt.decode = function(data, extra) {
                 }
             }
             // Add variants
-            if (!IsUpcoming && !extra.variant && data[k].accessibilities) {
+            if (!IsUpcoming && !extra.is_related && !extra.variant && data[k].accessibilities) {
                 for (var m=0; m < data[k].accessibilities.length; m++) {
+                    if (data[k].accessibilities[m] == 'Default')
+                        continue;
                     if (Variants.indexOf(data[k].accessibilities[m]) == -1)
                         Variants.push(data[k].accessibilities[m]);
                 }
@@ -1620,6 +1676,21 @@ Svt.decode = function(data, extra) {
     }
 };
 
+Svt.setupVariant = function(data, variant) {
+    if (data.variants) {
+        for (var i in data.variants) {
+            if (data.variants[i].accessibility &&
+                data.variants[i].accessibility == variant
+               ) {
+                data.urls = data.variants[i].urls;
+                data.videoSvtId = data.variants[i].videoSvtId;
+                return true
+            }
+        }
+    }
+    return false;
+};
+
 Svt.getVariantName = function(accessService) {
     if (accessService.match(/audio.*desc/i))
         return 'Syntolkat';
@@ -1632,7 +1703,7 @@ Svt.getVariantName = function(accessService) {
 };
 
 Svt.getSeasonDigits = function(Name) {
-    Name = "" + Name;
+    Name = '' + Name;
     return +(Name.split(/\s*:.+$/)[0].replace(/[^0-9]+/g,''));
 };
 

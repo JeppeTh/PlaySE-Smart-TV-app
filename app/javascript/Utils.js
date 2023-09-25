@@ -795,7 +795,11 @@ function handleHttpResult(url, timer, extra, result) {
         //     alert('Failure:' + url + ' status: + result.status);
     }
     if (extra.cb) {
-        extra.cb(result.status, result.data, result.xhr, url);
+        try {
+            extra.cb(result.status, result.data, result.xhr, url);
+        } catch (error) {
+            Log('handleHttpResult cb failed: ' + error);
+        }
     }
     if (extra.sync) {
         result.success = isHttpStatusOk(result.status);
@@ -853,8 +857,9 @@ function getHistory(Name,LinkPrefix) {
             Prefix = Prefix.replace(/\/[^\/]+\/$/, '');
         }
     } else if ((detailsOnTop || myLocation.match(/details.html/)) &&
-               (!LinkPrefix || !LinkPrefix.match(/categoryDetail.html/))) {
-        Prefix = Prefix.replace(/\/[^\/]+\/$/, '');
+               (!LinkPrefix || !LinkPrefix.match(/categoryDetail.html/)) &&
+               (!LinkPrefix || !LinkPrefix.match(/keep_title=1/))) {
+            Prefix = Prefix.replace(/\/[^\/]+\/$/, '');
     }
     return Prefix.replace(/\/$/,'') + '/' + encodeURIComponent(Name) + '/';
 }
@@ -936,6 +941,10 @@ function callTheOnlySeason(Name, Link, Location, UserData) {
     replaceLocation(LinkPrefix + Link + '&history=' + getHistory(Name));
 }
 
+function relatedToHtml(Thumb, Link) {
+    showToHtml('Relaterat', Thumb, Link, '<a href="showList.html?related=1&keep_title=1&title=Relaterat&name=');
+}
+
 function clipToHtml(Thumb, Link) {
     showToHtml('Klipp', Thumb, Link, '<a href="showList.html?clips=1&title=Klipp&name=');
 }
@@ -991,6 +1000,14 @@ function fixCategoryLink(Name, Thumb, Url) {
 
 function makeShowLink(Name, Url) {
     return makeLink(makeShowLinkPrefix(), Name, Url);
+}
+
+function makeRelatedLink(Url) {
+    return makeLink(makeLinkPrefix('related.html', 'url', 'related=1'),
+                    'Relaterat',
+                    encodeURIComponent(Url),
+                    'keep_title=1'
+                   );
 }
 
 function itemToLink(Item, UrlParams) {
