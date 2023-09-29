@@ -1139,12 +1139,11 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
 
                        for (var k = 0; k < subtitleReferences.length; k++) {
 		           Log('subtitleReferences:' + subtitleReferences[k].url);
-                           if (subtitleReferences[k].url.indexOf('.m3u8') != -1)
-                               continue;
-                           else if (subtitleReferences[k].url.length > 0) {
-		               srtUrl = subtitleReferences[k].url;
+                           srtUrl = subtitleReferences[k].url;
+                           if (subtitleReferences[k].label &&
+                               subtitleReferences[k].label.match(/allt/i)
+                              )
                                break;
-                           }
 		       }
 
                        if (data.video)
@@ -1470,7 +1469,6 @@ Svt.decode = function(data, extra) {
         var Episode;
         var Variants = [];
         var SEASON_REGEXP = new RegExp('((s[^s]+song\\s*([0-9]+))\\s*-\\s*)?(.+)','i');
-        var Names = [];
         var AltName = null;
         var Shows = [];
         var IgnoreEpisodes = false;
@@ -1576,8 +1574,7 @@ Svt.decode = function(data, extra) {
                                AltName != Description && AltName != Name)
                         Name = Name + ' - ' + AltName;
                 }
-            } else
-                Names.push(Name);
+            }
 
             if (!IsUpcoming && extra.variant) {
                 // Make sure variant is correct
@@ -1654,7 +1651,7 @@ Svt.decode = function(data, extra) {
             data[k] = '';
 	}
         if (extra.strip_show)
-            Svt.sortEpisodes(Shows, Names, IgnoreEpisodes);
+            Svt.sortEpisodes(Shows, IgnoreEpisodes);
 
         for (var n=0; n < Shows.length; n++) {
             toHtml(Shows[n]);
@@ -1832,14 +1829,14 @@ Svt.getNextAirDay = function(data) {
     }
 };
 
-Svt.sortEpisodes = function(Episodes, Names, IgnoreEpisodes) {
+Svt.sortEpisodes = function(Episodes, IgnoreEpisodes) {
     Episodes.sort(function(a, b){
         if (a.is_upcoming && b.is_upcoming && +a.start != +b.start) {
             return (a.start > b.start) ? -1 : 1;
         }
         if (Svt.IsClip(a) && Svt.IsClip(b)) {
             // Keep SVT sorting amongst clips
-            return Names.indexOf(a.name) - Names.indexOf(b.name);
+            return 0;
         } else if(Svt.IsClip(a)) {
             // Clips has lower prio
             return 1;
@@ -1849,7 +1846,7 @@ Svt.sortEpisodes = function(Episodes, Names, IgnoreEpisodes) {
         } else {
             if (IgnoreEpisodes)
                 // Keep SVT sorting in case not all videos has an episod number.
-                return Names.indexOf(a.name) - Names.indexOf(b.name);
+                return 0;
             else if (Svt.IsNewer(a,b))
                 return -1;
             else
