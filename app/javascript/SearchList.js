@@ -43,8 +43,8 @@ SearchList.loadXml = function(refresh) {
     var url = Channel.getUrl('searchList', {refresh:refresh, query:query});
     requestUrl(url,
                function(status, data) {
-                   Channel.decodeSearchList(data, 
-                                            {url:url, 
+                   Channel.decodeSearchList(data,
+                                            {url:url,
                                              refresh:refresh,
                                              query:query,
                                              cbComplete:function(){cbComplete(status);}
@@ -52,7 +52,8 @@ SearchList.loadXml = function(refresh) {
                    data = null;
                },
                {cbError:cbComplete,
-                headers:Channel.getHeaders()
+                headers:Channel.getHeaders(),
+                postData:Channel.getPostData('searchList', {refresh:refresh, query:query})
                });
 };
 

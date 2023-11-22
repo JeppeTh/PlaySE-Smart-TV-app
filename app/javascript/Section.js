@@ -25,12 +25,14 @@ Section.loadXml = function(location, refresh) {
                    Channel.decodeSection(data, 
                                          {url:url, 
                                           refresh:refresh,
+                                          requestedLocation:data.requestedLocation,
                                           is_related:(location.indexOf('related.html') != -1),
                                           cbComplete:function(){cbComplete(status);}
                                          });
                    data = null;
                },
                {cbError:function(status){cbComplete(status);},
-                headers:Channel.getHeaders()
+                headers:Channel.getHeaders(),
+                postData: Channel.getPostData('section', {refresh:refresh, location:location})
                });
 };

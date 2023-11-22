@@ -23,6 +23,7 @@ showList.loadXml = function(refresh) {
     $('#content-scroll').hide();
     var location = getLocation(refresh);
     var url = this.getUrl(location);
+    var postData = Channel.getPostData('showList', {url:url});
     var season   = getUrlParam(location, 'season');
     season = (isNaN(+season)) ? season : +season;
     var variant = getUrlParam(location, 'variant');
@@ -34,13 +35,14 @@ showList.loadXml = function(refresh) {
             loadFinished(status, refresh);
         }
     };
-    requestUrl(url,
+    requestUrl(Channel.getShowUrl(url),
                function(status, data) {
                    Channel.decodeShowList(data,
                                           {url:url,
+                                           requestedLocation:data.requestedLocation,
                                            loc:location,
                                            refresh:refresh,
-                                           strip_show:true,
+                                           strip_show:(location.indexOf('related=1') == -1),
                                            is_related:(location.indexOf('related=1') != -1),
                                            is_clips:(location.indexOf('clips=1') != -1),
                                            season:season,
@@ -51,7 +53,8 @@ showList.loadXml = function(refresh) {
                    data = null;
                },
                {cbError:cbComplete,
-                headers:Channel.getHeaders()
+                headers:Channel.getHeaders(),
+                postData:postData
                }
               );
 };

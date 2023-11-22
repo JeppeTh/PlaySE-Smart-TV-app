@@ -44,7 +44,7 @@ Details.getUrl=function(detailsUrl){
     var parse;
     var name=url;
     if (url.match(/category=/)) {
-        name = url.match(/category=(.+)&catThumb=/)[1];
+        name = url.match(/category=(.+)&(catThumb|history)=/)[1];
     }
     else if (url.match(/[?&](ilink|name)=/)) {
         name = url.match(/[?&](ilink|name)=(.+)&history=/)[2];
@@ -101,7 +101,8 @@ Details.toHtml = function (programData) {
         } else if (!programData.category) {
             // Ignore extra if inside show/category
             if (getOldLocation() && !getOldLocation().match(/showList\.html/) &&
-                programData.parent_show && !programData.parent_show.is_category) {
+                programData.parent_show && !programData.parent_show.is_category &&
+                !programData.parent_show.is_movie) {
                 extra = {loc: makeShowLink(programData.parent_show.name,
                                            programData.parent_show.url
                                           ),
@@ -126,7 +127,7 @@ Details.toHtml = function (programData) {
             if (programData.duration)
 		html+='<div class="project-meta"><a id="duration" type="text">Längd: </a><a>'+programData.duration+'</a></div>';
             else
-                html+='<div class="project-meta"><a id="duration" type="text"></a><a>'+programData.duration+'</a></div>';
+                html+='<div class="project-meta"><a id="duration" type="text"></a><a></a></div>';
         }
         if (programData.related)
             extra = {loc:programData.related, name:'Relaterat'};
@@ -134,14 +135,18 @@ Details.toHtml = function (programData) {
 	html+='</div>';
 	html+='<div class="bottom-buttons">';
         if (programData.category) {
-            html+='<a href="#" id="enterShowButton" class="link-button selected">Till Kategorin</a>';
+            var title = getUrlParam(myLocation,'catName');
+            if (!title || title.length > 10) title = 'Kategorin';
+            html+='<a href="#" id="enterShowButton" class="link-button selected">Till ' + title + '</a>';
         } else if (programData.show) {
             var title = getUrlParam(myLocation,'title') || 'Programmet';
             html+='<a href="#" id="enterShowButton" class="link-button selected">Till ' + title + '</a>';
-        } else if (programData.not_available) {
-            html+='<a href="#" id="notStartedButton" class="link-button">Ej Startat</a>';
         } else {
-            html+='<a href="#" id="playButton" class="link-button selected">Spela upp</a>';
+            if (programData.not_available) {
+                html+='<a href="#" id="notStartedButton" class="link-button">Ej Startat</a>';
+            } else {
+                html+='<a href="#" id="playButton" class="link-button selected">Spela upp</a>';
+            }
         }
         if (extra) {
             html+=extra.loc+'" id="extraButton" class="link-button';

@@ -142,7 +142,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
 Player.setDuration = function(duration) {
     if (duration*1 == duration) {
         this.sourceDuration = duration * 1000;
-    } else if (duration.length > 0) {
+    } else if (duration && duration.length > 0) {
         if (duration.match(/^[0-9]+$/)) {
             this.sourceDuration = duration;
         }

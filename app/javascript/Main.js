@@ -69,18 +69,21 @@ Main.loadXml = function(refresh){
     Channel.login(
         function() {
             var url = Channel.getUrl('main', {refresh:refresh});
+            var postData = Channel.getPostData('main', {refresh:refresh});
             var cbComplete = function(status){loadFinished(status, refresh);};
             requestUrl(url,
                        function(status, data) {
-                           Channel.decodeMain(data, 
-                                              {url:url, 
+                           Channel.decodeMain(data,
+                                              {url:url,
+                                               requestedLocation:data.requestedLocation,
                                                refresh:refresh,
                                                cbComplete:function(){cbComplete(status);}
                                               });
                            data = null;
                        },
                        {cbError:function(status){cbComplete(status);},
-                        headers:Channel.getHeaders()
+                        headers:Channel.getHeaders(),
+                        postData:postData
                        });
         }
     );

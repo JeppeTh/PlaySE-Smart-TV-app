@@ -15,6 +15,7 @@ live.onLoad = function(location, refresh) {
 live.loadXml = function(location, refresh, oldPos) {
     $('#content-scroll').hide();
     var url = getUrlParam(location,'url');
+    var postData = Channel.getPostData('live', {refresh:refresh, url:url});
     url = Channel.getUrl('live', {refresh:refresh, location:url});
     var cbComplete = function(status){
         if (oldPos) myPos = oldPos;
@@ -30,9 +31,10 @@ live.loadXml = function(location, refresh, oldPos) {
                                       });
                    data = null;
                },
-               {cbError:cbComplete,
-                headers:Channel.getHeaders(),
-                no_cache:true
+               {cbError:  cbComplete,
+                headers:  Channel.getHeaders(),
+                postData: postData,
+                no_cache: true
                });
 };
 

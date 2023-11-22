@@ -131,6 +131,13 @@ Channel.getUrl = function(tag, extra) {
     return this.impl.getUrl(tag, extra);
 };
 
+Channel.getPostData = function(tag, extra) {
+    if (this.impl.getPostData)
+        return this.impl.getPostData(tag,extra);
+    else
+        return null;
+};
+
 Channel.exists = function(channelId) {
     return eval($('.channel-content').find('#'+channelId).attr('channel'));
 };
@@ -213,6 +220,13 @@ Channel.decodeShowList = function(data, extra) {
 
 Channel.decodeSearchList = function(data, extra) {
     this.impl.decodeSearchList(data, extra);
+};
+
+Channel.getShowUrl = function(url) {
+    if (this.impl.getShowUrl)
+        return this.impl.getShowUrl(url);
+    else
+        return url;
 };
 
 Channel.getDetailsUrl = function(name) {

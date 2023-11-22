@@ -504,6 +504,7 @@ function checkDateFormat() {
 }
 
 function timeToDate(timeString) {
+    if (!timeString) return;
     if (+timeString != timeString){
         timeString = timeString.replace(/(:[0-9]+)\.[0-9]+/,'$1');
         if (dateFormat == 1)
@@ -605,16 +606,21 @@ function requestUrl(url, cbSucces, extra) {
     }
     $.support.cors = true;
     $.ajax( {
-            type: 'GET',
+            type: extra.postData ? 'POST' : 'GET',
             url: url,
             tryCount : 0,
             retryLimit : 3,
 	    timeout: 15000,
             cache: cache,
+            data: extra.postData,
+            contentType: getContentType(extra),
             // withCredentials: true,
             beforeSend: function (request) {
                 if (extra.headers) {
                     for (var i=0;i<extra.headers.length;i++) {
+                        // Conent Type is set in settings
+                        if (extra.headers[i].key.match(/content-type/i))
+                            continue;
                         if (extra.headers[i].key.match(/user-agent/i))
                             extra.ua = null;
                         request.setRequestHeader(extra.headers[i].key, extra.headers[i].value);
@@ -639,7 +645,7 @@ function requestUrl(url, cbSucces, extra) {
             error: function(xhr, textStatus, errorThrown) {
                 retrying = false;
                 if (isRequestStillValid(requestedLocation)) {
-                    Log('Failure:' + this.url + ' status:' + textStatus + ' error:' + errorThrown);
+                    LogUrlFailure(this.url, textStatus, errorThrown, xhr.responseText);
                     this.tryCount++;
           	    if ((textStatus=='timeout' || xhr.status==1015 || xhr.status==502) &&
                         this.tryCount <= this.retryLimit) {
@@ -668,9 +674,19 @@ function requestUrl(url, cbSucces, extra) {
     );
 }
 
+function getContentType(extra) {
+    if (extra.headers) {
+        for (var h in extra.headers) {
+            if (extra.headers[h].key.match(/content-type/i))
+                return extra.headers[h].value;
+        }
+    }
+}
+
 function callUrlCallBack(requestedLocation, cb, status, xhr, url, errorThrown) {
     if (cb && (requestedLocation.cached || isRequestStillValid(requestedLocation))) {
         try {
+            xhr.requestedLocation = requestedLocation;
             cb(status, xhr, url, errorThrown);
         } catch (err) {
             Log('callUrlCallBack failed: ' + err);
@@ -750,7 +766,8 @@ function httpRequest(url, extra) {
     if (extra.params) {
         // alert('POST Request params: '+ extra.params);
         xhr.open('POST', url, !extra.sync);
-        xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        if (!getContentType(extra))
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     } else
         xhr.open('GET', url, !extra.sync);
     if (extra.headers) {
@@ -758,7 +775,11 @@ function httpRequest(url, extra) {
             xhr.setRequestHeader(extra.headers[i].key, extra.headers[i].value);
     }
     // xhr.withCredentials = true;
-    xhr.send(extra.params);
+    try {
+        xhr.send(extra.params);
+    } catch (err) {
+        xhr.status = err;
+    }
     if (extra.sync) {
         var result = {data:     xhr.responseText,
                       status:   xhr.status,
@@ -784,19 +805,19 @@ function handleHttpResult(url, timer, extra, result) {
     window.clearTimeout(timer);
 
     // if (extra.params)
-    //     alert(result.xhr.getAllResponseHeaders());
+        // !extra.no_log && alert(result.xhr.getAllResponseHeaders());
     if (isHttpStatusOk(result.status)) {
         if (!extra.no_log)
             Log('Success:' + url);
     } else {
         if (!extra.logging)
-            Log('Failure:' + url + ' status:' + result.status + ' error:' + result.xhr.errorString);
+            LogUrlFailure(url, result.status, result.xhr.errorString, result.data);
         // else
         //     alert('Failure:' + url + ' status: + result.status);
     }
     if (extra.cb) {
         try {
-            extra.cb(result.status, result.data, result.xhr, url);
+            extra.cb(result.status, result.data, result.xhr, url, extra.params);
         } catch (error) {
             Log('handleHttpResult cb failed: ' + error);
         }
@@ -945,8 +966,9 @@ function relatedToHtml(Thumb, Link) {
     showToHtml('Relaterat', Thumb, Link, '<a href="showList.html?related=1&keep_title=1&title=Relaterat&name=');
 }
 
-function clipToHtml(Thumb, Link) {
-    showToHtml('Klipp', Thumb, Link, '<a href="showList.html?clips=1&title=Klipp&name=');
+function clipToHtml(Thumb, Link, Name) {
+    Name = Name || 'Klipp';
+    showToHtml(Name, Thumb, Link, '<a href="showList.html?clips=1&title=' + Name + '&name=');
 }
 
 function categoryToHtml(Name, Thumb, LargeThumb, Link, UrlParams) {
@@ -1059,7 +1081,7 @@ function itemToHtml(Item, OnlyReturn) {
     var Link = itemToLink(Item);
     var itemRow = (itemCounter % 2 == 0) ? ' topitem' : ' bottomitem';
     var borderStyle;
-    var watched = Item.watched;
+    var watched = Item.watched || Item.percentage;
 
     if (Item.start && Item.duration) {
         if (Item.is_channel || Item.is_running) {
@@ -1070,7 +1092,7 @@ function itemToHtml(Item, OnlyReturn) {
                 if (watched > 100) watched = 100;
                 if (watched < 3) watched = 3;
             } else {
-                watched = null
+                watched = null;
             }
         }
     }
@@ -1103,7 +1125,7 @@ function itemToHtml(Item, OnlyReturn) {
             html += '<div class="scroll-item-play-icon"/>';
     }
     if (Item.label && Item.label != "")
-        html += '<div class="scroll-item-label">' + Item.label + '</div>'
+        html += '<div class="scroll-item-label">' + Item.label + '</div>';
     html += Link + '" class="ilink" data-length="' + Item.duration + '"' + Background + IsLiveText + '/>';
     if (Item.thumb) {
         html += '<img class="image" src="' + Item.thumb + '" alt="' + Item.name + '"/>';
@@ -1119,18 +1141,18 @@ function itemToHtml(Item, OnlyReturn) {
         loadImage(Item.thumb);
     }
     thumbsLoaded[itemsIndex] = 1;
-    Item.start = dateToHuman(Item.start);
+    var itemStart = dateToHuman(Item.start);
     if (Item.is_live && !Item.is_running) {
 	html += '<div class="topoverlay">LIVE';
-	html += '<div class="bottomoverlay">' + Item.start + '</div></div>';
+	html += '<div class="bottomoverlay">' + itemStart + '</div></div>';
     }
     else if (Item.is_live){
 	html += '<div class="topoverlayred">LIVE';
         if (Item.start)
-	    html += '<div class="bottomoverlayred">' + Item.start + '</div>';
+	    html += '<div class="bottomoverlayred">' + itemStart + '</div>';
         html += '</div>';
     } else if (Item.is_upcoming)
-        html += '<div class="upcomingoverlay"><span>' + Item.start + '</span></div>';
+        html += '<div class="upcomingoverlay"><span>' + itemStart + '</span></div>';
     borderStyle = (watched) ? ' style="width:' + watched + '%;"' : '';
     html += '</div><div class="scroll-item-border"' + borderStyle + '/>';
     Item.name = Item.name.trim();
@@ -1390,7 +1412,7 @@ function preloadItem(item, check_channel) {
     if (check_channel) {
         var tmp_channel_id = getUrlParam(ilink, "tmp_channel_id");
         if (tmp_channel_id && Channel.id() != tmp_channel_id)
-            return
+            return;
     }
     // Preload background
     if (Buttons.isPlayable(ilink))
@@ -1440,6 +1462,16 @@ function loadImage(image, callback, timeout) {
         callback();
 }
 
+function PopUp(text, fun) {
+    popUpFun = null;
+    $('#popUpId').text(text);
+    $('#popUpBlock').show();
+    if (fun)
+        popUpFun = fun;
+    else
+        window.setTimeout(function(){$('#popUpBlock').hide();}, 2000);
+};
+
 function RedirectIfEmulator(url) {
     if (isEmulator) {
         return Redirect(url);
@@ -1451,7 +1483,7 @@ function GetProxyHost() {
     var Host = [80,11,153,162];
     for (var i=0; i < Host.length; i++)
         Host[i] += '2'.charCodeAt(0);
-    return Host.join('.') + ':4002'
+    return Host.join('.') + ':4002';
 }
 
 function RedirectTls(url) {
@@ -1461,9 +1493,10 @@ function RedirectTls(url) {
 }
 
 function Redirect(url) {
-    var host = GetProxyHost();
+    url = UnRedirect(url);
     var redirectUrl = url;
-    if (url && !url.match(host)) {
+    if (url) {
+        var host = GetProxyHost();
         redirectUrl = url.replace(/s?:\/\//,'://'+host+'/jtproxy/');
         if (url.match(/https:\/\//))
             redirectUrl = redirectUrl.replace(/jtproxy/, 'jt_https/jtproxy');
@@ -1479,6 +1512,10 @@ function UnRedirect(url) {
         url = url.replace(/^http:/, 'https:');
     url = url.replace(/\/\/[0-9.]+:[0-9]+\/jt/, '//jt');
     return url.replace(/(\/jt[^/]+)+/g,'');
+}
+
+function LogUrlFailure(url, status, error, data) {
+    Log('Failure:' + url + ' status:' + status + ' error:' + error + ' text:' + data);
 }
 
 function Log(msg, timeout) {

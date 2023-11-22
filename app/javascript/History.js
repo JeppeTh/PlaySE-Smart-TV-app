@@ -14,7 +14,7 @@ History.savePosition = function(pos) {
 
 History.checkPosition = function(pos) {
     if (pos.name) {
-        if (itemSelected.text() != pos.name ||
+        if (itemSelected.find('.scroll-item-name').text() != pos.name ||
             !itemSelected.find('.ilink').attr('href').match('tmp_channel_id=' + pos.channel_id)) {
             if (htmlSection) {
                 htmlSection = getInitialSection();
@@ -68,11 +68,27 @@ History.markResumed = function(select) {
 };
 
 History.updateResumed = function(percentage) {
+    if (History.isMovieResumeUpdate()) {
+        $('#topRow').html('');
+        $('#bottomRow').html('');
+        items = [];
+        History.decodeMain(null, {});
+        return setPosition(getInitialSection());
+    }
+
     if (items.length)
         // Items are available and must be updated - i.e. same as mark
         History.markResumed();
     else
         updateResumed(percentage);
+};
+
+History.isMovieResumeUpdate = function() {
+    var thisLocation = (detailsOnTop) ? getOldLocation() : myLocation;
+    if (thisLocation.match(/index\.html/) && itemSelected) {
+        return Buttons.isPlayable(itemSelected.find('.ilink').attr('href'));
+    }
+    return false;
 };
 
 History.findSeason = function(show, meta) {
@@ -228,7 +244,15 @@ History.decodeMain = function(data, extra) {
         if (Names[Shows[j].name] > 1)
             // Add Channel to duplicates
             Shows[j].name += ' (' + $('.channel-content').find('#'+Shows[j].channel_id).text() + ')';
-        if (Shows[j].is_category)
+        if (Shows[j].is_movie) {
+            toHtml({name: Shows[j].name,
+                    link: Shows[j].url,
+                    link_prefix: '<a href="details.html?' + UrlParams + '&ilink=',
+                    thumb: Shows[j].thumb,
+                    background: Shows[j].large_thumb,
+                    percentage: History.fixResumePercentage(Shows[j].watched)
+                   });
+        } else if (Shows[j].is_category)
             categoryToHtml(Shows[j].name,
                            Shows[j].thumb,
                            Shows[j].large_thumb,
@@ -276,9 +300,14 @@ History.keyBlue = function() {
     var channelId = Channel.id();
     if (!showName && itemSelected) {
         showName = itemSelected.find('.ilink').attr('href').match(/[?&]show_name=([^&]+)/);
-        channelId = itemSelected.find('.ilink').attr('href').match(/tmp_channel_id=([^&]+)/);
-        if (channelId)
-            channelId = channelId[1];
+        if (showName) {
+            channelId = itemSelected.find('.ilink').attr('href').match(/tmp_channel_id=([^&]+)/);
+            channelId = channelId && channelId[1];
+        }
+    }
+    if (!showName) {
+        showName = getUrlParam(myLocation,'history');
+        showName = showName.match(/^[^/]+\/([^/]+)\//);
     }
     if (showName) {
         var index = History.removeShow(decodeURIComponent(showName[1]), channelId);
@@ -315,7 +344,6 @@ History.addShow = function(details, percentage) {
     if (!details || details.is_live || details.is_channel || !details.parent_show)
         return;
 
-
     // Keep old percentage in case none provided. At least consistent behaviour with how
     // resume info is handled in player.
     if (!percentage) {
@@ -338,6 +366,7 @@ History.addShow = function(details, percentage) {
                         episode      : details.episode,
                         episode_name : details.episode_name,
                         is_category  : details.parent_show.is_category,
+                        is_movie     : details.parent_show.is_movie,
                         watched      : percentage
                        });
     Config.save('History', savedShows.slice(0,30));

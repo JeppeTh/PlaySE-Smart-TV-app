@@ -18,10 +18,10 @@ categoryDetail.onUnload = function() {
 
 categoryDetail.loadXml = function(location, refresh) {
     $('#content-scroll').hide();
-    var url = location;
     if (location.match(/category=/))
-        url = location.match(/category=(.+)&catThumb/)[1];
-    url = Channel.getUrl('categoryDetail', {refresh:refresh, location:url});
+        url = location.match(/category=(.+)&(catThumb|history)/)[1];
+    var postData = Channel.getPostData('categoryDetail', {refresh:refresh, url:url});
+    var url = Channel.getUrl('categoryDetail', {refresh:refresh, location:url});
     var cbComplete = function(status) {
         if (refresh || myPos || !Channel.checkResume(location)) {
             if (refresh || myPos)
@@ -33,14 +33,19 @@ categoryDetail.loadXml = function(location, refresh) {
                function(status, data) {
                    // Clear to avoid something with setPosition?
                    itemCounter = 0;
-                   Channel.decodeCategoryDetail(data, 
-                                                {url:url, 
+                   Channel.decodeCategoryDetail(data,
+                                                {url:url,
+                                                 requestedLocation:data.requestedLocation,
+                                                 postData:postData,
+                                                 location:location,
                                                  refresh:refresh,
+                                                 is_related:(location.indexOf('related=1') != -1),
                                                  cbComplete:function(){cbComplete(status);}
                                                 });
                    data = null;
                },
                {cbError:cbComplete,
-                headers:Channel.getHeaders()
+                headers:Channel.getHeaders(),
+                postData:postData
                });
 };

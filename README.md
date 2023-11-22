@@ -1,5 +1,4 @@
-
-Uppdaterad med support för SVT, Pluto, TV4, Dplay (funkar inte sen loginkrav).
+Uppdaterad med support för SVT, Pluto, TV4 (kräver [refresh_token](https://svtplay-dl.se/tv4play/) i [config.xml](config.xml))
 De olika brancherna:
 * master - orginalvarianten
 * hd_version - samma som master fast med 1280x720 upplösning
