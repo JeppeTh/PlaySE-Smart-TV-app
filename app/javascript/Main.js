@@ -1,15 +1,14 @@
-var widgetAPI = new Common.API.Widget();
-var pluginAPI = new Common.API.Plugin();
-var MAX_WIDTH   = 960;
-var MAX_HEIGHT  = 540;
+var MAX_WIDTH   = 1920;
+var MAX_HEIGHT  = 1080;
 var LINE_LENGTH = 45;
-var THUMB_WIDTH = 240;
-var THUMB_HEIGHT = 135;
-var DETAILS_THUMB_FACTOR = 600/THUMB_WIDTH;
+var THUMB_WIDTH = 480;
+var THUMB_HEIGHT = 270;
+var DETAILS_THUMB_FACTOR = 1200/THUMB_WIDTH;
 var BACKGROUND_THUMB_FACTOR = MAX_WIDTH/THUMB_WIDTH;
-var HIGHLIGHT_THUMB_WIDTH = 124;
+var HIGHLIGHT_THUMB_WIDTH = 250;
 var recommendedLinks = [];
 var isEmulator = false;
+var isTizenEmulator = false;
 var deviceYear  = null;
 var Main = {
     loaded         : false,
@@ -26,23 +25,21 @@ Main.onLoad = function(refresh) {
     }
     if (!this.loaded) {
         $('#page-cover').hide();
-        var model = document.getElementById('pluginObjectDEVICE').GetRealModel();
+        var model = webapis.productinfo.getRealModel();
+        isTizenEmulator = (webapis.productinfo.getModel()=='TIZEN_SIM');
         isEmulator = (model === 'VALENCIA' || model === 'SDK' || !model);
         deviceYear = getDeviceYear();
         if (deviceYear > 2011)
             LINE_LENGTH = 36;
-        Log('Model:' + model +  ' DeviceYear:' + deviceYear + ' IsEmulator:' + isEmulator + ' curWidget:' + curWidget.name + ' Cookies:' + document.cookie);
+        Log('Model:' + model +  ' DeviceYear:' + deviceYear + ' IsEmulator:' + isEmulator + ' application:' + tizen.application.getCurrentApplication().appInfo.name + ' Cookies:' + document.cookie + ' version:' + webapis.productinfo.getSmartTVServerVersion() + ' firmware:' + webapis.productinfo.getFirmware() + ' tizen version:' + tizen.systeminfo.getCapabilities().platformVersion);
         loadingStart();
         Main.setClock();
         checkDateFormat();
+        Footer.display();
         this.loaded = true;
-	Audio.init();
-	Audio.showMuteFooter();
 	Search.init();
 	Language.init();
 	ConnectionError.init();
-	widgetAPI.sendReadyEvent();
-        pluginAPI.registIMEKey();
 	Language.setLang();
 	Resolution.displayRes();
         Player.enableScreenSaver();
