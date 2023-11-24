@@ -58,8 +58,7 @@ function setTmpChannel(newId) {
 }
 
 function getDeviceYear() {
-    var pluginNNavi = document.getElementById('pluginObjectNNavi');
-    var version = pluginNNavi.GetFirmware();
+    var version = webapis.productinfo.getSmartTVServerVersion();
     version = version && version.match(/INFOLINK([0-9]+)/);
     if (version)
         return +version[1];
@@ -144,7 +143,7 @@ function loadingStart() {
     try {
         if (loadingTimer == 0) {
             loadingTimer = window.setTimeout(function () {
-                $('#loading').sfLoading('show');
+                $('#spinner-img').show();
             }, 500);
         }
     } catch(err) {
@@ -156,7 +155,7 @@ function loadingStop() {
     try {
         clearTimeout(loadingTimer);
         loadingTimer = 0;
-        $('#loading').sfLoading('hide');  
+        $('#spinner-img').hide();
     } catch(err) {
         return;
     }
@@ -416,7 +415,7 @@ function setOffsets() {
                     var actualDate = data.match(/>[ \t]*[^0-9<]+([0-9]+[^0-9<]+[0-9]+)[ \t]*</)[1];
                     // Time is generated from other url - continue
                     var clockUrl = data.split(/iframe.*? src="/).pop().match(/([^"]+)"/)[1];
-                    httpRequest(clockUrl.toHttp(),
+                    httpRequest(clockUrl,
                                 {cb:function(status,data) {setClockOffset(actualDate, data);},
                                  no_log:true
                                 });
@@ -667,7 +666,6 @@ function requestUrl(url, cbSucces, extra) {
                     if (extra.callLoadFinished && isRequestStillValid(requestedLocation))
                         loadFinished(status, extra.refresh);
                 }
-                xhr.destroy();
                 xhr = null;
             }
         }
@@ -755,7 +753,6 @@ function httpRequest(url, extra) {
                               location: xhr.getResponseHeader('location'),
                               xhr     : xhr
                              });
-            xhr.destroy();
             xhr = null;
         }
     };
@@ -787,7 +784,6 @@ function httpRequest(url, extra) {
                       xhr     : xhr
                      };
         result = handleHttpResult(url, timer, extra, result);
-        xhr.destroy();
         xhr = null;
         return result;
     }
@@ -923,10 +919,10 @@ function waitForImages(callback, retries) {
 
 function fixCss() {
     if (deviceYear >= 2014) {
-        $('#footer-clock').css({'bottom':'16px'});
-        $('.confirmExit').css({'padding':'6px 10px'});
+        $('#footer-clock').css({'bottom':'32px'});
+        $('.confirmExit').css({'padding':'12px 20px'});
     } else if (deviceYear > 2011) {
-        $('.confirmExit').css({'padding':'10px', 'padding-bottom':'5px'});
+        $('.confirmExit').css({'padding':'20px', 'padding-bottom':'10px'});
     }
 }
 
@@ -1162,7 +1158,7 @@ function itemToHtml(Item, OnlyReturn) {
     if (Item.name.length > 2*LINE_LENGTH)
         Item.description = '';
     else if (Item.name.length > LINE_LENGTH)
-        html += ' style=" max-height:11px;"';
+        html += ' style=" max-height:22px;"';
     html += '>' + Item.description + '</span>';
     html += '</div>';
     html += '</div>';
@@ -1520,6 +1516,10 @@ function LogUrlFailure(url, status, error, data) {
 }
 
 function Log(msg, timeout) {
-    // httpRequest('http://<LOGSERVER>/log?msg=\'[' + curWidget.name + '] ' + seqNo++ % 10 + ' : ' + msg + '\'', null, {no_log:true, logging:true, timeout:((timeout) ? 100: null)});
-    // alert(msg);
+    // httpRequest('http://<LOGSERVER>/log?msg=\'[' + tizen.application.getCurrentApplication().appInfo.name + '] ' + seqNo++ % 10 + ' : ' + msg + '\'', null, {no_log:true, logging:true, timeout:((timeout) ? 100: null)});
+    alert(msg);
+}
+
+function alert(msg) {
+    // console.log(msg);
 }

@@ -1,4 +1,4 @@
-var TV4_API_BASE = RedirectTls('https://client-gateway.tv4.a2d.tv/graphql');
+var TV4_API_BASE = 'https://client-gateway.tv4.a2d.tv/graphql';
 var PAGE_INFO_FIELDS = 'fragment PageInfoFields on PageInfo{hasNextPage nextPageOffset totalCount}';
 var PAGE_LIST_FIELDS = 'fragment PageListFields on PageReference{id title images{image16x9{...ImageFieldsFull} image4x3{...ImageFieldsFull}}}';
 var LABEL_FIELDS = 'fragment LabelFields on Label {announcement recurringBroadcast}';
@@ -64,24 +64,30 @@ Tv4.login = function(cb, attempts) {
 };
 
 Tv4.getRefreshToken = function() {
-    var token = Tv4.readConfig('tv4Token');
+    var token = Tv4.getMetaData('tv4Token');
+    if (!token && isTizenEmulator)
+        token='ey..............';
     if (!token)
         Log('Failed to retrieve token.');
     return token;
 };
 
 Tv4.getProfileId = function() {
-    return Tv4.readConfig('tv4ProfileId') || 'default';
+    return Tv4.getMetaData('tv4ProfileId') || 'default';
 };
 
-Tv4.readConfig = function(tag) {
-    var fileSysObj = new FileSystem();
-    var fileObj = fileSysObj.openFile('config.xml','r');
-    var config = fileObj.readAll();
-    fileSysObj.closeFile(fileObj);
-    var regexp = new RegExp(tag + '> *([^< ]+)');
-    config = config.match(regexp);
-    return config && config[1];
+Tv4.getMetaData = function(key) {
+    try {
+        var meta_data = tizen.application.getAppMetaData();
+        for (var i in meta_data) {
+            if (meta_data[i].key == key) {
+                return meta_data[i].value;
+            }
+        }
+    } catch (e) {
+        Log('getAppMetaData failed: ' + e);
+    }
+    return null;
 };
 
 Tv4.syncAuth = function (use_sync, result) {
@@ -1463,7 +1469,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
     var wmdrmUrl = Tv4.makeStreamUrl(asset, 'wmdrm');
     var mpdUrl = Tv4.makeStreamUrl(asset, 'mpd');
     var hlsUrl = Tv4.makeStreamUrl(asset, 'hls', isLive);
-    var streams = (isLive) ? [wmdrmUrl,hlsUrl,mpdUrl] : [mpdUrl,wmdrmUrl,hlsUrl];
+    var streams = (isLive) ? [hlsUrl,wmdrmUrl,mpdUrl] : [mpdUrl,wmdrmUrl,hlsUrl];
 
     Tv4.selectStream(streamUrl,
                      isLive,
@@ -1473,8 +1479,8 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
                          if (!stream) {
                              $('.bottomoverlaybig').html('Not Available!');
                          } else {
-                             Resolution.getCorrectStream(RedirectIfEmulator(stream),
-                                                         RedirectIfEmulator(srtUrl),
+                             Resolution.getCorrectStream(stream,
+                                                         srtUrl,
                                                          {useBitrates:true,
                                                           license:drm && drm.license,
                                                           customdata:drm && drm.customData,
@@ -1487,7 +1493,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
 };
 
 Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
-    requestUrl(RedirectIfEmulator(streams[0]),
+    requestUrl(streams[0],
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(streamUrl)) {
                        // alert(JSON.stringify(JSON.parse(data.responseText)));
@@ -1498,10 +1504,6 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                        var stream = Tv4.addStreamingFilter(data.manifestUrl, isLive);
                        use_offset = use_offset || (data.startoverManifestUrl != null);
                        var drm = Tv4.getDrm(data);
-                       if (drm && streams.length > 1 && !streams[0].match(/mss/)) {
-                           streams.shift();
-                           return Tv4.selectStream(streamUrl, isLive, hlsUrl, streams, cb);
-                       }
                        streams.shift();
                        if (!isLive) {
                            Tv4.getSrtUrl(data,
@@ -1540,7 +1542,7 @@ Tv4.getDrm = function(data) {
         customData = btoa(JSON.stringify(data.auth));
     }
     if (license && customData)
-        return {license:RedirectIfEmulator(license), customData:customData};
+        return {license:license, customData:customData};
     else
         return null;
 };
@@ -1579,7 +1581,7 @@ Tv4.getSrtUrl = function (data, hlsUrl, cb) {
         }
     }
     var srtUrl = null;
-    requestUrl(RedirectIfEmulator(hlsUrl),
+    requestUrl(hlsUrl,
                function(status, data) {
                    try {
                        if (hlsUrl.match(/protocol=hls/)) {
@@ -1683,7 +1685,7 @@ Tv4.fixThumb = function(thumb, factor) {
 
     if (!factor) factor = 1;
     var width = Math.round(factor*THUMB_WIDTH);
-    return RedirectIfEmulator(addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb));
+    return addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb);
 };
 
 Tv4.decodeThumb = function(thumb) {
