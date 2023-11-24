@@ -94,8 +94,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
 	           }
 
                    if (target == 'Auto')
-                       // videoUrl = videoUrl + '|STARTBITRATE=AVERAGE';
-                       videoUrl = videoUrl + '|STARTBITRATE=CHECK';
+                       videoUrl = videoUrl + '|STARTBITRATE=AVERAGE';
 
                    if (is_hls)
                        videoUrl = videoUrl + '|COMPONENT=HLS';

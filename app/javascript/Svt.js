@@ -78,7 +78,7 @@ Svt.makeApiLink = function(Operation, variables, sha) {
                            'variables',
                            variables
                           );
-    return addUrlParam(RedirectTls(Link),
+    return addUrlParam(Link,
                        'extensions',
                        '{"persistedQuery":{"version":1,"sha256Hash":"' + sha + '"}}'
                       );
@@ -172,11 +172,9 @@ Svt.getThumb = function(data, size) {
     else if (size == 'large')
         size = 'wide/' + Math.round(DETAILS_THUMB_FACTOR*THUMB_WIDTH);
     else {
-        // size = 'small/' + THUMB_WIDTH;
-        // Seems 224 is standard and faster...
-        size = 'small/' + 224;
+        size = 'small/' + THUMB_WIDTH;
     }
-    return RedirectTls('https://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed);
+    return 'https://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed;
 };
 
 Svt.getHighlightThumb = function(id) {
@@ -477,7 +475,7 @@ Svt.getActions = function(detailsData, actionsCb) {
 Svt.getUrl = function(tag, extra) {
     switch (tag.replace(/\.html.+/,'.html')) {
     case 'main':
-        httpRequest(RedirectTls(SVT_ASSETS_URL),
+        httpRequest(SVT_ASSETS_URL,
                     {cb:function(status,data) {
                         if (data) {
                             Svt.channel_thumbs = data.match(/\/\/.+channels\/posters\/.+-[0-9]+.+png/mg);
@@ -601,7 +599,7 @@ Svt.upgradeUrl = function(url) {
         } else
             Log('Upgrade failed for:' + url);
     }
-    return RedirectTls(url);
+    return url;
 };
 
 Svt.decodeMain = function(data, extra) {
@@ -1227,7 +1225,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
         streamUrl = url;
     }
 
-    requestUrl(RedirectTls(streamUrl),
+    requestUrl(streamUrl,
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(url)) {
                        var videoReferences, subtitleReferences=[], srtUrl=null;
@@ -1285,44 +1283,9 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                                }
                        }
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
-                       // Seems it's thumbnails that make live streams fail.
-                       if (isLive)
-                           Svt.play_args.extra.redirect_mpd = true;
-                       // AC-3 not supported on older devices.
-                       if (deviceYear < 2014) {
-                           var content;
-                           while (Svt.play_args.urls.length > 1) {
-                               content = httpRequest(Svt.play_args.urls[0], {sync:true}).data;
-                               if (content.match(/codec.+ac-3/i))
-                                   Svt.play_args.urls.shift();
-                               else {
-                                   if (content.match(/text\/vtt/i))
-                                       Svt.play_args.extra.redirect_mpd = true;
-                                   break;
-                               }
-                           }
-                       }
                        Svt.playUrl();
                    }
                });
-};
-
-Svt.redirectMpd = function(url) {
-    var urlPrefix = getUrlPrefix(url);
-    content = httpRequest(url, {sync:true}).data;
-    // Strip Subtitles
-    content = content.replace(/^[ ]*<AdaptationSet[^<]+?contentType="(text|image)"(.+\n)+?.*?<\/AdaptationSet>.*?\n?/mg,'');
-    // Need to add urlPrefix as Base.
-    content = content.replace(/((^ +)<AdaptationSet)/m,'$2<BaseURL>'+urlPrefix+'</BaseURL>\n$1');
-    content = content.replace(/(initialization=")/mg,'$1'+urlPrefix);
-    // Upload new content
-    var file =  document.getElementById('pluginNetwork').GetMAC() + '.mpd';
-    var params = {name:file, data:content};
-    var url = 'http://' + GetProxyHost() + '/jtsave/jtnolog';
-    var result = httpRequest(url, {sync:true, no_log:true, params:JSON.stringify(params)});
-    // Redirect to new content
-    url = 'http://' + GetProxyHost() + '/jtread/jtnolog';
-    return addUrlParam(url, 'name', file);
 };
 
 Svt.sortStreams = function(streams, srtUrl) {
@@ -1447,10 +1410,6 @@ Svt.tryAltPlayUrl = function(failedUrl, cb) {
         return false;
 };
 
-Svt.reloadRewind = function() {
-    return true;
-};
-
 Svt.getNextCategory = function() {
     return getNextIndexLocation(3);
 };
@@ -1522,7 +1481,7 @@ Svt.getNextCategoryDetailText = function() {
 Svt.GetChannelThumb = function (Id) {
     var ThumbRegexp = new RegExp('^http.+' + Id.replace(/^ch-/i,'') + '.*$','img');
     var Thumb = Svt.channel_thumbs.match(ThumbRegexp);
-    return RedirectTls(Thumb && Thumb[0]);
+    return Thumb && Thumb[0];
 };
 
 Svt.decodeChannels = function(data, BaseUrl) {

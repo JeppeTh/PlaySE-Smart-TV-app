@@ -30,7 +30,7 @@ Buttons.checkKey = function(limit) {
         // Log('keyDiff:' + keyDiff + ' limit:' + limit);
         if (limit && keyDiff < 600) {
             // Log('ignoring, key repeat too quick.');
-            widgetAPI.blockNavigation(event);
+            event.preventDefault(event);
             return -1;
         }
         if (keyHeld) {
@@ -55,6 +55,15 @@ Buttons.keyDown = function() {
         Buttons.clearKey();
 
     Buttons.restartKeyTimer();
+
+    if (Player.restartScreenSaver()) {
+        // Screensaver was active ignore key
+        switch (event.keyCode) {
+        case tvKey.KEY_RETURN:
+	    event.preventDefault(event);
+        }
+        return;
+    }
 
     // Log('index:' + index + ' exit:' + $('#exitBlock').is(':visible') + ' error:' + $('.slider-error').is(':visible'));
     if(index == 2){
@@ -95,10 +104,55 @@ Buttons.getKeyHandleID = function(){
 	return index;
 };
 
-
-
 Buttons.enableKeys = function() {
-	document.getElementById('anchor').focus();
+    var supportedKeys = tizen.tvinputdevice.getSupportedKeys();
+    // alert(supportedKeys);
+    for(var i = 0; i < supportedKeys.length; i++) {
+        // alert(supportedKeys[i].name);
+        // alert(supportedKeys[i].code);
+        switch (supportedKeys[i].code) {
+        case tvKey.KEY_1:
+        case tvKey.KEY_2:
+        case tvKey.KEY_3:
+        case tvKey.KEY_4:
+        case tvKey.KEY_5:
+        case tvKey.KEY_6:
+        case tvKey.KEY_7:
+        case tvKey.KEY_8:
+        case tvKey.KEY_9:
+        case tvKey.KEY_0:
+        case tvKey.KEY_CH_UP:
+        case tvKey.KEY_CH_DOWN:
+        case tvKey.KEY_FF:
+        case tvKey.KEY_RW:
+        case tvKey.KEY_PAUSE:
+        case tvKey.KEY_PLAY:
+        case tvKey.KEY_STOP:
+        case tvKey.KEY_INFO:
+        case tvKey.KEY_TOOLS:
+        case tvKey.KEY_ASPECT:
+        case tvKey.KEY_SUBTITLE:
+        case tvKey.KEY_SUB_TITLE:
+        // case tvKey.KEY_LEFT:
+        // case tvKey.KEY_RIGHT:
+        // case tvKey.KEY_UP:
+        // case tvKey.KEY_DOWN:
+        // case tvKey.KEY_ENTER:
+        // case tvKey.KEY_BACK:
+        case tvKey.KEY_RED:
+        case tvKey.KEY_GREEN:
+        case tvKey.KEY_YELLOW:
+        case tvKey.KEY_BLUE:
+
+            tizen.tvinputdevice.registerKey(supportedKeys[i].name);
+            break;
+
+        default:
+            // Skip key...
+            break;
+        }
+    }
+    document.getElementById('anchor').focus();
 };
 
 Buttons.clearKey = function() {
@@ -134,7 +188,7 @@ Buttons.getMargin = function() {
     if(columnCounter > 0){
 	xaxis = columnCounter - 1;
     }
-    xaxis = (-xaxis * 262);
+    xaxis = (-xaxis * 524);
     return xaxis;
 };
 
@@ -147,12 +201,13 @@ Buttons.keyHandleForExit = function() {
 
     switch(keyCode) {
     case tvKey.KEY_RETURN:
-	widgetAPI.blockNavigation(event);
+	event.preventDefault(event);
         $('#exitBlock').hide();
         break;
 
     case tvKey.KEY_ENTER:
-        widgetAPI.sendReturnEvent();
+        tizen.application.getCurrentApplication().hide();
+        $('#exitBlock').hide();
         break;
     }
 };
@@ -610,24 +665,8 @@ Buttons.keyHandleForPlayer = function() {
     case tvKey.KEY_STOP:
 	Player.stopVideo();
 	break;
-    case tvKey.KEY_VOL_DOWN:
-	Log('VOL_DOWN');
-	Audio.setRelativeVolume(1);
-	break;
-    case tvKey.KEY_PANEL_VOL_DOWN:
-	Log('VOL_DOWN');
-	Audio.setRelativeVolume(1);
-	break;
-    case tvKey.KEY_VOL_UP:
-	Log('VOL_UP');
-	Audio.setRelativeVolume(0);
-	break;
-    case tvKey.KEY_PANEL_VOL_UP:
-	Log('VOL_UP');
-	Audio.setRelativeVolume(0);
-	break;
     case tvKey.KEY_RETURN:
-	widgetAPI.blockNavigation(event);
+	event.preventDefault(event);
         Player.keyReturn();
 	break;
     case tvKey.KEY_EXIT:
@@ -642,11 +681,8 @@ Buttons.keyHandleForPlayer = function() {
 	Player.showDetails();
 	break;
     case tvKey.KEY_TOOLS:
-        widgetAPI.blockNavigation(event);
+        event.preventDefault(event);
 	Player.showHelp();
-	break;
-    case tvKey.KEY_MUTE:
-	Audio.toggleMute();
 	break;
     case tvKey.KEY_RED:
 	Player.toggleRepeat();
@@ -723,12 +759,12 @@ Buttons.keyHandleForHighlights = function() {
 	Player.showDetails();
 	break;
     case tvKey.KEY_TOOLS:
-        widgetAPI.blockNavigation(event);
+	event.preventDefault(event);
         Player.exitHighlights();
 	Player.showHelp();
 	break;
     case tvKey.KEY_RETURN:
-	widgetAPI.blockNavigation(event);
+	event.preventDefault(event);
     case tvKey.KEY_DOWN:
         Player.exitHighlights();
 	break;
@@ -779,7 +815,7 @@ Buttons.handleMenuKeys = function(keyCode){
 	Channel.keyBlue();
 	break;
     case tvKey.KEY_RETURN:
-	widgetAPI.blockNavigation(event);
+	event.preventDefault(event);
 	// var urlpath = myLocation;
 	// var ifound = urlpath.indexOf('index.html');
 	if(index == 6 || $('.slider-language').is(':visible')){
@@ -806,12 +842,9 @@ Buttons.handleMenuKeys = function(keyCode){
 	// Terminated by force
 	break;
     case tvKey.KEY_TOOLS:
-	widgetAPI.blockNavigation(event);
+	event.preventDefault(event);
 	Search.hide();
 	Language.show();
-	break;
-    case tvKey.KEY_MUTE:
-	Audio.uiToggleMute();
 	break;
     case tvKey.KEY_0:
         Buttons.changeChannel(History);
