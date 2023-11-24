@@ -7,27 +7,44 @@ var Search = {};
 
 function Input(id) {
     function imeReady() {
-        installFocusKeyCallbacks();
-        installStatusCallbacks();
-        // document.getElementById(id).focus()
+        installFocusKeyCallbacks(id);
+        document.getElementById(id).focus();
         Search.imeReady();
     }
-    var self = this;
-    var ime = new IMEShell(id, imeReady, 'sv');
-    var element = document.getElementById( id );
-    function installFocusKeyCallbacks() {
-        ime.setEnterFunc(onEnter);
-        ime.setKeyFunc(tvKey.KEY_RETURN, onReturn);
-        ime.setKeyFunc(tvKey.KEY_EXIT, onReturn);
-        ime.setKeyFunc(tvKey.KEY_RED,  onRed);
-    }
+    function installFocusKeyCallbacks(id) {
+        document.getElementById(id).addEventListener(
+            'keydown',
+            function(event) {
+                switch (event.keyCode) {
+                case tvKey.KEY_ENTER:
+                case 65376: // Done
+                    onEnter();
+                    break;
 
-    function installStatusCallbacks() {
-        // ime.setKeySetFunc('12key'); 
-        ime.setKeypadPos(350, 155);
-        ime.setWordBoxPos(290, -1);
-        // ime.setKeypadPos(350, 169);
-        // ime.setQWERTYPos(215, 169);
+                case tvKey.KEY_RETURN:
+                case tvKey.KEY_EXIT:
+                case 65385: // Cancel
+                    onReturn();
+                    break;
+
+                case tvKey.KEY_RED:
+                    onRed();
+                    break;
+
+                default:
+                    Log('Search Unhandled key:' + event.keyCode);
+                }
+            });
+
+        // document.getElementById(id).addEventListener('focus', function() {
+        //     Log(id + " is focused and ready to get user input.");
+        // });
+        // document.getElementById(id).addEventListener('blur', function() {
+        //     Log(id + " is blurred.");
+        // });
+        // document.getElementById(id).addEventListener('change', function() {
+        //     Log(id + " value is changed.");
+        // });
     }
 
     function onEnter() {
@@ -44,6 +61,7 @@ function Input(id) {
         ime.setString('');
         return true;
     }
+    imeReady();
 }
 
 Search.init = function() {
@@ -63,7 +81,8 @@ Search.imeShow = function(slideDuration) {
         // Default value
         slideDuration = 500;
 
-    if(Buttons.getKeyHandleID()!=7){
+    if(Buttons.getKeyHandleID() !=7 ){
+        Player.disableScreenSaver();
         oldKeyHandle = Buttons.getKeyHandleID();
         Buttons.setKeyHandleID(7);
         slideToggle($('.slider-imesearch'), slideDuration, function() {
@@ -93,7 +112,8 @@ Search.imeShow = function(slideDuration) {
         slideToggle($('.slider-imesearch'), slideDuration, function() {});
         document.getElementById('ime_write').blur();
         document.body.focus();
-        Buttons.setKeyHandleID(oldKeyHandle); 
+        Buttons.setKeyHandleID(oldKeyHandle);
+        Player.enableScreenSaver();
         Buttons.enableKeys();
     }
 };

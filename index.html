@@ -2,20 +2,15 @@
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=1920" />
     <title>PopulÃ¤rt</title>
      <!-- TODO : Style sheets code -->
     <link rel="stylesheet" type="text/css" href="css/styles.css" />
     <!-- TODO : Common API -->
-    <script type="text/javascript" src="$MANAGER_WIDGET/Common/API/Widget.js"></script>
-    <script type="text/javascript" src="$MANAGER_WIDGET/Common/API/TVKeyValue.js"></script>
-    <script type="text/javascript" src="$MANAGER_WIDGET/Common/API/Plugin.js"></script>
-    <script type="text/javascript" src="$MANAGER_WIDGET/Common/jquery.js"></script>
-    <script type="text/javascript" src="$MANAGER_WIDGET/Common/af/2.0.0/loader.js"></script>
-    <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/json2.js" language="javascript" charset="UTF-8"></script>
+    <script type="text/javascript" src="imported/TizenTVKeyValue.js"></script>
+    <script type="text/javascript" src="imported/jquery.js"></script>
+    <script type="text/javascript" src="$WEBAPIS/webapis/webapis.js"></script>
 
-    <!-- <script type="text/javascript" src="$MANAGER_WIDGET/Common/OpenSrc/jquery-1.4.2.min.js"></script> -->
-    <!-- js/jquery.min.js -->
-    <script type="text/javascript" src="app/javascript/Audio.js"></script>
     <script type="text/javascript" src="app/javascript/Buttons.js"></script>
     <script type="text/javascript" src="app/javascript/Categories.js"></script>
     <script type="text/javascript" src="app/javascript/categoryDetail.js"></script>
@@ -31,7 +26,7 @@
     <script type="text/javascript" src="app/javascript/PathHistory.js"></script>
     <script type="text/javascript" src="app/javascript/Subtitles.js"></script>
     <script type="text/javascript" src="app/javascript/Player.js"></script>
-    <script type="text/javascript" src="app/javascript/SefPlayer.js"></script>
+    <script type="text/javascript" src="app/javascript/AvPlayer.js"></script>
     <script type="text/javascript" src="app/javascript/Resolution.js"></script>
     <script type="text/javascript" src="app/javascript/Search.js"></script>
     <script type="text/javascript" src="app/javascript/SearchList.js"></script>
@@ -45,25 +40,17 @@
     <script type="text/javascript" src="app/javascript/Tv4.js"></script>
     <script type="text/javascript" src="app/javascript/Dplay.js"></script>
 
-    <object id="pluginPlayer"      border="0" classid="clsid:SAMSUNG-INFOLINK-PLAYER" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <object id="pluginSef"         border="0" classid="clsid:SAMSUNG-INFOLINK-SEF" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <object id="pluginAudio"       border="0" classid="clsid:SAMSUNG-INFOLINK-AUDIO" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <object id="pluginObjectDEVICE" border="0" classid="clsid:SAMSUNG-INFOLINK-DEVICE" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <object id="pluginObjectTVMW"  border="0" classid="clsid:SAMSUNG-INFOLINK-TVMW" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
     <object id="pluginObjectNNavi" border="0" classid="clsid:SAMSUNG-INFOLINK-NNAVI" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <object id="pluginFrontPanel"  border="0" classid="clsid:SAMSUNG-INFOLINK-FRONTPANEL" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
     <object id="pluginTime" border="0" classid="clsid:SAMSUNG-INFOLINK-TIME" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <object id="pluginNetwork" border="0" classid="clsid:SAMSUNG-INFOLINK-NETWORK" style="opacity: 0.0; background-color: #000; width: 0px; height: 0px;"></object>
-    <!-- <object id="pluginIME"  border="0" classid="clsid:SAMSUNG-INFOLINK-IME"></object> -->
 </head>
 <body onload="Main.onLoad();" onunload="Main.onUnload();">
-    <script language="javascript" type="text/javascript" src="$MANAGER_WIDGET/Common/IME/ime2.js"></script>
-    <!-- <script type="text/javascript" src="$MANAGER_WIDGET/Common/IME_XT9/ime.js"></script> -->
-    <!-- <script type="text/javascript" src="$MANAGER_WIDGET/Common/IME_XT9/inputCommon/ime_input.js"></script> -->
     <!-- Dummy anchor as focus for key events -->
     <a href="javascript:void(0);" id="anchor" onkeydown="Buttons.keyDown();"></a>
     <!-- TODO: your code here -->
-    <div class="vo topoverlayresolution">1280x720</div> 
+    <div id="spinner-img">
+      <img id="spinner-img-inner" src="images/spinner.gif" style="width:4%"/>
+    </div>
+    <div class="vo topoverlayresolution">1920x1080</div> 
     <div>
       <span class="vo action"></span>
     </div>
@@ -138,12 +125,16 @@
 	    <div class="footer"><div class="footer-content" align="center"></div></div>
     	</div>
     </div>
-    <div id="loading" class="sf-ui-loading-circle sf-ui-loading-circle-1" style="display:none;"></div>
     <div id="exitBlock">
       <span id="exitId" class="confirmExit">PRESS ENTER TO EXIT</span>
     </div>
     <div id="popUpBlock">
       <span id="popUpId" class="popUp"></span>
+    </div>
+    <div class="screensaver">
+      <div class="screensaver_x">
+        <img class="screensaver_y" src="screensaver.png"/>
+      </div>
     </div>
 </body>
 </html>
