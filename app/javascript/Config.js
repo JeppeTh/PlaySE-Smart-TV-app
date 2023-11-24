@@ -1,6 +1,6 @@
 var Config = {
     data     : null,
-    fileName : curWidget.id + '_config.db',
+    fileName : tizen.application.getCurrentApplication().appInfo.id + '_config.db',
     version  : 3
 };
 
@@ -13,11 +13,24 @@ Config.init = function() {
     this.data.saveFile = function() {
 	if (typeof JSON == 'object') {
 	    // var $this = this.id;
-            var fileSysObj = new FileSystem();
-	    var fileObj = fileSysObj.openCommonFile(Config.fileName, 'w');
-	    fileObj.writeAll(JSON.stringify(this.items));
-	    fileSysObj.closeCommonFile(fileObj);
-	}
+            localStorage.setItem(Config.fileName, JSON.stringify(this.items));
+            tizen.filesystem.resolve(
+                'documents',
+                function(dir ) {
+                    try{
+                        dir.createFile(Config.fileName);
+                    } catch(e) {
+                        // Assume it already exists...
+                    }
+                    dir.resolve(Config.fileName).openStream(
+                        'w',
+                        function(stream) {
+                            stream.write(localStorage.getItem(Config.fileName));
+                            stream.close();
+                        });
+                }
+            );
+        }
     };
 
     this.data.saveItem = function(key, value) {
@@ -37,29 +50,41 @@ Config.init = function() {
     };
 
     this.data.deleteAll = function() {
-        var fileSysObj = new FileSystem();
-	var fileObj = fileSysObj.openCommonFile(Config.fileName, 'w');
-	fileObj.writeAll('{}');
-        fileSysObj.closeCommonFile(fileObj);
+        localStorage.setItem(Config.fileName, '{}');
         Config.initData();
     };
 
-    this.initData = function() {
-        this.data.items = {};
-        var fileSysObj = new FileSystem();
-        var fileObj = fileSysObj.openCommonFile(this.fileName, 'r+');
-        if (fileObj !== null) {
-	    try {
-	        this.data.items = JSON.parse(fileObj.readAll());
+    this.initData = function(Callback) {
+	try {
+            this.data.items = localStorage.getItem(this.fileName);
+            if (!this.data.items) {
+                this.data.items = {};
+                tizen.filesystem.resolve(
+                    'documents/'+Config.fileName,
+                    function(file){
+                        file.readAsText(
+                            function(content) {
+                                if (content == '')
+                                    content = '{}';
+                                localStorage.setItem(Config.fileName, content);
+                                Config.data.items = JSON.parse(content);
+                                // Log('Found persistent config data:' + content);
+                                if (Callback) Callback();
+                            });},
+                    function(e){
+                        Log('Failed to open config file:' + e.message);
+                        localStorage.setItem(Config.fileName, '{}');
+                        if (Callback) Callback();
+                    }
+                );
+            } else {
+	        this.data.items = JSON.parse(this.data.items);
                 // Log('Found config data:' + JSON.stringify(this.data.items));
-	    } catch(err) {
-                Log('Failed to read config:' + err);
-	    }
-        } else {
-	    fileObj = fileSysObj.openCommonFile(this.fileName, 'w');
-	    fileObj.writeAll('{}');
-        }
-        fileSysObj.closeCommonFile(fileObj);
+                if (Callback) Callback();
+            }
+	} catch(err) {
+            Log('Failed to read config:' + err);
+	}
     };
 
     this.upgrade = function() {
@@ -103,16 +128,10 @@ Config.init = function() {
             throw 'Configuration test failed';
 	}
     };
-
-    // This was meaningless since file isn't placed in the dir...
-    // var fileSysObj = new FileSystem();
-    // var commonDir = fileSysObj.isValidCommonPath(curWidget.id);
-    // if(!commonDir) {
-    //     fileSysObj.createCommonDir(curWidget.id);
-    // }
-    this.initData();
-    this.upgrade();
-    this.test();
+    this.initData(function() {
+        Config.upgrade();
+        Config.test();
+    });
 };
 
 Config.read = function(key) {
