@@ -161,11 +161,6 @@ Channel.redirectUrl = function(url, callback) {
     return false;
 };
 
-Channel.redirectMpd = function(url) {
-    var flags = url.match(/(\|.+)/)[0];
-    return this.impl.redirectMpd(url.replace(/\|.+/,'')) + flags;
-};
-
 Channel.login = function(callback) {
     if (this.impl.login)
         this.impl.login(callback);
@@ -259,10 +254,6 @@ Channel.tryAltPlayUrl = function(failedUrl, cbComplete) {
         return this.impl.tryAltPlayUrl(failedUrl, cbComplete);
     }
     return false;
-};
-
-Channel.reloadRewind = function() {
-    return this.impl.reloadRewind && this.impl.reloadRewind();
 };
 
 Channel.fetchSubtitles = function(srtUrl, hlsSubs, usedRequestedUrl, cb) {
