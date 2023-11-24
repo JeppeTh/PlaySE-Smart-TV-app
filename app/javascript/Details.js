@@ -1,4 +1,3 @@
-var widgetAPI = new Common.API.Widget();
 var currentTime = 0;
 var countd=0;
 var downCounter;
@@ -155,7 +154,7 @@ Details.toHtml = function (programData) {
             html+=extra.loc+'" id="extraButton" class="link-button';
             if (programData.not_available)
                 html+=' selected';
-            html+='" style="margin-top:3px;">'+extra.name+'</a>';
+            html+='" style="margin-top:6px;">'+extra.name+'</a>';
         }
         html+=' </div>';
 	html+=' </div>';
@@ -163,7 +162,7 @@ Details.toHtml = function (programData) {
         html+='</div>';
         html+='<div class="detailsImgContainer"><img class="image" src="'+programData.thumb+'" alt="Image" /></div>';
         // Add 'header' elements last to determine max-height
-        var max_height = (extra) ? '276px' : '308px';
+        var max_height = (extra) ? '552px' : '616px';
         html='<div class="project-meta-frame" style="max-height:' +max_height+';overflow:hidden">'+html;
 	html = '<div class="project-name">' + html;
         html = '<div class="project-text">' + html;
