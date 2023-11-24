@@ -63,7 +63,7 @@ Subtitles.upgradePos = function() {
         var bottom = MAX_HEIGHT-(top+srtHeight)-(padding) - margin;
         if (bottom % 2) bottom += 1;
         if (bottom < 0) bottom = 0;
-        if (bottom > 90) bottom = 90;
+        if (bottom > 180) bottom = 180;
         Log('Upgraded subPos:' + Config.read('subPos') + ' to subBottom:' + bottom);
         this.savePos(bottom);
         $('.srtClass').css('bottom', bottom);
@@ -335,8 +335,6 @@ Subtitles.fetchHls = function (hlsSubs, usedRequestedUrl, extra) {
                      for (var i=0; i < urls.length; i++) {
                          if (!urls[i].match(/http[s]?:/))
                              urls[i] = prefix + urls[i];
-                         if (prefix.match('http:'))
-                             urls[i] = urls[i].toHttp();
                      }
                      return urls.join(' ') + ' ';
                  }
@@ -530,7 +528,7 @@ Subtitles.getSize = function () {
     if (savedValue) {
         return Number(savedValue);
     } else {
-        return 30;
+        return 60;
     }
 };
 
@@ -539,7 +537,7 @@ Subtitles.getPos = function () {
     if (savedValue || savedValue === 0) {
         return Number(savedValue);
     } else {
-        return 30;
+        return 60;
     }
 };
 
@@ -593,7 +591,7 @@ Subtitles.move = function (moveUp) {
     if (!subtitlesEnabled) return;
     var oldValue = this.getPos();
     var newValue = (moveUp) ? oldValue+2 : oldValue-2;
-    if (newValue >= 0 && newValue <= 90) {
+    if (newValue >= 0 && newValue <= 180) {
         $('.srtClass').css('bottom', newValue);
         this.savePos(newValue);
         this.showTest();
@@ -604,7 +602,7 @@ Subtitles.size = function(increase) {
     if (!subtitlesEnabled) return;
     var oldValue = this.getSize();
     var newValue = (increase) ? oldValue+1 : oldValue-1;
-    if (newValue > 15 && newValue < 51) {
+    if (newValue > 30 && newValue < 102) {
         $('.srtClass').css('font-size', newValue);
         this.saveSize(newValue);
         this.showTest();
@@ -662,7 +660,7 @@ Subtitles.setAltProperties = function(factor) {
             $('.srtClass').css('font-size',fontSize).css('line-height', lineHeight);
         }
         var srtHeight    = this.getHeight(true);
-        var footerHeight = $('.thumb').height()+7;
+        var footerHeight = $('.thumb').height()+15;
         var maxBottom    = MAX_HEIGHT - ($('.bottomoverlaybig').position().top+2+srtHeight);
         if (maxBottom < footerHeight) {
             // Too big - scale down font.
