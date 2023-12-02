@@ -32,7 +32,8 @@ var Tv4 = {
     play_extra:null,
     alt_urls:[],
     thumbsChecked:false,
-    redirectThumbs:false
+    redirectThumbs:false,
+    tlsChecked:false
 };
 
 Tv4.login = function(cb, attempts) {
@@ -43,6 +44,7 @@ Tv4.login = function(cb, attempts) {
         Config.remove('tv4UnavailableShows');
         Config.remove('tv4Movies');
     }
+    Tv4.checkRedirectTls();
     attempts = attempts || 1;
     var use_sync = (cb == null);
     var refresh_token = Tv4.getRefreshToken();
@@ -65,6 +67,20 @@ Tv4.login = function(cb, attempts) {
         else
             PopUp('No refresh_token');
     }
+};
+
+Tv4.checkRedirectTls = function() {
+    if (Tv4.tlsChecked) return;
+    Tv4.tlsChecked = true;
+    httpRequest(TV4_API_BASE,
+                {cb: function(status,data) {
+                    if (!isHttpStatusOk(status))
+                        TV4_API_BASE = RedirectTls(TV4_API_BASE);
+                },
+                 headers: Tv4.getHeaders(),
+                 params: Tv4.getPageQuery('start')
+                }
+               );
 };
 
 Tv4.getRefreshToken = function() {
