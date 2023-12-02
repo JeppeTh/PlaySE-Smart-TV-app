@@ -39,13 +39,9 @@ Tv4.login = function(cb, attempts) {
         Config.remove('tv4Movies');
     }
     attempts = attempts || 1;
-
-    var fileSysObj = new FileSystem();
-    var fileObj = fileSysObj.openFile('config.xml','r');
-    var config = fileObj.readAll();
-    var refresh_token = config.match(/tv4Token> *([^< ]+)/);
     var use_sync = (cb == null);
-    fileSysObj.closeFile(fileObj);
+    var refresh_token = Tv4.getRefreshToken();
+
     if (refresh_token) {
         Tv4.syncAuth(use_sync,
                      httpRequest('https://avod-auth-alb.a2d.tv/oauth/refresh',
@@ -54,17 +50,27 @@ Tv4.login = function(cb, attempts) {
                                  },
                                   sync : use_sync,
                                   headers : [{key:'content-type', value:'application/json'}],
-                                  params: '{"refresh_token":"' + refresh_token[1] + '", "client_id":"tv4-web"}'
+                                  params: '{"refresh_token":"' + refresh_token + '", "client_id":"tv4-web"}'
                                  }
                                 )
                     );
     } else {
-        Log('Failed to retrieve token: ' + config);
         if (attempts < 4)
             window.setTimeout(function(){Tv4.login(cb, attempts+1);}, 1000);
         else
             PopUp('No refresh_token');
     }
+};
+
+Tv4.getRefreshToken = function() {
+    var fileSysObj = new FileSystem();
+    var fileObj = fileSysObj.openFile('config.xml','r');
+    var config = fileObj.readAll();
+    fileSysObj.closeFile(fileObj);
+    config = config.match(/tv4Token> *([^< ]+)/);
+    if (config) return config[1];
+    Log('Failed to retrieve token.');
+    return null;
 };
 
 Tv4.syncAuth = function (use_sync, result) {
@@ -104,8 +110,10 @@ Tv4.getUrl = function(tag, extra) {
 };
 
 Tv4.getPostData = function(tag, extra) {
+    var id = getUrlParam(extra.url, 'clip_id');
+    if (id) return Tv4.getPanelQuery(id, 100);
 
-    var id = getUrlParam(extra.url, 'show_id');
+    id = getUrlParam(extra.url, 'show_id');
     if (id) return Tv4.getShowQuery(id);
 
     id = getUrlParam(extra.url, 'season_id');
@@ -116,9 +124,6 @@ Tv4.getPostData = function(tag, extra) {
         id = getUrlParam(getUrlParam(extra.location,'url'), 'related_id');
     }
     if (id) return Tv4.getRelatedQuery(id);
-
-    id = getUrlParam(extra.url, 'clip_id');
-    if (id) return Tv4.getPanelQuery(id, 100);
 
     id = getUrlParam(extra.url, 'category_id');
     if (id) return Tv4.getPageQuery(id);
@@ -212,7 +217,11 @@ Tv4.upgradeOldGraphql = function(url) {
     var nid = query.match(/query{program\(nid:"([^"]+)/);
     nid = nid && nid[1];
     if (nid && Tv4.failedUpgrades.indexOf(nid) == -1) {
-        Tv4.login();
+        if (!Tv4.token) {
+            var token = Tv4.getRefreshToken();
+            if (token && !token.match(/\.\.\./))
+                Tv4.login();
+        }
         var data = httpRequest(TV4_API_BASE,
                                {sync: true,
                                 headers: Tv4.getHeaders(),
@@ -655,7 +664,7 @@ Tv4.decodeShowList = function(data, extra) {
     }
 
     if (!extra.season) {
-        Tv4.addClips(panels, showThumb);
+        Tv4.addClips(panels, showId, showThumb);
         relatedToHtml(showThumb, addUrlParam(TV4_API_BASE,
                                              'related_id',
                                              showId
@@ -696,11 +705,11 @@ Tv4.saveSeasons = function(seasons, showId, cb) {
     }
 };
 
-Tv4.addClips = function(Panels, ShowThumb) {
+Tv4.addClips = function(Panels, ShowId, ShowThumb) {
     if (Panels) {
         for (var c in Panels) {
             clipToHtml(ShowThumb,
-                       addUrlParam(TV4_API_BASE,
+                       addUrlParam(addUrlParam(TV4_API_BASE, 'show_id', ShowId),
                                    'clip_id',
                                    Panels[c].id
                                   ),
@@ -1193,7 +1202,7 @@ Tv4.getVideoItem = function(data) {
     return data.movie || data.clip || data.clipVideo || data.video || data.channel || data.episode || data.sportEvent;
 };
 
-Tv4.getDetailsData = function(url, data) {
+Tv4.getDetailsData = function(url, data, user_data) {
     var Name='';
     var Title = Name;
     var DetailsImgLink='';
@@ -1212,7 +1221,7 @@ Tv4.getDetailsData = function(url, data) {
         // alert(JSON.stringify(JSON.parse(data.responseText)));
         data = JSON.parse(data.responseText).data.media;
         if (data.allSeasonLinks)
-            return Tv4.getShowData(url, data);
+            return Tv4.getShowData(url, data, user_data);
         if (!data.video) data.video = data.clipVideo;
 
         Name = data.title;
@@ -1283,7 +1292,7 @@ Tv4.getDetailsData = function(url, data) {
     };
 };
 
-Tv4.getShowData = function(url, data) {
+Tv4.getShowData = function(url, data, user_data) {
     var Name='';
     var Genre = [];
     var DetailsImgLink='';
@@ -1295,7 +1304,7 @@ Tv4.getShowData = function(url, data) {
         Description = data.synopsis.long || data.synopsis.brief;
 	DetailsImgLink = Tv4.fixThumb(data.images, DETAILS_THUMB_FACTOR);
         Genre = data.genres && data.genres.join('/');
-        Related = Tv4.makeRelatedLink(data.id);
+        Related = !user_data && Tv4.makeRelatedLink(data.id);
     } catch(err) {
         Log('Tv4.getShowData exception:' + err.message);
         Log('Name:' + Name);
@@ -1320,11 +1329,19 @@ Tv4.getShowUrl = function(url) {
 Tv4.getDetailsUrl = function(streamUrl) {
     var id = getUrlParam(streamUrl, 'show_id');
     if (id) {
-        return Tv4.postToGet(Tv4.getShowQuery(id));
+        var is_clips = getUrlParam(streamUrl, 'clip_id');
+        streamUrl = Tv4.postToGet(Tv4.getShowQuery(id));
+        if(is_clips)
+            streamUrl = addUrlParam(streamUrl, 'my_user_data', 'is_clips');
+        return streamUrl;
     }
     id = getUrlParam(streamUrl, 'video_id');
     if (id) {
         return Tv4.postToGet(Tv4.getVideoQuery(id));
+    }
+    id = getUrlParam(streamUrl,'related_id');
+    if (id) {
+        return addUrlParam(Tv4.postToGet(Tv4.getShowQuery(id)), 'my_user_data', 'is_related');
     }
     return streamUrl;
 };

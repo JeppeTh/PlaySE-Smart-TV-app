@@ -1455,6 +1455,7 @@ Svt.decode = function(data, extra) {
         var Titles;
         var Show;
         var Name;
+        var Byline;
         var Link;
         var LinkPrefix;
         var Description;
@@ -1503,16 +1504,14 @@ Svt.decode = function(data, extra) {
         }
         for (var k=0; k < data.length; k++) {
             Name = Svt.getItemName(data[k]);
+            Byline = data[k].byline;
             ImgLink = Svt.getThumb(data[k]);
             LargeImgLink = Svt.getThumb(data[k], 'large');
             Background = Svt.getThumb(data[k], 'extralarge');
             Episode = Svt.getEpisodeNumber(data[k]);
             Season  = extra.season || Svt.getSeasonNumber(data[k]);
             Description = !extra.is_live && data[k].subHeading;
-            if (extra.is_recommended) {
-                if (data[k].byline)
-                    Name = Name + ' - ' + data[k].byline;
-            } else {
+            if (!extra.is_recommended) {
                 AltName = data[k].subHeading && data[k].subHeading.replace(/^[0-9]+\./,'');
                 AltName = AltName && AltName.replace(/(avsnitt|del) [0-9]+/i,'').trim();
                 AltName = Svt.stripHtml(AltName);
@@ -1566,7 +1565,7 @@ Svt.decode = function(data, extra) {
                         Description = 'Säsong ' + Season;
                     if (Show) {
                         Name = Name.replace(/^(((avsnitt|del) [0-9]+)|[0-9.]+\.)/i,'');
-                        if (Name.length && !safeMatch(Name, Show))
+                        if (Name.length && !safeMatch(Name,Show) && !safeMatch(Show,Name))
                             Name = Show + ' - ' + Name;
                         else if (!Name.length)
                             Name = Show;
@@ -1574,6 +1573,9 @@ Svt.decode = function(data, extra) {
                                AltName != Description && AltName != Name)
                         Name = Name + ' - ' + AltName;
                 }
+            }
+            if (extra.is_recommended && Byline) {
+                Name = Name + ' - ' + Byline;
             }
 
             if (!IsUpcoming && extra.variant) {
