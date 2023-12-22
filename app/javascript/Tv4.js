@@ -193,6 +193,10 @@ Tv4.getCategoryTitle = function() {
     }
 };
 
+Tv4.getLiveTitle = function() {
+    return 'Kanaler';
+};
+
 Tv4.upgradeUrl = function(url) {
     if (!url) return url;
     url = url.replace('webapi.tv4play','api.tv4play');
@@ -534,27 +538,13 @@ Tv4.decodeCategoryDetail = function(data, extra) {
 
 Tv4.decodeLive = function(channels, extra) {
     channels = JSON.parse(channels.responseText).data.channels;
-    requestUrl(TV4_API_BASE,
-               function(status, data) {
-                   data = JSON.parse(data.responseText).data.panel.content.items;
-                   extra.is_live = true;
-                   for (var k in channels) {
-                       if (!channels[k].access.hasAccess) continue;
-                       channels[k].isChannel = true;
-                       var item = Tv4.decodeVideo(channels[k], extra);
-                       if (item) toHtml(item);
-                   }
-                   channels = null;
-                   Tv4.decode(data, extra);
-               },
-               {headers : Tv4.getHeaders(),
-                postData : Tv4.getLivePanelQuery(Tv4.live_id,15)
-               }
-              );
-};
-
-Tv4.useLiveRefresh = function() {
-    return true;
+    for (var k in channels) {
+        if (!channels[k].access.hasAccess) continue;
+        channels[k].isChannel = true;
+        var item = Tv4.decodeVideo(channels[k], extra);
+        if (item) toHtml(item);
+    }
+    extra.cbComplete && extra.cbComplete();
 };
 
 Tv4.decodeShowList = function(data, extra) {
@@ -590,7 +580,7 @@ Tv4.decodeShowList = function(data, extra) {
             label = {recurringBroadcast:label};
         }
         showId = data.id;
-        Tv4.saveShow(data.id, data.images, label);
+        Tv4.saveShow(showId, data.images, label);
         if (!Tv4.shows[showId].empty_seasons) {
             return Tv4.saveSeasons(data.allSeasonLinks, showId, function() {
                 if (isRequestStillValid(extra.requestedLocation)) {
@@ -677,6 +667,7 @@ Tv4.decodeShowList = function(data, extra) {
 Tv4.saveSeasons = function(seasons, showId, cb) {
     var answers = seasons.length;
     Tv4.shows[showId].empty_seasons = [];
+    if (seasons.length == 0 && cb) return cb();
     for (var k in seasons) {
         httpRequest(TV4_API_BASE,
                     {cb: function(status,data,xhr,url,params) {
@@ -878,6 +869,13 @@ Tv4.getBButtonText = function(language) {
         return null;
 };
 
+Tv4.getCButtonText = function(language) {
+    if(language == 'English')
+	return 'Channels';
+    else
+        return 'Kanaler';
+};
+
 Tv4.determineSeason = function(data) {
     var Season = data.extendedTitle || data.seasonTitle;
     Season = Season && Season.match(/s.+song ([0-9]+)/i);
@@ -905,8 +903,7 @@ Tv4.decodeRecommended = function(data) {
     var Thumb;
     var Item;
     for (var i in data) {
-        if (!data[i].secondaryLinkText || !data[i].link)
-            continue;
+        if (!data[i].link) continue;
         Description = data[i].shortPitch || data[i].pitch;
         if (data[i].link.series) {
             Name = data[i].link.series.title;
@@ -927,10 +924,6 @@ Tv4.decodeRecommended = function(data) {
             data[i].current.description = data[i].shortPitch || data[i].pitch;
             toHtml(Tv4.decodeVideo(data[i].current));
             continue;
-            Label = null;
-            Link = Tv4.makeVideoLink(data[i].current);
-            LinkPrefix = '<a href="details.html?ilink=';
-            Background = Tv4.fixThumb(data[i], BACKGROUND_THUMB_FACTOR);
         } else {
             alert('Unknown item:' + JSON.stringify(data[i]));
             continue;
@@ -1108,6 +1101,9 @@ Tv4.decodeShows = function(data, extra) {
             if (Tv4.isVideo(data[k])) {
                 data[k].current = Tv4.getVideoItem(data[k]);
                 if (data[k].current && data[k].current.upsell) continue;
+                if (recommended.indexOf(data[k].current.title) != -1)
+                    // Duplicate
+                    continue;
                 VideoItem = Tv4.decodeVideo(data[k].current,
                                             getCurrentDate(),
                                             extra
@@ -1621,7 +1617,7 @@ Tv4.getClipMenuQuery = function() {
 };
 
 Tv4.getPageQuery = function(id) {
-    return '{"query": "query Page($pageId: ID!, $input: PageContentInput!) {page(id: $pageId) {id title content(input: $input) {pageInfo{...PageInfoFields} panels{... on MediaPanel{id title} ... on SportEventPanel{id title} ... on ClipsPanel{id title} ... on EpisodesPanel{id title} ... on LivePanel{id title} ... on PagePanel{id title} ... on ChannelPanel{id title type} ... on SinglePanel{...SinglePanelFields}}}}}fragment SinglePanelFields on SinglePanel {id secondaryLinkText images{image16x9{...ImageFieldsFull}} link{... on SinglePanelPageLink {page {id}} ... on SinglePanelSportEventLink{sportEvent {...SportEventFieldsLight}} ... on SinglePanelSeriesLink {series {...SeriesFieldsLight}} ... on SinglePanelMovieLink{movie {...MovieFieldsLight}} ... on SinglePanelEpisodeLink{episode {...EpisodeFields}} ... on SinglePanelClipLink{clip {...ClipFieldsLight}} ... on SinglePanelChannelLink{channel{...ChannelFields}}} linkText title pitch shortPitch}' + PAGE_INFO_FIELDS + MEDIA_FIELDS + EPISODE_FIELDS + CHANNEL_FIELDS + '", "variables": {"input": {"limit": 100, "offset": 0}, "pageId": "' + id + '"}, "operationName": "Page"}';
+    return '{"query": "query Page($pageId: ID!, $input: PageContentInput!) {page(id: $pageId) {id title content(input: $input) {pageInfo{...PageInfoFields} panels{... on MediaPanel{id title} ... on SportEventPanel{id title} ... on ClipsPanel{id title} ... on EpisodesPanel{id title} ... on LivePanel{id title} ... on PagePanel{id title} ... on ChannelPanel{id title type} ... on ThemePanel{...ThemePanelFields} ... on SinglePanel{...SinglePanelFields}}}}}fragment ThemePanelFields on ThemePanel{id title pitch images{image16x9{ ...ImageFieldsFull}} link { ... on ThemePanelSeriesLink {series {id title slug genres numberOfAvailableSeasons images{main16x9{...ImageFieldsLight}}}} ... on ThemePanelMovieLink {movie {id title images {main16x9{...ImageFieldsLight}}}} ... on ThemePanelEpisodeLink {episode {id title extendedTitle}} ... on ThemePanelClipLink {clip {id title images{main16x9{...ImageFieldsLight}}}} ... on ThemePanelPageLink {page{id}} ... on ThemePanelSportEventLink {sportEvent {id title league round playableFrom {isoString} images{main16x9{...ImageFieldsLight}}}}} themePanelLinkText: linkText showMetadataForLink subtitle}fragment SinglePanelFields on SinglePanel {id images{image16x9{...ImageFieldsFull}} link{... on SinglePanelPageLink {page {id}} ... on SinglePanelSportEventLink{sportEvent {...SportEventFieldsLight}} ... on SinglePanelSeriesLink {series {...SeriesFieldsLight}} ... on SinglePanelMovieLink{movie {...MovieFieldsLight}} ... on SinglePanelEpisodeLink{episode {...EpisodeFields}} ... on SinglePanelClipLink{clip {...ClipFieldsLight}} ... on SinglePanelChannelLink{channel{...ChannelFields}}} linkText title pitch shortPitch}' + PAGE_INFO_FIELDS + MEDIA_FIELDS + EPISODE_FIELDS + CHANNEL_FIELDS + '", "variables": {"input": {"limit": 100, "offset": 0}, "pageId": "' + id + '"}, "operationName": "Page"}';
 };
 
 Tv4.getPanelQuery = function(id, limit) {
