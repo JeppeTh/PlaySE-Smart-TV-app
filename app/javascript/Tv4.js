@@ -1228,7 +1228,7 @@ Tv4.getDetailsData = function(url, data, user_data) {
         AirDate = data.playableFrom && timeToDate(data.playableFrom.isoString);
         VideoLength = data.video && dataLengthToVideoLength(null, data.video.duration.seconds);
         isLive = (data.video && data.video.isLiveContent) || !data.video;
-        AvailDate = data.playableUntil && data.playableUntil.humanDateTime;
+        AvailDate = data.playableUntil && timeToDate(data.playableUntil.isoString);
         NotAvailable = ((AirDate - getCurrentDate()) > 60*1000);
         if (data.series || data.parent) {
             Show = data.series || data.parent;
