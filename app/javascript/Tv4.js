@@ -5,17 +5,17 @@ var LABEL_FIELDS = 'fragment LabelFields on Label {announcement recurringBroadca
 var IMAGE_LIGHT_FIELDS = 'fragment ImageFieldsLight on Image {sourceEncoded}';
 var IMAGE_FULL_FIELDS = 'fragment ImageFieldsFull on Image{sourceEncoded}';
 var IMAGE_FIELDS = IMAGE_FULL_FIELDS + IMAGE_LIGHT_FIELDS;
-var SERIES_FIELDS = 'fragment SeriesFieldsLight on Series {id title slug genres numberOfAvailableSeasons label {...LabelFields} images {main16x9Annotated {...ImageFieldsLight}} upsell {tierId}}';
+var SERIES_FIELDS = 'fragment SeriesFieldsLight on Series {id title slug genres numberOfAvailableSeasons upcomingEpisode{...UpcomingEpisodeFields} label {...LabelFields} images {main16x9Annotated {...ImageFieldsLight}} upsell {tierId}}fragment UpcomingEpisodeFields on UpcomingEpisode {playableFrom{isoString}}';
 var MOVIE_FIELDS = 'fragment MovieFieldsLight on Movie {id title isLiveContent liveEventEnd {isoString} playableFrom{isoString} label {...LabelFields} images {main16x9Annotated{...ImageFieldsLight} cover2x3{...ImageFieldsLight}} synopsis{medium} upsell{tierId}}';
 var SPORT_FIELDS = 'fragment SportEventFieldsLight on SportEvent{title id league round images{main16x9{...ImageFieldsLight}} playableFrom{isoString} liveEventEnd{isoString} isLiveContent upsell{tierId}}';
 var CLIP_FIELDS = 'fragment ClipFieldsLight on Clip {id title clipVideo: video {...VideoFields} images {main16x9 {...ImageFieldsLight}} playableFrom {readableDistance} parent {... on ClipParentSeriesLink {id title} ... on ClipParentMovieLink {id title}}}';
 var VIDEO_FIELDS = 'fragment VideoFields on Video {id duration {seconds} isLiveContent access {hasAccess} isDrmProtected}';
 var EPISODE_FIELDS = 'fragment EpisodeFields on Episode{id title extendedTitle isLiveContent isStartOverEnabled series{id title} images{main16x9{...ImageFieldsLight}} liveEventEnd{isoString} playableUntil{isoString} playableFrom{isoString} video{...VideoFields} upsell{ tierId}}';
 var EPISODE_VIDEO_FIELDS = 'fragment EpisodeVideoFields on Episode{id title extendedTitle isLiveContent liveEventEnd{isoString} series{title id} synopsis{medium} images{main16x9{ ...ImageFieldsLight}} video{ ...VideoFields} playableFrom{isoString} playableUntil{isoString}}';
-var CHANNEL_FIELDS = 'fragment ChannelFields on Channel{id title description tagline type images{main16x9{...ImageFieldsLight}} access{hasAccess} epg{end start title}}';
+var CHANNEL_FIELDS = 'fragment ChannelFields on Channel{id title description tagline type images{main16x9{...ImageFieldsLight}} access{hasAccess} epg{end start title images{main16x9{...ImageFieldsLight}}}}';
 var MOVIE_VIDEO_FIELDS = 'fragment MovieVideoFields on Movie{id title liveEventEnd{isoString} isLiveContent synopsis{medium} images{main16x9{ ...ImageFieldsLight sourceEncoded}} video{ ...VideoFields} playableFrom{isoString} playableUntil{isoString}}';
 var SPORT_VIDEO_FIELDS = 'fragment SportEventVideoFields on SportEvent{title id isLiveContent isDrmProtected access{hasAccess} synopsis{medium} images{main16x9{...ImageFieldsLight sourceEncoded}} playableUntil{isoString} playableFrom{isoString} liveEventEnd{isoString}}';
-var CHANNEL_VIDEO_FIELDS = 'fragment ChannelVideoFields on Channel{title id description isDrmProtected access{hasAccess} epg{end start title type images{main16x9{sourceEncoded}}} images{main16x9{ ...ImageFieldsLight sourceEncoded}}}';
+var CHANNEL_VIDEO_FIELDS = 'fragment ChannelVideoFields on Channel{title id description isDrmProtected access{hasAccess} epg{end start title type synopsis{medium} images{main16x9{sourceEncoded}}} images{main16x9{ ...ImageFieldsLight sourceEncoded}}}';
 var MEDIA_FIELDS = SERIES_FIELDS + MOVIE_FIELDS + SPORT_FIELDS + CLIP_FIELDS + VIDEO_FIELDS + IMAGE_FIELDS + LABEL_FIELDS;
 
 var Tv4 = {
@@ -25,6 +25,7 @@ var Tv4 = {
     sport:null,
     pages:{},
     shows: {},
+    live_panels: [],
     live_id: null,
     token: null,
     failedUpgrades: []
@@ -50,7 +51,7 @@ Tv4.login = function(cb, attempts) {
                                  },
                                   sync : use_sync,
                                   headers : [{key:'content-type', value:'application/json'}],
-                                  params: '{"refresh_token":"' + refresh_token + '", "client_id":"tv4-web"}'
+                                  params: '{"refresh_token":"' + refresh_token + '", "client_id":"tv4-web", "profile_id":"' + Tv4.getProfileId() + '"}'
                                  }
                                 )
                     );
@@ -63,14 +64,24 @@ Tv4.login = function(cb, attempts) {
 };
 
 Tv4.getRefreshToken = function() {
+    var token = Tv4.readConfig('tv4Token');
+    if (!token)
+        Log('Failed to retrieve token.');
+    return token;
+};
+
+Tv4.getProfileId = function() {
+    return Tv4.readConfig('tv4ProfileId') || 'default';
+};
+
+Tv4.readConfig = function(tag) {
     var fileSysObj = new FileSystem();
     var fileObj = fileSysObj.openFile('config.xml','r');
     var config = fileObj.readAll();
     fileSysObj.closeFile(fileObj);
-    config = config.match(/tv4Token> *([^< ]+)/);
-    if (config) return config[1];
-    Log('Failed to retrieve token.');
-    return null;
+    var regexp = new RegExp(tag + '> *([^< ]+)');
+    config = config.match(regexp);
+    return config && config[1];
 };
 
 Tv4.syncAuth = function (use_sync, result) {
@@ -87,7 +98,7 @@ Tv4.handleAuthResult = function(data, cb) {
             Tv4.login();
         }, new Date(expires*1000) - new Date());
     } catch(err) {
-        PopUp('Login failed:' + data);
+        cb && PopUp('Login failed:' + data);
     }
     cb && cb();
 };
@@ -319,6 +330,7 @@ Tv4.getPanelThumbs = function(ids, storage, cb) {
                         answers -= 1;
                         var id = JSON.parse(params).variables.panelId;
                         data = JSON.parse(data).data.panel;
+                        var isLive = data.__typename && data.__typename.match(/live/i);
                         data = data.content && data.content.items;
                         if (data && data.length > 0) {
                             for (var j in data) {
@@ -330,6 +342,8 @@ Tv4.getPanelThumbs = function(ids, storage, cb) {
                                     }
                                 }
                                 if (storage[id]) {
+                                    if (isLive && Tv4.live_panels.indexOf(id) == -1)
+                                        Tv4.live_panels.push(id);
                                     data = null;
                                     break;
                                 }
@@ -358,8 +372,7 @@ Tv4.decodeSection = function(data, extra) {
     for (var i in data) {
         if (data[i].title && liveRegexp.test(data[i].title))
             panelIds.push({id:data[i].id, is_live:true});
-        else if (data[i].title)
-            panelIds.push(data[i].id);
+        panelIds.push(data[i].id);
     }
     Tv4.getSectionThumbs(id, panelIds, function() {
         if (!isRequestStillValid(extra.requestedLocation)) return;
@@ -368,7 +381,9 @@ Tv4.decodeSection = function(data, extra) {
         for (var i in data) {
             if (!Tv4.thumbs[id] || !Tv4.thumbs[id][data[i].id]) continue;
             var Thumb = Tv4.thumbs[id][data[i].id].images;
-            param = liveRegexp.test(data[i].title) ? 'live_panel_id' : 'panel_id';
+            param = 'panel_id';
+            if (Tv4.live_panels.indexOf(data[i].id) != -1)
+                param = 'live_panel_id';
             categoryToHtml(data[i].title,
                            Tv4.fixThumb(Thumb),
                            Tv4.fixThumb(Thumb, DETAILS_THUMB_FACTOR),
@@ -385,22 +400,28 @@ Tv4.decodeSection = function(data, extra) {
 Tv4.decodeClipsMenu = function(data, extra)  {
     var pages = [];
     for (var i in data) {
-        pages.push(data[i].id);
+        if (!data[i].images)
+            pages.push(data[i].id);
     }
     Tv4.getPageThumbs(pages, function() {
         for (var i in data) {
             if (!Tv4.pages[data[i].id]) continue;
-            categoryToHtml(data[i].name,
-                           Tv4.fixThumb(Tv4.pages[data[i].id]),
-                           Tv4.fixThumb(Tv4.pages[data[i].id], DETAILS_THUMB_FACTOR),
-                           addUrlParam(TV4_API_BASE,
-                                       'page_id',
-                                       data[i].id
-                                      )
-                          );
+            Tv4.pageToHtml(data[i]);
         }
         extra.cbComplete && extra.cbComplete();
     });
+};
+
+Tv4.checkPages = function(data, cb) {
+    var pages = [];
+    for (var i in data) {
+        if (data[i].page && !data[i].page.images)
+            pages.push(data[i].page.id);
+    }
+    if (pages.length > 0)
+        Tv4.getPageThumbs(pages, cb);
+    else
+        cb && cb()
 };
 
 Tv4.getPageThumbs = function(pages, cb) {
@@ -525,7 +546,9 @@ Tv4.decodeCategoryDetail = function(data, extra) {
     } else if (data.panel) {
         // Collections
         data = data.panel.content;
-        Tv4.decodeShows(data.items, extra);
+        Tv4.checkPages(data.items, function() {
+            Tv4.decodeShows(data.items, extra);
+        });
     } else {
         data = data.listSearch || data.search;
         // Search panels.
@@ -542,9 +565,23 @@ Tv4.decodeLive = function(channels, extra) {
         if (!channels[k].access.hasAccess) continue;
         channels[k].isChannel = true;
         var item = Tv4.decodeVideo(channels[k], extra);
+        if (item && channels[k].epg) {
+            var end = timeToDate(channels[k].epg[0].end);
+            item.start = timeToDate(channels[k].epg[0].start);
+            item.duration = Math.round((end-item.start)/1000);
+            item.name = dateToClock(item.start) + '-' + dateToClock(end) + ' ' + channels[k].epg[0].title;
+            item.thumb = Tv4.fixThumb(channels[k].epg[0]);
+            item.background = Tv4.fixThumb(channels[k].epg[0], BACKGROUND_THUMB_FACTOR);
+            item.name = channels[k].title + ' ' + item.name;
+            item.description = Tv4.epgToTitle(channels[k].epg[1]);
+        }
         if (item) toHtml(item);
     }
     extra.cbComplete && extra.cbComplete();
+};
+
+Tv4.useLiveRefresh = function() {
+    return true;
 };
 
 Tv4.decodeShowList = function(data, extra) {
@@ -892,6 +929,11 @@ Tv4.determineEpisode = function(data) {
     return Episode && +Episode[1];
 };
 
+Tv4.epgToTitle = function(epg) {
+    var title = dateToClock(timeToDate(epg.start)) + '-' + dateToClock(timeToDate(epg.end));
+    return title + ' ' + epg.title;
+};
+
 Tv4.decodeRecommended = function(data) {
     var titles = [];
     var Link;
@@ -967,7 +1009,7 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
     } else
         Show = null;
 
-    IsLive = data.isLiveContent;
+    IsLive = data.isLiveContent && !Tv4.hasEnded(data, CurrentDate);
     if (!Tv4.isViewable(data, extra, extra.is_live || IsLive, CurrentDate))
         // Premium/DRM
         return null;
@@ -1115,6 +1157,9 @@ Tv4.decodeShows = function(data, extra) {
                     }
                 }
                 continue;
+            } else if (data[k].page) {
+                Tv4.result.push({is_page:true, page:data[k].page});
+                continue;
             }
             if (data[k].series)
                 data[k] = data[k].series;
@@ -1149,6 +1194,8 @@ Tv4.decodeShows = function(data, extra) {
         for (var l in Tv4.result) {
             if (Tv4.result[l].is_movie)
                 toHtml(Tv4.result[l]);
+            else if (Tv4.result[l].is_page)
+                Tv4.pageToHtml(Tv4.result[l].page);
             else
                 showToHtml(Tv4.result[l].name,
                            Tv4.result[l].thumb,
@@ -1189,6 +1236,14 @@ Tv4.decodeAllShows = function(data, extra, filter, cbComplete) {
         cbComplete && cbComplete();
 };
 
+Tv4.pageToHtml = function(page) {
+    var thumb = page.images || Tv4.pages[page.id];
+    categoryToHtml(page.name || page.title,
+                   Tv4.fixThumb(thumb),
+                   Tv4.fixThumb(thumb, DETAILS_THUMB_FACTOR),
+                   addUrlParam(TV4_API_BASE, 'page_id', page.id)
+                  );
+};
 
 Tv4.isVideo = function(data) {
     return (Tv4.getVideoItem(data)) ? true : false;
@@ -1203,6 +1258,7 @@ Tv4.getDetailsData = function(url, data, user_data) {
     var Title = Name;
     var DetailsImgLink='';
     var AirDate='';
+    var Start=null;
     var VideoLength = '';
     var AvailDate=null;
     var Description;
@@ -1226,17 +1282,39 @@ Tv4.getDetailsData = function(url, data, user_data) {
         Description = data.synopsis && data.synopsis.medium;
         Description = Description || data.description || '';
         AirDate = data.playableFrom && timeToDate(data.playableFrom.isoString);
-        VideoLength = data.video && dataLengthToVideoLength(null, data.video.duration.seconds);
-        isLive = (data.video && data.video.isLiveContent) || !data.video;
         AvailDate = data.playableUntil && timeToDate(data.playableUntil.isoString);
         NotAvailable = ((AirDate - getCurrentDate()) > 60*1000);
-        if (data.series || data.parent) {
+        if (data.video) {
+            VideoLength = dataLengthToVideoLength(null, data.video.duration.seconds);
+            isLive = data.video.isLiveContent && !Tv4.hasEnded(data.video);
+        } else {
+            isLive = !Tv4.hasEnded(data);
+            if (data.isLiveContent && data.liveEventEnd) {
+                VideoLength = timeToDate(data.liveEventEnd.isoString) - AirDate;
+                VideoLength = dataLengthToVideoLength(null,Math.round(VideoLength/1000));
+            }
+        }
+        if (data.epg) {
+            Start = timeToDate(data.epg[0].start);
+            var end   = timeToDate(data.epg[0].end);
+            DetailsImgLink = Tv4.fixThumb(data.epg[0], DETAILS_THUMB_FACTOR);
+            VideoLength = Math.round((end-Start)/1000);
+            VideoLength = dataLengthToVideoLength(null,VideoLength);
+            AirDate = dateToClock(Start) + '-' + dateToClock(end);
+            Name = data.title + ' - ' + data.epg[0].title;
+            Title = AirDate + ' ' + Name;
+            Description = data.epg[0].synopsis.medium + '<br>';
+            data.epg = data.epg.slice(1);
+            for (i in data.epg) {
+                Description += '<br>' + Tv4.epgToTitle(data.epg[i]);
+            }
+        } else if (data.series || data.parent) {
             Show = data.series || data.parent;
             Tv4.fetchShow(Show.id);
             Show.label = Tv4.shows[Show.id] && Tv4.shows[Show.id].label;
             Show.images = Tv4.shows[Show.id] && Tv4.shows[Show.id].images;
             Show = {name  : Show.title,
-                    label : Tv4.getLabel(Show.label),
+                    label : Tv4.getLabel(Show),
                     url   : Tv4.makeShowLink(Show.id),
                     thumb : Tv4.fixThumb(Show.images)
                    };
@@ -1275,7 +1353,7 @@ Tv4.getDetailsData = function(url, data, user_data) {
             is_live       : isLive,
             air_date      : AirDate,
             avail_date    : AvailDate,
-            start         : AirDate,
+            start         : Start || AirDate,
             duration      : VideoLength,
             description   : Description,
             not_available : NotAvailable,
@@ -1363,7 +1441,7 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
                              Resolution.getCorrectStream(RedirectIfEmulator(stream),
                                                          RedirectIfEmulator(srtUrl),
                                                          {useBitrates:true,
-                                                          license:license,
+                                                          license:RedirectIfEmulator(license),
                                                           customdata:customData,
                                                           isLive:live,
                                                           use_offset:useOffset
@@ -1380,16 +1458,17 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                        // alert(JSON.stringify(JSON.parse(data.responseText)));
                        data = JSON.parse(data.responseText);
                        isLive = isLive || data.metadata.isLive;
+                       var use_offset = (data.metadata.type == 'channel');
                        data = data.playbackItem;
                        var stream = data.manifestUrl;
-                       var use_offset = (data.startoverManifestUrl != null);
+                       use_offset = use_offset || (data.startoverManifestUrl != null);
                        var license = data.license && data.license.url;
                        license = data.license && data.license.castlabsServer;
                        var customData = data.license && data.license.castlabsToken;
                        if (customData) {
-                           data = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
-                           data.authToken = customData;
-                           customData = btoa(JSON.stringify(data));
+                           data.auth = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
+                           data.auth.authToken = customData;
+                           customData = btoa(JSON.stringify(data.auth));
                        }
                        if (license && streams.length > 1 && !streams[0].match(/mss/)) {
                            streams.shift();
@@ -1596,6 +1675,14 @@ Tv4.isViewable = function (data, extra, isLive, currentDate) {
     }
 };
 
+Tv4.hasEnded = function(data, currentDate) {
+    currentDate = currentDate || getCurrentDate();
+    if (data && data.liveEventEnd)
+        return timeToDate(data.liveEventEnd.isoString) < currentDate;
+    else
+        return false;
+};
+
 Tv4.getHeaders = function() {
     var Headers = [{key:'client-version', value:'4.0.0'},
                    {key:'client-name', value:'tv4-web'},
@@ -1607,9 +1694,15 @@ Tv4.getHeaders = function() {
     return Headers;
 };
 
-Tv4.getLabel = function(Label) {
-    if (Label && Label.label) Label = Label.label;
-    return Label && (Label.recurringBroadcast || Label.announcement);
+Tv4.getLabel = function(label) {
+    if (label) {
+        if (label.label)
+            label = label.label;
+        else if (label.upcomingEpisode && label.upcomingEpisode.playableFrom) {
+            return getDay(timeToDate(label.upcomingEpisode.playableFrom.isoString));
+        };
+    }
+    return label && (label.recurringBroadcast || label.announcement);
 };
 
 Tv4.getClipMenuQuery = function() {
@@ -1627,7 +1720,7 @@ Tv4.getPanelQuery = function(id, limit) {
 
 Tv4.getLivePanelQuery = function(id, limit) {
     limit = limit || 30;
-    return '{"query": "query LivePanel($panelId: ID!, $offset: Int!, $limit: Int!){panel(id: $panelId){ ... on LivePanel{ id title playOutOfView content(input:{offset: $offset, limit: $limit}){ pageInfo{ ...PageInfoFields} items{ ... on LivePanelChannelItem{ channel{ ...ChannelVideoFields}} ... on LivePanelEpisodeItem{ episode{ ...EpisodeVideoFields}} ... on LivePanelMovieItem{ movie{ ...MovieVideoFields}} ... on LivePanelSportEventItem{ sportEvent{ ...SportEventVideoFields}}}}}}}' + PAGE_INFO_FIELDS + CHANNEL_VIDEO_FIELDS + EPISODE_VIDEO_FIELDS + MOVIE_VIDEO_FIELDS + SPORT_VIDEO_FIELDS + IMAGE_LIGHT_FIELDS + VIDEO_FIELDS + '","variables":{"limit":' + limit + ',"panelId":"' + id + '","offset":0},"operationName": "LivePanel"}';
+    return '{"query": "query LivePanel($panelId: ID!, $offset: Int!, $limit: Int!){panel(id: $panelId){ ... on LivePanel{ id title playOutOfView content(input:{offset: $offset, limit: $limit}){ pageInfo{ ...PageInfoFields} items{ ... on LivePanelChannelItem{ channel{ ...ChannelVideoFields}} ... on LivePanelEpisodeItem{ episode{ ...EpisodeVideoFields}} ... on LivePanelMovieItem{ movie{ ...MovieVideoFields}} ... on LivePanelSportEventItem{ sportEvent{ ...SportEventVideoFields}}}}} __typename}}' + PAGE_INFO_FIELDS + CHANNEL_VIDEO_FIELDS + EPISODE_VIDEO_FIELDS + MOVIE_VIDEO_FIELDS + SPORT_VIDEO_FIELDS + IMAGE_LIGHT_FIELDS + VIDEO_FIELDS + '","variables":{"limit":' + limit + ',"panelId":"' + id + '","offset":0},"operationName": "LivePanel"}';
 };
 
 Tv4.getShowQuery = function(id) {

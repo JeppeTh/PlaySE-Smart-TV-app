@@ -135,6 +135,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.custom_data   = extra.customdata;
     videoData.previewThumb  = (deviceYear > 2011) && extra.previewThumb;
     Log('VIDEO URL: ' + videoUrl);
+    if (videoData.audio_idx) Player.audioIdx = -1;
     // Log('LICENSE URL: ' + videoData.license);
     // Log('CustomData:' + videoData.custom_data);
 };
@@ -792,6 +793,10 @@ Player.OnStreamInfoReady = function(forced) {
     Player.pluginDuration = Player.plugin.getDuration();
     this.setTotalTime();
     Player.updateTopOSD(oldTopOsd);
+    if (Player.audioIdx == -1) {
+        Player.audioIdx = videoData.audio_idx;
+        Player.plugin.setAudioStream(Player.audioIdx);
+    }
 };
 
 Player.setTotalTime = function() {

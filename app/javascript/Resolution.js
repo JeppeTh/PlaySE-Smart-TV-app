@@ -170,11 +170,15 @@ Resolution.getIsmStreams = function (videoUrl, data, prefix) {
         }
     }
     var swe_audio_idx = null;
-    for (var k = 0; k < languages.length; k++) {
+    var language, type;
+    for (var k in languages) {
         if (languages[k].match(/swe/i)) {
-            swe_audio_idx = k;
-            break;
+            swe_audio_idx = +k;
         }
+        language = languages[k].match(/Language="([^"]+)/i) || languages[k].match(/Name="([^"]+)/i);
+        type = languages[k].match(/FourCC="([^"]+)/i);
+        if (language && type)
+            languages[k] = [language[1],type[1]].join('&nbsp;/&nbsp;').capitalize();
     }
 
     var streams    = [];
@@ -187,7 +191,11 @@ Resolution.getIsmStreams = function (videoUrl, data, prefix) {
                     );
     }
 
-    return {streams:streams, audio_idx:swe_audio_idx, subtitles_idx:swe_subtitles_idx};
+    return {streams: streams,
+            audio_streams: languages,
+            audio_idx: swe_audio_idx,
+            subtitles_idx: swe_subtitles_idx
+           };
 };
 
 Resolution.getHasStreams = function (videoUrl, data, prefix) {
