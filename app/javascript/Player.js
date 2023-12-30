@@ -135,7 +135,7 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.custom_data   = extra.customdata;
     videoData.previewThumb  = (deviceYear > 2011) && extra.previewThumb;
     Log('VIDEO URL: ' + videoUrl);
-    if (videoData.audio_idx) Player.audioIdx = -1;
+    Player.audioIdx = (videoData.audio_idx) ? -1 : 0;
     // Log('LICENSE URL: ' + videoData.license);
     // Log('CustomData:' + videoData.custom_data);
 };
@@ -466,6 +466,9 @@ Player.OnBufferingComplete = function() {
         bufferCompleteCount = bufferCompleteCount + 1;
         return;
     }
+
+    Player.selectInitialAudio();
+
     // Only reset in case no additional skip is in progess
     if (skipTime == skipTimeInProgress) {
         $('.previewThumb').hide(); // Just in case...
@@ -802,9 +805,13 @@ Player.OnStreamInfoReady = function(forced) {
     Player.pluginDuration = Player.plugin.getDuration();
     this.setTotalTime();
     Player.updateTopOSD(oldTopOsd);
+    Player.selectInitialAudio();
+};
+
+Player.selectInitialAudio = function() {
     if (Player.audioIdx == -1) {
-        Player.audioIdx = videoData.audio_idx;
-        Player.plugin.setAudioStream(Player.audioIdx);
+        if (Player.plugin.setAudioStream(videoData.audio_idx))
+            Player.audioIdx = videoData.audio_idx;
     }
 };
 

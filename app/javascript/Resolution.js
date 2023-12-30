@@ -202,12 +202,15 @@ Resolution.getHasStreams = function (videoUrl, data, prefix) {
     data = data.responseText;
     var name, codec, audio_streams = [];
     data = (data.match(/contentType/)) ? data.split(/contentType/mg) : data.split(/mimeType/mg);
-    for (var h = 0; h < data.length; h++) {
+    var swe_audio_idx = null;
+    for (var h in data) {
         if (data[h].match(/^[^=]?=.*audio/i)) {
             name = data[h].match(/Label>([^<]+)<\/Label/);
             name = name || data[h].match(/lang="([^"]+)/) || ["","Audio"];
             codec = data[h].match(/codecs="([^"]+)/) || ["","codec unknown"];
             audio_streams.push([name[1],codec[1]].join('&nbsp;/&nbsp;'));
+            if (!swe_audio_idx && data[h].match(/lang.*"sv"/i))
+                swe_audio_idx = audio_streams.length-1;
         }
     }
     for (var i = 0; i < data.length; i++) {
@@ -225,7 +228,7 @@ Resolution.getHasStreams = function (videoUrl, data, prefix) {
                      }
                     );
     }
-    return {streams:streams, audio_streams:audio_streams};
+    return {streams:streams, audio_streams:audio_streams, audio_idx: swe_audio_idx};
 };
 
 Resolution.setRes = function(value) {

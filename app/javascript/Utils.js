@@ -815,18 +815,17 @@ function handleHttpResult(url, timer, extra, result) {
         // else
         //     alert('Failure:' + url + ' status: + result.status);
     }
-    if (extra.cb) {
-        try {
-            extra.cb(result.status, result.data, result.xhr, url, extra.params);
-        } catch (error) {
-            Log('handleHttpResult cb failed: ' + error);
-        }
-    }
     if (extra.sync) {
         result.success = isHttpStatusOk(result.status);
         if (result.status != 302)
             result.location = null;
         return result;
+    } else if (extra.cb) {
+        try {
+            extra.cb(result.status, result.data, result.xhr, url, extra.params);
+        } catch (error) {
+            Log('handleHttpResult cb failed: ' + error);
+        }
     }
 }
 
@@ -971,12 +970,12 @@ function clipToHtml(Thumb, Link, Name) {
     showToHtml(Name, Thumb, Link, '<a href="showList.html?clips=1&title=' + Name + '&name=');
 }
 
-function categoryToHtml(Name, Thumb, LargeThumb, Link, UrlParams) {
+function categoryToHtml(Name, Thumb, LargeThumb, Link, UrlParams, Description) {
     toHtml({name:        Name,
             link:        fixCategoryLink(Name, LargeThumb, Link),
             link_prefix: makeCategoryLinkPrefix(UrlParams),
             thumb:       Thumb,
-            description: '',
+            description: Description || '',
             duration:    ''
            });
 }
