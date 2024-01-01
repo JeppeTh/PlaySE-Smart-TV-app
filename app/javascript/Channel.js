@@ -256,6 +256,10 @@ Channel.tryAltPlayUrl = function(failedUrl, cbComplete) {
     return false;
 };
 
+Channel.reloadRewind = function() {
+    return this.impl.reloadRewind && this.impl.reloadRewind();
+};
+
 Channel.fetchSubtitles = function(srtUrl, hlsSubs, usedRequestedUrl, cb) {
     Subtitles.init();
     if (typeof srtUrl == 'string' && srtUrl.match(/\.m3u8/)) {

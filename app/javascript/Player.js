@@ -361,6 +361,15 @@ Player.skipInVideo = function() {
     Subtitles.clear();
     window.clearTimeout(osdTimer);
     var timediff = +skipTime - +ccTime;
+
+    // Workaround to avoid blocked device during skipBackward near the end.
+    if (timediff < 0 && +ccTime > (0.90*Player.GetDuration())) {
+        if (Channel.reloadRewind()) {
+            skipTimeInProgress = skipTime;
+            return Player.reloadVideo(+skipTime);
+        }
+    }
+
     Log('skip: ' + timediff);
     Player.plugin.skip(timediff);
     skipTimeInProgress = skipTime;

@@ -1326,6 +1326,10 @@ Svt.tryAltPlayUrl = function(failedUrl, cb) {
         return false;
 };
 
+Svt.reloadRewind = function() {
+    return true;
+};
+
 Svt.getNextCategory = function() {
     return getNextIndexLocation(3);
 };
