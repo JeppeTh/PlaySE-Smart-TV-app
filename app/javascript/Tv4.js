@@ -259,9 +259,9 @@ Tv4.decodeMain = function(start, extra) {
     var panelId = null;
     for (var i in start) {
         if (!start[i].title) continue;
-        if (start[i].title.match(/popul.* just nu/i)) {
+        if (start[i].title.match(/^popul.* just nu/i)) {
             panelId = start[i].id;
-        } else if (!panelId && start[i].title.match(/popul/i)) {
+        } else if (!panelId && start[i].title.match(/^popul/i)) {
             panelId = start[i].id;
         } else if (start[i].title.match(/^lives/i)) {
             Tv4.live_id = start[i].id;
