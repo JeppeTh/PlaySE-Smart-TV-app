@@ -750,7 +750,6 @@ Tv4.decodeSearchList = function(data, extra) {
             hits['SERIES'] = {data:data, title:'Serier'};
         data = null;
         searches = [{title:'Filmer', type:'MOVIE'},
-                    {title:'Avsnitt', type:'EPISODE'},
                     {title:'Sport', type:'SPORT_EVENT'},
                     {title:'Klipp', type:'CLIP'}
                    ];
@@ -1780,15 +1779,8 @@ Tv4.getChannelQuery = function() {
     return '{"query":"query Channels{channels{...ChannelFields}}' + CHANNEL_FIELDS + IMAGE_LIGHT_FIELDS + '","operationName":"Channels"}';
 };
 
-Tv4.getEpisodeSearchQuery = function(query, limit) {
-    limit = limit || 10;
-    return '{"query":"query Search($input: FreeTextSearchInput!) {search(input: $input) { items { ... on Episode{...EpisodeVideoFields}} pageInfo { ...PageInfoFields}}}' + EPISODE_VIDEO_FIELDS + PAGE_INFO_FIELDS + IMAGE_LIGHT_FIELDS + VIDEO_FIELDS +'","variables":{"input":{"limit":' + limit + ',"offset":0,"query":"' + query + '","types":["EPISODE"]},"operationName":"Search"}}';
-// SERIES","MOVIE","EPISODE","SPORT_EVENT","CLIP
-};
-
 Tv4.getListSearchQuery = function(query, type, limit) {
     limit = limit || 10;
-    if (type == 'EPISODE') return Tv4.getEpisodeSearchQuery(query, limit);
     // 'CLIP', 'MOVIE', 'SERIES', 'SPORT_EVENT'
     return '{"query": "query ListSearch($input: ListSearchInput!) {listSearch(input: $input) {items {... on Series {...SeriesFieldsLight} ... on Movie {...MovieFieldsLight} ... on Clip {...ClipFieldsLight} ... on SportEvent {...SportEventFieldsLight}} pageInfo {hasNextPage nextPageOffset totalCountHasAccess {...ListSearchCountFields} totalCount}}}fragment ListSearchCountFields on ListSearchCount {clips movies series sportEvents}' + SERIES_FIELDS + MOVIE_FIELDS + SPORT_FIELDS + CLIP_FIELDS + VIDEO_FIELDS + IMAGE_LIGHT_FIELDS + LABEL_FIELDS + '","variables":{"input":{"query":"' + query + '", "limit":' + limit + ',"offset":0,"includeUpsell":false,"types":["' + type + '"]}},"operationName":"ListSearch"}';
 };
