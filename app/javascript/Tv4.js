@@ -1027,7 +1027,7 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
     Episode = data.title.match(/avsnitt ([0-9]+)/i);
     Episode = Episode && +Episode[1];
 
-    if (data.epg) {
+    if (data.epg && data.epg.length > 0) {
         data.isChannel = true;
         var end = timeToDate(data.epg[0].end);
         start = timeToDate(data.epg[0].start);
@@ -1301,7 +1301,7 @@ Tv4.getDetailsData = function(url, data, user_data) {
                 VideoLength = dataLengthToVideoLength(null,Math.round(VideoLength/1000));
             }
         }
-        if (data.epg) {
+        if (data.epg && data.epg.length > 0) {
             Start = timeToDate(data.epg[0].start);
             var end   = timeToDate(data.epg[0].end);
             DetailsImgLink = Tv4.fixThumb(data.epg[0], DETAILS_THUMB_FACTOR);
