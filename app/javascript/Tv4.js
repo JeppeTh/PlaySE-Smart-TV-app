@@ -630,8 +630,8 @@ Tv4.decodeShowList = function(data, extra) {
             //     if (data[k].videoList.totalHits == 0)
             //         continue;
             //     season = data[k].videoList.videoAssets[0].season;
-            seasonName = data.allSeasonLinks[k].title;
-            season = data.allSeasonLinks[k].title.match(/song ([0-9]+)/);
+            seasonName = data.allSeasonLinks[k].title || " ";
+            season = seasonName.match(/song ([0-9]+)/);
             season = (season && season[1]) || (k+1);
             seasons.push({name     : seasonName,
                           url      : addUrlParam(TV4_API_BASE,
@@ -955,6 +955,8 @@ Tv4.decodeRecommended = function(data) {
                    });
         } else if (Tv4.isVideo(data[i].link)) {
             data[i].current = Tv4.getVideoItem(data[i].link);
+            data[i].current.is_recommended = true;
+            data[i].current.is_sport = (data[i].link.sportEvent != null);
             if (data[i].current.series) {
                 titles.push(data[i].current.series.title);
                 Tv4.fetchShow(data[i].current.series.id);
@@ -962,7 +964,8 @@ Tv4.decodeRecommended = function(data) {
                 titles.push(data[i].current.title);
             }
             data[i].current.description = data[i].shortPitch || data[i].pitch;
-            toHtml(Tv4.decodeVideo(data[i].current));
+            Item = Tv4.decodeVideo(data[i].current);
+            if (Item) toHtml(Item);
         } else if (data[i].link.page) {
             data[i].id = data[i].link.page.id;
             Tv4.pageToHtml(data[i], Description);
@@ -987,6 +990,7 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
     var Show=null;
     var Season=null;
     var Episode=null;
+    var IncludeUpcoming=false;
 
     extra = extra || {};
     CurrentDate = CurrentDate || getCurrentDate();
@@ -1001,11 +1005,18 @@ Tv4.decodeVideo = function(data, CurrentDate, extra) {
         Show = null;
 
     IsLive = data.isLiveContent && !Tv4.hasEnded(data, CurrentDate);
-    if (!Tv4.isViewable(data, extra, extra.is_live || IsLive, CurrentDate))
+    IncludeUpcoming = data.is_recommended || extra.is_live || IsLive;
+    if (!Tv4.isViewable(data, extra, IncludeUpcoming, CurrentDate))
         // Premium/DRM
         return null;
-
-    start = data.playableFrom && (IsLive || data.is_upcoming) && timeToDate(data.playableFrom.isoString);
+    start = data.playableFrom && timeToDate(data.playableFrom.isoString);
+    if (!IsLive && !extra.is_live && start && start > CurrentDate) {
+        if (data.is_sport)
+            IsLive = true;
+        else if (data.is_recommended)
+            data.is_upcoming = true
+    }
+    start = (start && (IsLive || data.is_upcoming)) ? start : null;
     IsRunning = IsLive && start && (CurrentDate > start);
     Description = data.synopsis && data.synopsis.medium || data.description || '';
     if (extra.strip_show) {
