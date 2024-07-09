@@ -1,5 +1,6 @@
 var skipTime = 0;
 var skipTimeInProgress = false;
+var highlightsIndex = 0;
 var osdTimer;
 var topOsdLocked = false;
 var clockTimer;
@@ -568,11 +569,15 @@ Player.showControls = function(){
     if (Player.infoActive)
         return;
 
+    // Refresh just in case
+    Details.fetchData(detailsUrl, true);
+
     Player.pluginDuration = Player.plugin.getDuration();
 
     if (startup===false && !Player.bw && videoBw != Player.plugin.getBandwith())
         Player.OnStreamInfoReady(true);
 
+    Player.markHighlights();
     Player.infoActive = true;
     if (!startup)
         Player.setResolutionText(Player.GetResolution());
@@ -662,17 +667,18 @@ Player.keyEnter = function() {
     }
 };
 
-Player.hideDetailedInfo = function(){
+Player.hideDetailedInfo = function(keepControls){
     // Log('hideDetailedInfo');
     if (Player.detailsActive) {
         Player.detailsActive = false;
         Player.helpActive = false;
         $('.detailstitle').html('');
-        $('.detailsdescription').html(''); 
+        $('.detailsdescription').html('');
         $('.details-wrapper').hide();
         $('.topoverlaybig').show();
     }
-    Player.hideControls();
+    if (!keepControls)
+        Player.hideControls();
 };
 
 Player.GetResolution = function() {
@@ -692,9 +698,9 @@ Player.SetCurTime = function(time) {
 	    startup = false;
             // work-around for samsung bug. Mute sound first after the player started.
 	    Audio.setCurrentMode(smute);
-            if (videoData.use_offset) {
+            if (videoData.use_offset || Player.isLive) {
                 Player.refreshDetailsTimer();
-                if (+Player.start != 0) {
+                if (videoData.use_offset && +Player.start != 0) {
                     Player.updateOffset(Player.start);
                 }
             }
@@ -702,7 +708,7 @@ Player.SetCurTime = function(time) {
 	} else
             resumeTime = +time/1000;
 	ccTime = +time + Player.offset;
-	if(this.skipState == -1){
+	if(this.skipState == -1 && !$('.highlightThumb').is(':visible')) {
 	    this.updateSeekBar(ccTime);
 	}
 
@@ -727,6 +733,7 @@ Player.updateSeekBar = function(time) {
     var hours = Math.floor(mins / 60);
     var smins;
     var ssecs;
+    var duration;
 
     mins  = Math.floor(mins % 60);
 
@@ -745,13 +752,14 @@ Player.updateSeekBar = function(time) {
 
     $('.currentTime').text(hours + ':' + smins + ':' + ssecs);
     Player.setFrontPanelTime(hours, mins, secs);
-    var progress = Math.floor(time/Player.GetDuration()*100);
+    duration = Player.GetDuration();
+    var progress = Math.floor(time/duration*100);
     if (progress > 100)
         progress = 100;
     $('.progressfull').css('width', progress + '%');
     Player.updatePreviewThumb(time, progress);
     // Display.setTime(time);
-    this.setTotalTime();
+    this.setTotalTime(duration);
 };
 
 Player.initPreviewThumb = function() {
@@ -770,6 +778,7 @@ Player.initPreviewThumb = function() {
 };
 
 Player.updatePreviewThumb = function(time, progress) {
+    $('.highlightThumb').hide();
     if (videoData.previewThumb && this.skipState != -1) {
         var preview = videoData.previewThumb;
         var index = Math.ceil(time/preview.duration);
@@ -782,6 +791,95 @@ Player.updatePreviewThumb = function(time, progress) {
         $('.previewThumb').css('left', progress + '%');
         $('.previewThumb').show();
     }
+};
+
+Player.markHighlights = function() {
+    if (Details.fetchedDetails && Details.fetchedDetails.highlights) {
+        var highlights = Details.fetchedDetails.highlights;
+        var html = '';
+        var position;
+        var duration = Player.GetDuration();
+        for (var i in highlights) {
+            loadImage(highlights[i].thumb);
+            position = Math.floor(1000*highlights[i].seconds/duration*100);
+            html += '<div class="highlight", style="left:' + position + '%"/>';
+        }
+        $('.progressempty').html(html);
+    } else {
+        $('.progressempty').html('');
+    }
+};
+
+Player.showHighlights = function() {
+    if (Player.infoActive && $('.progressempty').html() != '') {
+        var highlights = Details.fetchedDetails.highlights;
+        var time = skipTime || ccTime;
+        for (var i in highlights) {
+            if (highlights[i].seconds*1000 <= time)
+                highlightsIndex = +i;
+            else
+                break;
+        }
+        Player.showHighlightThumb();
+        Buttons.setKeyHandleID(3);
+        return true;
+    }
+    return false;
+};
+
+Player.exitHighlights = function(no_update) {
+    $('.highlightThumb').hide();
+    if (Player.skipState == -1) {
+        skipTime = 0;
+        highlightsIndex = 0;
+    }
+    if (!no_update) Player.updateSeekBar(ccTime);
+    Buttons.setKeyHandleID(2);
+};
+
+Player.nextHighlight = function() {
+    if (Details.fetchedDetails.highlights[highlightsIndex+1]) {
+        highlightsIndex++;
+        Player.showHighlightThumb();
+    }
+};
+
+Player.previousHighlight = function() {
+    if (highlightsIndex > 0) {
+        highlightsIndex--;
+        Player.showHighlightThumb();
+    }
+};
+
+Player.showHighlightThumb = function() {
+    $('.previewThumb').hide();
+    window.clearTimeout(skipTimer);
+    window.clearTimeout(osdTimer);
+    Player.skipState = -1;
+    var highlight = Details.fetchedDetails.highlights[highlightsIndex];
+    $('.highlightThumbImg').attr('src', highlight.thumb);
+    var name = highlight.name;
+    if(name.length > 75){
+	name = name.substring(0,75)+ '...';
+    }
+    $('.highlightThumbText').html(name);
+    Player.updateSeekBar(highlight.seconds*1000);
+    var progress = Math.floor(highlight.seconds*1000/Player.GetDuration()*100);
+    $('.highlightThumb').css('left', progress + '%');
+    $('.highlightThumb').show();
+};
+
+Player.selectHighlight = function() {
+    $('.highlightThumb').hide();
+    var highlight = Details.fetchedDetails.highlights[highlightsIndex];
+    skipTime = highlight.seconds*1000;
+    if (skipTime > ccTime)
+        Player.skipState = Player.FORWARD;
+    else
+        Player.skipState = Player.BACKWARDS;
+    Player.hideDetailedInfo(true);
+    Player.skipInVideo();
+    Player.exitHighlights(true);
 };
 
 Player.BwToString = function(bw) {
@@ -806,6 +904,7 @@ Player.OnStreamInfoReady = function(forced) {
     this.setTotalTime();
     Player.updateTopOSD(oldTopOsd);
     Player.selectInitialAudio();
+    Player.markHighlights();
 };
 
 Player.selectInitialAudio = function() {
@@ -815,8 +914,9 @@ Player.selectInitialAudio = function() {
     }
 };
 
-Player.setTotalTime = function() {
-	var tsecs = this.GetDuration() / 1000;
+Player.setTotalTime = function(duration) {
+        duration = duration || this.GetDuration();
+	var tsecs = duration / 1000;
 	var secs  = Math.floor(tsecs % 60);
 	var mins  = Math.floor(tsecs / 60);
         var hours = Math.floor(mins / 60);
@@ -864,9 +964,6 @@ Player.showDetails = function() {
 	this.showDetailedInfo();
         window.clearTimeout(osdTimer);
     } else {
-        // Update in case of channel where details may change
-        if (videoData.use_offset)
-            Details.fetchData(detailsUrl, true);
         this.hideDetailedInfo();
     }
 };
@@ -1181,6 +1278,7 @@ Player.startPlayer = function(url, isLive, start) {
     skipTime = 0;
     skipTimeInProgress = false;
     skipTimer = null;
+    highlightsIndex = 0;
     topOsdLocked = false;
     this.hideDetailedInfo();
     if (Player.plugin)
@@ -1190,6 +1288,7 @@ Player.startPlayer = function(url, isLive, start) {
     $('.currentTime').text('');
     $('.totalTime').text('');
     $('.progressfull').css('width', 0);
+    $('.progressempty').html('');
     Player.setVideoBackground(background);
     if (!$('.bottomoverlaybig').html().match(/Trying alternative/))
         $('.bottomoverlaybig').html('');

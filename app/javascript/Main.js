@@ -7,6 +7,7 @@ var THUMB_WIDTH = 240;
 var THUMB_HEIGHT = 135;
 var DETAILS_THUMB_FACTOR = 600/THUMB_WIDTH;
 var BACKGROUND_THUMB_FACTOR = MAX_WIDTH/THUMB_WIDTH;
+var HIGHLIGHT_THUMB_WIDTH = 124;
 var recommendedLinks = [];
 var isEmulator = false;
 var deviceYear  = null;

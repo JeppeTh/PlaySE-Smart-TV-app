@@ -187,6 +187,7 @@ Details.loadImage = function(detailsUrl) {
 };
 
 Details.fetchData = function(detailsUrl, refresh, preload) {
+    if (!refresh) Details.fetchedDetails = null;
     detailsUrl = this.getUrl(detailsUrl);
     var user_data = getUrlParam(detailsUrl, 'my_user_data');
     httpRequest(removeUrlParam(detailsUrl, 'my_user_data'),

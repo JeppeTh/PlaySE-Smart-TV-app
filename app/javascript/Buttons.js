@@ -1,6 +1,6 @@
 var tvKey = new Common.API.TVKeyValue();
 
-var index = 0; // list = 0, details = 1, player = 2, kanaler = 3, settings = 6, imeSearch = 7, blocked = 8, connection error = 9
+var index = 0; // list=0, details=1, player=2, highlights=3, settings=6, imeSearch=7, blocked=8, connection error=9
 var lastKey = 0;
 var keyHeld = false;
 var keyHeldCounter = 0;
@@ -73,7 +73,7 @@ Buttons.keyDown = function() {
 	this.keyHandleForDetails();
     }
     else if(index == 3){
-	this.keyHandleForKanaler();
+	this.keyHandleForHighlights();
     }
     else if(index == 6){
 	this.keyHandleForSettings();
@@ -569,10 +569,6 @@ Buttons.keyHandleForSettings = function() {
 Buttons.keyHandleForImeSearch = function() {
 };
 
-Buttons.keyHandleForKanaler = function() {
-    Log('keyHandleForKanaler!!!');
-};
-
 Buttons.keyHandleForPlayer = function() {
     Buttons.checkKey();
     var keyCode = event.keyCode;
@@ -672,6 +668,9 @@ Buttons.keyHandleForPlayer = function() {
 	break;
 
     case tvKey.KEY_UP:
+        if (Player.showHighlights()) {
+            return Buttons.setKeyHandleID(3);
+        }
     case tvKey.KEY_DOWN:
         if (Player.isZoomAspect()) {
             Player.changeZoom(keyCode == tvKey.KEY_UP);
@@ -694,6 +693,49 @@ Buttons.keyHandleForPlayer = function() {
     }
 };
 
+Buttons.keyHandleForHighlights = function() {
+    Buttons.checkKey();
+    switch(event.keyCode) {
+    case tvKey.KEY_RIGHT:
+        Player.nextHighlight();
+	break;
+    case tvKey.KEY_LEFT:
+        Player.previousHighlight();
+	break;
+    case tvKey.KEY_PAUSE:
+	Player.togglePause();
+	break;
+    case tvKey.KEY_ENTER:
+    case tvKey.KEY_PLAY:
+	Player.selectHighlight();
+	break;
+    case tvKey.KEY_STOP:
+    case tvKey.KEY_EXIT:
+        //Internet/Smart Hub
+    case tvKey.KEY_INFOLINK:
+    case tvKey.KEY_HOME:
+    case tvKey.KEY_12:
+	Player.stopVideo();
+	// Terminated by force
+	break;
+    case tvKey.KEY_INFO:
+        Player.exitHighlights();
+	Player.showDetails();
+	break;
+    case tvKey.KEY_TOOLS:
+        widgetAPI.blockNavigation(event);
+        Player.exitHighlights();
+	Player.showHelp();
+	break;
+    case tvKey.KEY_RETURN:
+	widgetAPI.blockNavigation(event);
+    case tvKey.KEY_DOWN:
+        Player.exitHighlights();
+	break;
+    default:
+        Log('Unhandled key:' + event.keyCode);
+    }
+};
 
 Buttons.keyHandleForGeofilter = function() {
 	var keyCode = event.keyCode;

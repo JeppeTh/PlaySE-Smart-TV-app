@@ -169,6 +169,11 @@ Svt.getThumb = function(data, size) {
     return RedirectTls('https://www.svtstatic.se/image/' + size + '/' + data.id + '/' + data.changed);
 };
 
+Svt.getHighlightThumb = function(id) {
+    var size = 'small/' + HIGHLIGHT_THUMB_WIDTH;
+    return RedirectTls('https://www.svtstatic.se/image/' + size + '/' + id);
+};
+
 Svt.isPlayable = function (url) {
     return url.match(/(video|klipp)/);
 };
@@ -229,6 +234,7 @@ Svt.getDetailsData = function(url, data) {
     var EpisodeName=null;
     var Variant=null;
     var Related=null;
+    var Highlights=null;
     try {
         if (url.match(/=ChannelsQuery/)) {
             data = JSON.parse(data.responseText).data.channels.channels;
@@ -316,6 +322,17 @@ Svt.getDetailsData = function(url, data) {
                 else
                     AvailDate = AvailDate + ' (' + hoursLeft + ' timmar kvar)';
             }
+            if (data.highlights && data.highlights.length > 0) {
+                Highlights = [];
+                for (var i in data.highlights) {
+                    Highlights.push(
+                        {name:data.highlights[i].name,
+                         seconds: data.highlights[i].positionInSeconds,
+                         thumb: Svt.getHighlightThumb(data.highlights[i].thumbnailId)
+                        }
+                    );
+                }
+            }
         }
     } catch(err) {
         Log('Svt.getDetails Exception:' + err.message);
@@ -343,7 +360,8 @@ Svt.getDetailsData = function(url, data) {
             episode       : Episode,
             episode_name  : EpisodeName,
             parent_show   : Show,
-            related       : Related
+            related       : Related,
+            highlights    : Highlights
     };
 };
 
