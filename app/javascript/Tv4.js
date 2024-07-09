@@ -675,9 +675,26 @@ Tv4.decodeShowList = function(data, extra) {
         // }
 
     } else {
-        data = JSON.parse(data.responseText).data.season.episodes.items;
+        var episodes;
+        var seasonId;
+        data = JSON.parse(data.responseText).data.season;
+        seasonId = data.id;
+        data = data.episodes;
+        episodes = data.items;
+        while (data.pageInfo.hasNextPage) {
+            data = httpRequest(TV4_API_BASE,
+                               {headers: Tv4.getHeaders(),
+                                params: Tv4.getSeasonQuery(seasonId,
+                                                           data.pageInfo.nextPageOffset
+                                                          ),
+                                sync: true
+                               }
+                              );
+            data = JSON.parse(data.data).data.season.episodes;
+            episodes = episodes.concat(data.items);
+        }
         extra.cbComplete = null;
-        Tv4.decode(data, extra);
+        Tv4.decode(episodes, extra);
     }
 
     if (!extra.season) {
@@ -1760,8 +1777,9 @@ Tv4.getShowQuery = function(id) {
     return '{"query": "query ContentDetailsPage($mediaId: ID!, $panelsInput: CdpPanelsInput!) {media(id: $mediaId) {... on SportEvent {id title league isLiveContent isStartOverEnabled synopsis {brief long} playableFrom {isoString} playableUntil{isoString} liveEventEnd{isoString} images{main16x9 {...ImageFieldsFull}} upsell {tierId}} ... on Movie {id title genres isLiveContent isStartOverEnabled liveEventEnd {isoString} playableFrom {isoString} playableUntil{isoString} video {...VideoFields} images{main16x9{...ImageFieldsFull}} synopsis{brief long} label{...LabelFields} panels(input: $panelsInput) {...CdpPanelsFields} hasPanels upsell{tierId}} ... on Series {id title numberOfAvailableSeasons genres upcomingEpisode{...UpcomingEpisodeFields} images{main16x9{...ImageFieldsFull}} synopsis{brief long} allSeasonLinks{seasonId title numberOfEpisodes} label{...LabelFields} panels(input: $panelsInput) {...CdpPanelsFields} hasPanels upsell {tierId}}}}fragment UpcomingEpisodeFields on UpcomingEpisode {id title seasonTitle playableFrom{isoString} image{main16x9 {...ImageFieldsLight}} upsell {tierId}}fragment CdpPanelsFields on CdpPanels {items {... on ClipsPanel {id title}}}' + IMAGE_FIELDS + VIDEO_FIELDS + LABEL_FIELDS + '", "variables": {"panelsInput": {"limit": 100, "offset": 0}, "mediaId": "' + id + '"}, "operationName": "ContentDetailsPage"}';
 };
 
-Tv4.getSeasonQuery = function(id) {
-    return '{"query": "query SeasonEpisodes($input: SeasonEpisodesInput!, $seasonId: ID!){ season(id: $seasonId){ id numberOfEpisodes episodes(input: $input){initialSortOrder pageInfo{ ...PageInfoFields} items{ ...EpisodeFieldsFull}}}}fragment EpisodeFieldsFull on Episode{...EpisodeFields synopsis{medium}  upsell{tierId}}' + PAGE_INFO_FIELDS + EPISODE_FIELDS + IMAGE_LIGHT_FIELDS + VIDEO_FIELDS + '", "variables": {"seasonId":"' + id + '","input":{"limit":100,"offset":0, "sortOrder":"DESC"}}, "operationName": "SeasonEpisodes"}';
+Tv4.getSeasonQuery = function(id, offset) {
+    offset = offset || 0;
+    return '{"query": "query SeasonEpisodes($input: SeasonEpisodesInput!, $seasonId: ID!){ season(id: $seasonId){ id numberOfEpisodes episodes(input: $input){initialSortOrder pageInfo{ ...PageInfoFields} items{ ...EpisodeFieldsFull}}}}fragment EpisodeFieldsFull on Episode{...EpisodeFields synopsis{medium}  upsell{tierId}}' + PAGE_INFO_FIELDS + EPISODE_FIELDS + IMAGE_LIGHT_FIELDS + VIDEO_FIELDS + '", "variables": {"seasonId":"' + id + '","input":{"limit":100,"offset":' + offset + ', "sortOrder":"DESC"}}, "operationName": "SeasonEpisodes"}';
 };
 
 Tv4.getVideoQuery = function(id) {
