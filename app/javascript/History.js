@@ -5,7 +5,7 @@ var History = {
 History.savePosition = function(pos) {
     var tmp_channel = itemSelected && itemSelected.find('.ilink').attr('href').match(/tmp_channel_id=([^&]+)/);
     if (tmp_channel) {
-        pos.name       = itemSelected.text();
+        pos.name       = itemSelected.find('.scroll-item-name').text();
         pos.channel_id = tmp_channel[1];
         alert('savePosition:' + JSON.stringify(pos));
     }
