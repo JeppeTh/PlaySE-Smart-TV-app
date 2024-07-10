@@ -22,12 +22,11 @@ Subtitles.init = function() {
     subtitles = [];
     currentSubtitle = 0;
     var savedValue = Config.read('subEnabled');
-    if (savedValue) {
+    if (savedValue || savedValue == '0') {
         subtitlesEnabled = (savedValue == '1');
     } else {
         subtitlesEnabled = true;
     }
-
 };
 
 Subtitles.upgradeSettings = function() {
