@@ -1444,21 +1444,23 @@ function loadImage(image, callback, timeout) {
                     alert('IMG TIMEOUT: ' + image);
                 else
                     Log('IMG TIMEOUT');
-                callback && callback();
+                callback && callback({failed:true});
             }, timeout);
         }
         if (timeout || callback) {
-            img.onload = img.onerror = img.onabort = function() {
-                window.clearTimeout(thisTimeout);
-                // alert('READY')
-                // if (!callback)
-                //     alert(new Date()-start + ' to load ' + image);
-                callback && callback();
-            };
+            CallbackFun =
+                function(Img, Timer, Failed) {
+                    window.clearTimeout(Timer);
+                    if (Failed) alert(Img.src + ' ' + Failed);
+                    Img.failed = Failed
+                    callback && callback(Img);
+                };
+            img.onload = function() {CallbackFun(this,thisTimeout,false);};
+            img.onerror = img.onabort = function() {CallbackFun(this,thisTimeout,true);};
         }
         img.src = image;
     } else if (callback)
-        callback();
+        callback({failed:true});
 }
 
 function PopUp(text, fun) {

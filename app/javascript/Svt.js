@@ -1176,7 +1176,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            video_urls.push(videoReferences[j].url);
                        }
                        alert('video_urls:' + video_urls);
-                       if (data.thumbnailMap)
+                       if (data.thumbnailMap) {
                            extra.previewThumb =
                            {
                                src:      data.thumbnailMap.url,
@@ -1186,6 +1186,13 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                                columns:  data.thumbnailMap.columns,
                                duration: data.thumbnailMap.timeBetweenPicturesInMillis
                            };
+                       } else if (!extra.use_offset) {
+                           for (var i in videoReferences)
+                               if (videoReferences[i].format.match('dash')) {
+                                   extra.previewThumbStream = videoReferences[i].url
+                                   break;
+                               }
+                       }
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
                        // AC-3 not supported on older devices.
                        if (deviceYear < 2014) {

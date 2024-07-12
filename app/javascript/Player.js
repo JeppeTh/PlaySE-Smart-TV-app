@@ -134,7 +134,12 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     videoData.use_offset    = extra.use_offset;
     videoData.license       = extra.license;
     videoData.custom_data   = extra.customdata;
-    videoData.previewThumb  = (deviceYear > 2011) && extra.previewThumb;
+    if (deviceYear > 2011) {
+        if (extra.previewThumb)
+            videoData.previewThumb = extra.previewThumb;
+        else if (extra.previewThumbStream)
+            videoData.previewThumbStream = extra.previewThumbStream;
+    }
     Log('VIDEO URL: ' + videoUrl);
     Player.audioIdx = (videoData.audio_idx) ? -1 : 0;
     // Log('LICENSE URL: ' + videoData.license);
@@ -374,7 +379,7 @@ Player.skipInVideo = function() {
     Log('skip: ' + timediff);
     Player.plugin.skip(timediff);
     skipTimeInProgress = skipTime;
-    $('.previewThumb').hide();
+    Player.hidePreviewThumb();
 };
 
 Player.skipForward = function(time) {
@@ -394,7 +399,7 @@ Player.skipForward = function(time) {
     skipTime = +skipTime + time;
     this.skipState = this.FORWARD;
     // Log('forward skipTime: ' + skipTime);
-    this.updateSeekBar(skipTime);
+    this.updateSeekBar(skipTime, time);
     skipTimer = window.setTimeout(this.skipInVideo, 2000);
 };
 
@@ -417,7 +422,7 @@ Player.skipBackward = function(time) {
 	skipTime = Player.offset;
     }
     this.skipState = this.REWIND;
-    this.updateSeekBar(skipTime);
+    this.updateSeekBar(skipTime, -time);
     skipTimer = window.setTimeout(this.skipInVideo, 2000);
 };
 
@@ -472,7 +477,7 @@ Player.OnBufferingComplete = function() {
 
     // Only reset in case no additional skip is in progess
     if (skipTime == skipTimeInProgress) {
-        $('.previewThumb').hide(); // Just in case...
+        Player.hidePreviewThumb(); // Just in case...
         this.skipState = -1;
         skipTime = 0;
         skipTimeInProgress = false;
@@ -587,7 +592,7 @@ Player.showControls = function(){
     if (videoData.previewThumb && this.skipState != -1 && !skipTimeInProgress)
         $('.previewThumb').show();
     else
-        $('.previewThumb').hide();
+        Player.hidePreviewThumb();
     this.setClock();
     Subtitles.showControls();
   // Log('show controls');
@@ -616,7 +621,7 @@ Player.hideControls = function(){
     $('.topoverlayresolution').hide();
     $('.video-wrapper').hide();
     $('.video-footer').hide();
-    $('.previewThumb').hide();
+    Player.hidePreviewThumb();
     $('.bottomoverlaybig').html('');
     Player.infoActive = false;
     Subtitles.hideControls();
@@ -726,7 +731,7 @@ Player.SetCurTime = function(time) {
         // }
 };
 
-Player.updateSeekBar = function(time) {
+Player.updateSeekBar = function(time, skipStep) {
     var tsecs = time / 1000;
     var secs  = Math.floor(tsecs % 60);
     var mins  = Math.floor(tsecs / 60);
@@ -757,14 +762,21 @@ Player.updateSeekBar = function(time) {
     if (progress > 100)
         progress = 100;
     $('.progressfull').css('width', progress + '%');
-    Player.updatePreviewThumb(time, progress);
+    Player.updatePreviewThumb(time, progress, skipStep);
     // Display.setTime(time);
     this.setTotalTime(duration);
 };
 
 Player.initPreviewThumb = function() {
     $('.previewThumb').hide();
-    if (videoData.previewThumb) {
+    if (videoData.previewThumb && videoData.previewThumb.type == 'stream' ) {
+        $('.previewThumb').css('left', 0);
+        $('.previewThumbContainer').css('width', '100%');
+        $('.previewThumbContainer').css('height', '100%');
+        $('.previewThumbScale').css('zoom', 1);
+        $('.previewThumbContainer .previewThumbImg').css('margin', 0);
+        $('.previewThumbImg').attr('src', '');
+    } else if (videoData.previewThumb) {
         $('.previewThumb').css('left', 0);
         $('.previewThumbContainer').css('width', videoData.previewThumb.width);
         $('.previewThumbContainer').css('height', videoData.previewThumb.height);
@@ -774,23 +786,79 @@ Player.initPreviewThumb = function() {
         $('.previewThumbImg').attr('src', videoData.previewThumb.src);
     } else {
         $('.previewThumbImg').attr('src', '');
+        if (videoData.previewThumbStream) {
+            var thumbStream = videoData.previewThumbStream;
+            httpRequest(thumbStream,
+                        {cb:function(status, data) {
+                            if (videoData.previewThumbStream == thumbStream)
+                                videoData.previewThumbStream = null;
+                            thumbStream =
+                                Resolution.getHasStreams(thumbStream,
+                                                         {responseText: data || ''},
+                                                         getUrlPrefix(thumbStream)
+                                                        );
+                            if (thumbStream.thumb) {
+                                videoData.previewThumb = thumbStream.thumb;
+                                Player.initPreviewThumb();
+                            }
+                        }}
+                       )
+        }
     }
 };
 
-Player.updatePreviewThumb = function(time, progress) {
+Player.updatePreviewThumb = function(time, progress, skipStep) {
     $('.highlightThumb').hide();
     if (videoData.previewThumb && this.skipState != -1) {
-        var preview = videoData.previewThumb;
-        var index = Math.ceil(time/preview.duration);
-        var row = Math.floor(index/preview.columns);
-        var column = index % preview.columns;
-        if (row < preview.rows) {
-            var margin = (-row*preview.height) + 'px 0 0 ' + (-column*preview.width) + 'px';
-            $('.previewThumbContainer .previewThumbImg').css('margin', margin);
-        }
         $('.previewThumb').css('left', progress + '%');
-        $('.previewThumb').show();
+        if (videoData.previewThumb.type == 'stream') {
+            var img = Player.getPreviewThumStreamIndexUrl(videoData.previewThumb, time);
+            if ($('.previewThumbImg').attr('src') == '') {
+                loadImage(img,
+                          function(data) {
+                              if (data && !data.failed) {
+                                  var scale = $('.previewThumb').width()/data.width;
+                                  $('.previewThumbScale').css('zoom', Math.round(scale*100)/100);
+                                  $('.previewThumbImg').attr('src', img);
+                                  $('.previewThumb').show();
+                              }
+                          },
+                          1000
+                         );
+            } else {
+                $('.previewThumbImg').attr('src', img);
+            }
+            // Cache next
+            if ((time+skipStep) > 0) {
+                img = Player.getPreviewThumStreamIndexUrl(videoData.previewThumb,
+                                                          time + skipStep
+                                                         );
+                loadImage(img);
+            }
+        } else{
+            var preview = videoData.previewThumb;
+            var index = Math.ceil(time/preview.duration);
+            var row = Math.floor(index/preview.columns);
+            var column = index % preview.columns;
+            if (row < preview.rows) {
+                var margin = (-row*preview.height) + 'px 0 0 ' + (-column*preview.width) + 'px';
+                $('.previewThumbContainer .previewThumbImg').css('margin', margin);
+            }
+            $('.previewThumb').show();
+        }
     }
+};
+
+Player.hidePreviewThumb = function() {
+    $('.previewThumb').hide();
+    if (videoData.previewThumb && videoData.previewThumb.type == 'stream')
+        $('.previewThumbImg').attr('src', '');
+};
+
+Player.getPreviewThumStreamIndexUrl = function(previewThumb, time) {
+    // Add one extra to ensure we end up before the preview
+    var index = Math.round(time/1000/previewThumb.duration) + 1;
+    return previewThumb.prefix + index + previewThumb.suffix;
 };
 
 Player.markHighlights = function() {
@@ -833,6 +901,7 @@ Player.exitHighlights = function(no_update) {
         skipTime = 0;
         highlightsIndex = 0;
     }
+    Player.refreshOsdTimer(3000);
     if (!no_update) Player.updateSeekBar(ccTime);
     Buttons.setKeyHandleID(2);
 };
@@ -852,7 +921,7 @@ Player.previousHighlight = function() {
 };
 
 Player.showHighlightThumb = function() {
-    $('.previewThumb').hide();
+    Player.hidePreviewThumb();
     window.clearTimeout(skipTimer);
     window.clearTimeout(osdTimer);
     Player.skipState = -1;

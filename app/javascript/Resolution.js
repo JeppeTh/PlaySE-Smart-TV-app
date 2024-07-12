@@ -50,6 +50,8 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        extra.audio_streams = streams.audio_streams;
                        extra.audio_idx     = streams.audio_idx;
                        extra.subtitles_idx = streams.subtitles_idx;
+                       if (!extra.previewThumb && streams.thumb)
+                           extra.previewThumb = streams.thumb;
                        if (!extra.isLive)
                            extra.hls_subs = streams.hls_subs;
                    }
@@ -200,7 +202,7 @@ Resolution.getIsmStreams = function (videoUrl, data, prefix) {
 
 Resolution.getHasStreams = function (videoUrl, data, prefix) {
     data = data.responseText;
-    var name, codec, audio_streams = [];
+    var name, codec, audio_streams=[], thumb;
     data = (data.match(/contentType/)) ? data.split(/contentType/mg) : data.split(/mimeType/mg);
     var swe_audio_idx = null;
     for (var h in data) {
@@ -213,7 +215,29 @@ Resolution.getHasStreams = function (videoUrl, data, prefix) {
                 swe_audio_idx = audio_streams.length-1;
         }
     }
-    for (var i = 0; i < data.length; i++) {
+
+    for (var j in data) {
+        if (data[j].match(/^[^=]?=.*image/i)) {
+            var match;
+            if (match = data[j].match(/media="([^"]+)/)){
+                thumb = {type:'stream'};
+                thumb.prefix = prefix + match[1].split('$Number$')[0];
+                thumb.suffix = match[1].split('$Number$')[1];
+                if (match = data[j].match(/timescale="([^"]+)/)) {
+                    thumb.duration = +match[1];
+                    if (match = data[j].match(/duration="([^"]+)/))
+                        thumb.duration = +match[1]/thumb.duration;
+                    else
+                        thumb = null;
+                } else {
+                    thumb = null;
+                }
+            }
+            break;
+        }
+    }
+
+    for (var i in data) {
         if (data[i].match(/^[^=]?=.*video/i)) {
             data = data[i];
             break;
@@ -228,7 +252,7 @@ Resolution.getHasStreams = function (videoUrl, data, prefix) {
                      }
                     );
     }
-    return {streams:streams, audio_streams:audio_streams, audio_idx: swe_audio_idx};
+    return {streams:streams, audio_streams:audio_streams, audio_idx:swe_audio_idx, thumb:thumb};
 };
 
 Resolution.setRes = function(value) {
