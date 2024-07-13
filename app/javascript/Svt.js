@@ -1194,6 +1194,9 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                                }
                        }
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
+                       // Possibly it's thumbnails thake make live streams fail.
+                       if (isLive)
+                           Svt.play_args.extra.redirect_mpd = true;
                        // AC-3 not supported on older devices.
                        if (deviceYear < 2014) {
                            var content;
@@ -1217,7 +1220,7 @@ Svt.redirectMpd = function(url) {
     var urlPrefix = getUrlPrefix(url);
     content = httpRequest(url, {sync:true}).data;
     // Strip Subtitles
-    content = content.replace(/^[ ]*<AdaptationSet[^<]+?contentType="text"(.+\n)+?.*?<\/AdaptationSet>.*?\n?/mg,'');
+    content = content.replace(/^[ ]*<AdaptationSet[^<]+?contentType="(text|image)"(.+\n)+?.*?<\/AdaptationSet>.*?\n?/mg,'');
     // Need to add urlPrefix as Base.
     content = content.replace(/((^ +)<AdaptationSet)/m,'$2<BaseURL>'+urlPrefix+'</BaseURL>\n$1');
     content = content.replace(/(initialization=")/mg,'$1'+urlPrefix);
