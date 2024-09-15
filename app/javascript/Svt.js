@@ -569,10 +569,6 @@ Svt.decodeMain = function(data, extra) {
         if (!data[k].items || data[k].items.length == 0)
             continue;
 
-        if (data[k].analyticsIdentifiers &&
-            data[k].analyticsIdentifiers.listType == 'fiona')
-            continue;
-
         if (data[k].id.match(/live/i)) {
             Svt.live_url = Svt.makeCollectionLink(data[k].id);
             continue;
@@ -582,6 +578,11 @@ Svt.decodeMain = function(data, extra) {
             RecommendedIndex = k;
             continue;
         }
+
+        if (data[k].analyticsIdentifiers &&
+            data[k].analyticsIdentifiers.listType == 'redaktionell')
+            continue;
+
         if (data[k].id.match(/popul/i))
             PopularIndex = k;
 
@@ -656,7 +657,7 @@ Svt.decodeCategories = function (data, extra) {
             data = data.startForSvtPlay.selections;
             for (var j=0; j < data.length; j++) {
                 if (data[j].analyticsIdentifiers &&
-                    data[j].analyticsIdentifiers.listType == 'fiona') {
+                    data[j].analyticsIdentifiers.listType == 'redaktionell') {
                     categoryToHtml(data[j].name,
                                    Svt.getThumb(data[j].items[0]),
                                    Svt.getThumb(data[j].items[0], 'large'),
@@ -766,7 +767,7 @@ Svt.decodeCategoryDetail = function (data, extra) {
         }
         var popular_index = -1;
         for (var k=0; k < data.length; k++) {
-            if (data[k].name.match(/^popul/i)) {
+            if (data[k].name.match(/^popul[^ ]+$/i)) {
                 popular_index = k;
                 break
             }
@@ -786,8 +787,8 @@ Svt.decodeCategoryDetail = function (data, extra) {
     if (Current && Current.related) {
         data = data[0].selections;
         for (var k=0; k < data.length; k++) {
-            if (data[k].analyticsIdentifiers.listType == 'fiona' &&
-                !data[k].name.match(/(senaste$|^popul)/i)
+            if (data[k].analyticsIdentifiers.listType == 'redaktionell' &&
+                !data[k].name.match(/(senaste$|^popul[^ ]+$)/i)
                ) {
                 categoryToHtml(data[k].name,
                                Svt.getThumb(data[k].items[0]),
@@ -842,9 +843,9 @@ Svt.decodeCategoryTabs = function (name, slug, data, url) {
         );
     var selections = data[0].selections;
     for (var k=0; k < selections.length; k++) {
-        if (selections[k].id.match(/(recomm|popul)/))
+        if (selections[k].id.match(/(recomm|popul[^ ]+$)/))
             continue;
-        if (selections[k].analyticsIdentifiers.listType == 'fiona') {
+        if (selections[k].analyticsIdentifiers.listType == 'redaktionell') {
             if (!selections[k].name.match(/senaste$/i))
                 continue;
         }
@@ -1194,7 +1195,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                                }
                        }
                        Svt.play_args = {urls:video_urls, srt_url:srtUrl, extra:extra};
-                       // Possibly it's thumbnails thake make live streams fail.
+                       // Seems it's thumbnails that make live streams fail.
                        if (isLive)
                            Svt.play_args.extra.redirect_mpd = true;
                        // AC-3 not supported on older devices.
