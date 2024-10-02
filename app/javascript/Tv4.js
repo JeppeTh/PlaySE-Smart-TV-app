@@ -1734,7 +1734,7 @@ Tv4.hasEnded = function(data, currentDate) {
 };
 
 Tv4.getHeaders = function() {
-    var Headers = [{key:'client-version', value:'4.0.0'},
+    var Headers = [{key:'client-version', value:'5.2.0'},
                    {key:'client-name', value:'tv4-web'},
                    // {key:'Feature_flag_enable_season_upsell_on_cdp', value:'false'},
                    {key:'content-type', value:'application/json'}
