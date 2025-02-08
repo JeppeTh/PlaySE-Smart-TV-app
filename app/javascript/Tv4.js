@@ -1435,7 +1435,7 @@ Tv4.getShowUrl = function(url) {
     return Tv4.getUrl();
 };
 
-Tv4.getDetailsUrl = function(streamUrl) {
+Tv4.getDetailsUrl = function(streamUrl, postData) {
     var id = getUrlParam(streamUrl, 'show_id');
     if (id) {
         var is_clips = getUrlParam(streamUrl, 'clip_id');
@@ -1446,19 +1446,24 @@ Tv4.getDetailsUrl = function(streamUrl) {
     }
     id = getUrlParam(streamUrl, 'video_id');
     if (id) {
-        return Tv4.postToGet(Tv4.getVideoQuery(id));
+        return {url:TV4_API_BASE, post_data:Tv4.getVideoQuery(id)};
     }
     id = getUrlParam(streamUrl,'related_id');
     if (id) {
         return addUrlParam(Tv4.postToGet(Tv4.getShowQuery(id)), 'my_user_data', 'is_related');
     }
-    return streamUrl;
+    return (postData) ? {url:streamUrl, post_data:postData} : streamUrl;
 };
 
 Tv4.getPlayUrl = function(streamUrl, isLive) {
-    var asset = getUrlParam(streamUrl, 'video_id');
-    if (!asset) {
-        asset = JSON.parse(getUrlParam(streamUrl,'variables')).id;
+    var asset;
+    if (streamUrl.post_data) {
+        asset = JSON.parse(streamUrl.post_data).variables.id;
+    } else {
+        asset = getUrlParam(streamUrl, 'video_id');
+        if (!asset) {
+            asset = JSON.parse(getUrlParam(streamUrl,'variables')).id;
+        }
     }
     var wmdrmUrl = Tv4.makeStreamUrl(asset, 'wmdrm');
     var mpdUrl = Tv4.makeStreamUrl(asset, 'mpd');

@@ -41,6 +41,7 @@ Details.getUrl=function(detailsUrl){
         url = myLocation;
     else
         url = detailsUrl;
+    if (url.url) url = url.url;
     var parse;
     var name=url;
     if (url.match(/category=/)) {
@@ -50,7 +51,8 @@ Details.getUrl=function(detailsUrl){
         name = url.match(/[?&](ilink|name)=(.+)&history=/)[2];
     }
     checkSetTmpChannel(url);
-    return Channel.getDetailsUrl(name);
+    url = Channel.getDetailsUrl(name, detailsUrl && detailsUrl.post_data);
+    return (url && url.url) ? url : {url:url};
 };
 
 Details.loadXml = function(isBackground) {
@@ -59,7 +61,7 @@ Details.loadXml = function(isBackground) {
         var catThumb = myLocation.match(/catThumb=([^&]+)/);
         if (catThumb) catThumb = catThumb[1];
         Details.toHtml({category    : true,
-                        link        : this.getUrl(),
+                        link        : this.getUrl().url,
                         description : '',
                         name        : decodeURIComponent(myLocation.match(/catName=([^&]+)/)[1]),
                         thumb       : decodeURIComponent(catThumb)
@@ -67,8 +69,8 @@ Details.loadXml = function(isBackground) {
         window.setTimeout(loadingStop, 0);
     } else {
         var details_url = this.getUrl();
-        var user_data = getUrlParam(details_url, 'my_user_data');
-        requestUrl(removeUrlParam(details_url, 'my_user_data'),
+        var user_data = getUrlParam(details_url.url, 'my_user_data');
+        requestUrl(removeUrlParam(details_url.url, 'my_user_data'),
                    function(status, data, url) {
                        var html;
                        var programData = Details.getData(url, data, user_data);
@@ -84,6 +86,7 @@ Details.loadXml = function(isBackground) {
                            loadingStop();
                        }},
                     headers:Channel.getHeaders(),
+                    postData:details_url.post_data,
                     no_cache:Details.noCache()
                    }
                   );
@@ -189,14 +192,14 @@ Details.loadImage = function(detailsUrl) {
 Details.fetchData = function(detailsUrl, refresh, preload) {
     if (!refresh) Details.fetchedDetails = null;
     detailsUrl = this.getUrl(detailsUrl);
-    var user_data = getUrlParam(detailsUrl, 'my_user_data');
-    httpRequest(removeUrlParam(detailsUrl, 'my_user_data'),
+    var user_data = getUrlParam(detailsUrl.url, 'my_user_data');
+    httpRequest(removeUrlParam(detailsUrl.url, 'my_user_data'),
                 {cb: function(status, data, xhr, url) {
                     data = Details.getData(url, {responseText:data}, user_data, preload);
                     if (preload && data)
-                        loadImage(data.thumb)
-                },
+                        loadImage(data.thumb)},
                  headers:Channel.getHeaders(),
+                 params:detailsUrl.post_data,
                  no_cache:Details.noCache()
                 });
 };
@@ -223,7 +226,9 @@ Details.getData = function(url, data, user_data, preload) {
 Details.startPlayer = function() {
     Player.setDuration(Details.duration);
     // Log('isLive:' + isLive + ' start:' + Details.start);
-    Player.startPlayer(this.getUrl(), Details.isLive, this.start);
+    var detailsUrl = this.getUrl();
+    if (!detailsUrl.post_data) detailsUrl = detailsUrl.url;
+    Player.startPlayer(detailsUrl, Details.isLive, this.start);
 };
 
 function dataLengthToVideoLength($video, duration) {

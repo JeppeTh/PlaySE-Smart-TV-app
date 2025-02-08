@@ -20,7 +20,7 @@ Channel.main_id = function() {
 };
 
 Channel.set = function(newChannel, newId) {
-    if (this.main_ch_id != newId || 
+    if (this.main_ch_id != newId ||
         this.main_ch_id != this.ch_id ||
         Channel.isSubChannelSet()) {
         Channel.setTmp(newChannel, newId, true);
@@ -229,8 +229,8 @@ Channel.getShowUrl = function(url) {
         return url;
 };
 
-Channel.getDetailsUrl = function(name) {
-    return this.impl.getDetailsUrl(name);
+Channel.getDetailsUrl = function(name, postData) {
+    return this.impl.getDetailsUrl(name, postData);
 };
 
 Channel.getDetailsData = function(url, data, user_data) {
