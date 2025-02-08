@@ -186,6 +186,7 @@ Subtitles.parseVtt = function(data, offset, delta) {
 
     data = Subtitles.fixVttFontColors(data);
     data = data.replace(/(^(\r)?\n)NOTE .+$(\r)?\n/mg,'$1');
+    data = data.replace(/^\(ON-SCREEN TEXT\)/mg,'');
     data = data.replace(/(^(\r)?\n).+(\r)?\n([0-9:.]+ -->)/mg,'$1$4');
     data = data.slice(data.search(/^[0-9]/m));
     data = data.replace(/^([0-9]+:[0-9]+\.[0-9]+ -->)/mg,'00:$1').replace(/--> ([0-9]+:[0-9]+\.[0-9]+)/mg,'--> 00:$1');
@@ -388,7 +389,10 @@ Subtitles.merge = function() {
         var tmpSubtitles = subtitles;
         subtitles = [];
         for (var i = 0; i < tmpSubtitles.length; i++) {
-            if (tmpSubtitles[i+1] && tmpSubtitles[i+1].text.startsWith(tmpSubtitles[i].text))
+            if (tmpSubtitles[i].text &&
+                tmpSubtitles[i+1] &&
+                tmpSubtitles[i+1].text.startsWith(tmpSubtitles[i].text)
+               )
                 tmpSubtitles[i+1].start = tmpSubtitles[i].start;
             else
                 subtitles.push(tmpSubtitles[i]);

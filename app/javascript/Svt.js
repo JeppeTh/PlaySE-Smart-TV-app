@@ -583,14 +583,19 @@ Svt.decodeMain = function(data, extra) {
             data[k].analyticsIdentifiers.listType == 'redaktionell')
             continue;
 
-        if (data[k].id.match(/popul/i))
+        if (data[k].id.match(/popul/i)) {
             PopularIndex = k;
+            continue;
+        }
 
         // var Link = Svt.makeCollectionLink(data[k].id)
         // Svt.sections.push({name:data[k].name, url:Link});
         Svt.sections.push({name:data[k].name, url:extra.url, id:data[k].id});
     }
-
+    Svt.sections.unshift({name : data[PopularIndex].name,
+                          url  : extra.url,
+                          id   : data[PopularIndex].id}
+                        );
     Svt.section_max_index = Svt.sections.length-1;
     $('#a-button').text(Svt.getNextSectionText());
 
@@ -754,7 +759,16 @@ Svt.decodeCategoryDetail = function (data, extra) {
 
     if (Svt.category_detail_max_index == 0 || DetailIndex.current == 1) {
         // A-Ö
-        data = (DetailIndex.current == 1) ? data[1] : data && data[0];
+        if (DetailIndex.current == 1) {
+            for (var k=0; k < data.length; k++) {
+                if (data[k].slug == 'all') {
+                    data = data[k];
+                    break;
+                }
+            }
+        }
+        else
+            data = data && data[0];
         data = data && data.selections[0].items;
     } else if (DetailIndex.current == 0) {
         // Recommended + Popular
@@ -832,15 +846,21 @@ Svt.decodeCategoryTabs = function (name, slug, data, url) {
     Svt.category_detail_max_index = 0;
     // Add main view
     Svt.category_details.push({name:name, section:'none', slug:slug, url:url});
-    // Add A-Ö
-    if (data.length > 1)
-        Svt.category_details.push(
-            {name: name + ' - ' + data[1].name,
-             slug: slug,
-             section: data[1].name,
-             url: Svt.makeGenreLink({id:slug}, '"' + data[1].slug + '"')
+    if (data.length > 1) {
+        // Add A-Ö
+        for (var j=0; j < data.length; j++) {
+            if (data[j].slug == 'all') {
+                Svt.category_details.push(
+                    {name: name + ' - ' + data[j].name,
+                     slug: slug,
+                     section: data[j].name,
+                     url: Svt.makeGenreLink({id:slug}, '"' + data[j].slug + '"')
+                    }
+                );
+                break;
             }
-        );
+        }
+    }
     var selections = data[0].selections;
     for (var k=0; k < selections.length; k++) {
         if (selections[k].id.match(/(recomm|popul[^ ]+$)/))
@@ -1508,6 +1528,7 @@ Svt.decode = function(data, extra) {
         var IgnoreEpisodes = false;
         var Links = [];
         var IsUpcoming = false;
+        var Label = null;
 
         if (!data) return;
         if (!extra) extra = {};
@@ -1538,6 +1559,7 @@ Svt.decode = function(data, extra) {
         for (var k=0; k < data.length; k++) {
             Name = Svt.getItemName(data[k]);
             Byline = data[k].byline;
+            Label = data[k].badge && data[k].badge.text;
             ImgLink = Svt.getThumb(data[k]);
             LargeImgLink = Svt.getThumb(data[k], 'large');
             Background = Svt.getThumb(data[k], 'extralarge');
@@ -1570,7 +1592,7 @@ Svt.decode = function(data, extra) {
             if (!Duration && start && data[k].live && data[k].live.plannedEnd)
                 Duration = timeToDate(data[k].live.plannedEnd) - start;
 
-            IsUpcoming = extra.strip_show && (data[k].is_next || (start > getCurrentDate()));
+            IsUpcoming = data[k].is_next || (start > getCurrentDate());
             start = (IsLive || IsUpcoming) ? start : null;
             if (extra.strip_show && !IgnoreEpisodes) {
                 if (!Name.match(/(avsnitt|del)\s*([0-9]+)/i) && Episode) {
@@ -1622,6 +1644,7 @@ Svt.decode = function(data, extra) {
             // if (data[k].contentUrl && data[k].contentType != 'titel') {
             LinkPrefix = '<a href="details.html?ilink=';
             if (IsUpcoming) {
+                Label = null;
                 if (data[k].urls.svtplay &&
                     data[k].urls.svtplay.length > 0 &&
                     !data[k].urls.svtplay.match(/null$/)
@@ -1668,6 +1691,7 @@ Svt.decode = function(data, extra) {
             if (extra.is_recommended)
                 Links.push(Link);
             Shows.push({name:Name,
+                        label: !IsLive && Label,
                         duration:Duration,
                         is_live:IsLive,
                         is_channel:false,
