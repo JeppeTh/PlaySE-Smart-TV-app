@@ -409,7 +409,9 @@ function setOffsets() {
     // Retry once a minute in case of failure
     window.clearTimeout(setClockOffsetTimer);
     setClockOffsetTimer = window.setTimeout(setOffsets, 60*1000);
-    httpRequest('http://www.frokenur.com/',
+    url = 'https://www.frokenur.com/';
+    if (deviceYear < 2018) url = RedirectTls(url);
+    httpRequest(url,
                 {cb:function(status, data) {
                     // Get the Date
                     var actualDate = data.match(/>[ \t]*[^0-9<]+([0-9]+[^0-9<]+[0-9]+)[ \t]*</)[1];
