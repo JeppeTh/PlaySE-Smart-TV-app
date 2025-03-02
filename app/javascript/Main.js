@@ -54,9 +54,51 @@ Main.onLoad = function(refresh) {
         Preview.checkLink(function() {Main.loadXml(refresh);});
 	// Enable key event processing
 	Buttons.enableKeys();
+        Main.loadVideoJs();
     } else if (!detailsOnTop) {
 	this.loadXml(refresh);
     }
+};
+
+Main.loadVideoJs = function() {
+    var resources;
+    if (deviceYear > 2017) {
+        resources =
+            ['https://unpkg.com/video.js@8.22.0/dist/video.min.js',
+             'https://www.unpkg.com/videojs-flash@2.2.1/dist/videojs-flash.min.js',
+             'https://unpkg.com/m3u8-parser@7.2.0/dist/m3u8-parser.min.js'
+            ];
+    } else {
+        resources =
+            ['https://unpkg.com/js-polyfills@0.1.43/polyfill.min.js',
+             'https://unpkg.com/video.js@7.21.6/dist/video.js',
+             'https://unpkg.com/@videojs/http-streaming@3.15.0/dist/videojs-http-streaming.min.js',
+             'https://www.unpkg.com/videojs-flash@2.2.1/dist/videojs-flash.min.js',
+             'https://unpkg.com/videojs-contrib-quality-levels@2.0.9/dist/videojs-contrib-quality-levels.min.js',
+             'https://unpkg.com/m3u8-parser@4.3.0/dist/m3u8-parser.min.js'
+            ];
+    }
+    Main.loadResources(resources);
+};
+
+Main.loadResources = function(resources) {
+    $.getScript(resources[0])
+        .done(function(script, textStatus ) {
+            Log(resources[0] + ' loaded.');
+            resources.shift();
+            if (resources.length > 0)
+                Main.loadResources(resources);
+            else
+                Log('typeof videojs:' + (typeof videojs));
+        })
+        .fail(function(xhr, settings, exception) {
+            Log(resources[0] + ' failed:' + exception);
+            resources.shift();
+            if (resources.length > 0)
+                Main.loadResources(resources);
+            else
+                Log('typeof videojs:' + (typeof videojs));
+        });
 };
 
 Main.onUnload = function() {
