@@ -1536,6 +1536,8 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                            Tv4.getSrtUrl(data,
                                          hlsUrl,
                                          function(srtUrl) {
+                                             if (deviceYear < 2018)
+                                                 srtUrl = RedirectTls(srtUrl);
                                              cb(stream, srtUrl, isLive, drm);
                                          }
                                         );
