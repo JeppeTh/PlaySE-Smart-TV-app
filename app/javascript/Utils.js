@@ -914,9 +914,9 @@ function contentShow() {
 }
 
 function waitForImages(callback, retries) {
-    alert('imgCounter:' + imgCounter);
+    alert('imgCounter:' + imgCounter + ' retries: ' + retries);
     if (retries > 0 && imgCounter > 0)
-        window.setTimeout(function(){waitForImages(callback, retries--);}, 100);
+        window.setTimeout(function(){waitForImages(callback, --retries);}, 100);
     else
         callback();
 }
