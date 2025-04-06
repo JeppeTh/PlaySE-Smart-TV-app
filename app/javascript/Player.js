@@ -1567,7 +1567,7 @@ Player.checkCorrectPlugin = function(extra) {
         return;
 
     var PluginToUse = Player.PLUGIN_AVPLAYER;
-    if (extra.use_vjs)
+    if (extra.use_vjs && VideoJsPlayer.isLoaded())
         PluginToUse = Player.PLUGIN_VIDEOJS;
     else if (extra.use_vjs_native)
         PluginToUse = Player.PLUGIN_VIDEOJS_NATIVE;
