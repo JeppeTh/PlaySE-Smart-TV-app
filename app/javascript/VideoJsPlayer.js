@@ -1,4 +1,6 @@
 var VideoJsPlayer = {
+    init_retries: 5,
+    is_loaded: false,
     player: null,
     is_native: false,
 
@@ -47,6 +49,63 @@ var VideoJsPlayer = {
              'dispose',
              'audiotrackchange'
             ]
+};
+
+VideoJsPlayer.init = function() {
+    var resources;
+    if (deviceYear > 2017) {
+        resources =
+            ['https://cdnjs.cloudflare.com/ajax/libs/video.js/8.22.0/video.min.js',
+             'https://cdnjs.cloudflare.com/ajax/libs/videojs-flash/2.2.1/videojs-flash.min.js',
+             'https://cdnjs.cloudflare.com/ajax/libs/m3u8-parser/7.2.0/m3u8-parser.min.js'
+            ];
+    } else {
+        resources =
+            ['https://cdnjs.cloudflare.com/ajax/libs/js-polyfills/0.1.43/polyfill.min.js',
+             'https://cdnjs.cloudflare.com/ajax/libs/video.js/7.21.6/video.js',
+             'https://unpkg.com/@videojs/http-streaming@3.17.0/dist/videojs-http-streaming.min.js',
+             'https://cdnjs.cloudflare.com/ajax/libs/videojs-flash/2.2.1/videojs-flash.min.js',
+             'https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-quality-levels/2.0.9/videojs-contrib-quality-levels.min.js',
+             'https://cdnjs.cloudflare.com/ajax/libs/m3u8-parser/4.3.0/m3u8-parser.min.js'
+            ];
+    }
+    VideoJsPlayer.loadResources(resources);
+};
+
+VideoJsPlayer.loadResources = function(resources) {
+    $.ajax({
+        dataType: 'script',
+        cache: true,
+        url: resources[0]
+    }).done(function(script, textStatus ) {
+            Log(this.url + ' loaded.');
+            resources.shift();
+            if (resources.length > 0)
+                VideoJsPlayer.loadResources(resources);
+            else {
+                if (typeof videojs === 'function')
+                    VideoJsPlayer.is_loaded = true;
+                Log('Is videojs loaded:' + VideoJsPlayer.isLoaded());
+                VideoJsPlayer.init_retries = 0;
+            }
+        })
+        .fail(function(xhr, settings, exception) {
+            Log(this.url + ' failed:' + exception);
+            if (VideoJsPlayer.init_retries > 0) {
+                VideoJsPlayer.init_retries -= 1;
+                window.setTimeout(VideoJsPlayer.init, 5000);
+            }
+        });
+};
+
+VideoJsPlayer.isLoaded = function() {
+    if (VideoJsPlayer.is_loaded)
+        return true;
+    else if (VideoJsPlayer.init_retries == 0) {
+        VideoJsPlayer.init_retries = 1;
+        VideoJsPlayer.init()
+    }
+    return false;
 };
 
 VideoJsPlayer.create = function(UseNative) {
