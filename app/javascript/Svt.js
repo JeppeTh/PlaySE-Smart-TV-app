@@ -927,6 +927,7 @@ Svt.decodeShowList = function(data, extra) {
     var relatedThumb = null;
     var hasZeroSeason = false;
     var useSeasonName = false;
+    var seasonTitle = getUrlParam(extra.loc, 'title');
     var showName;
     var latestSeasonName = extra.user_data && JSON.parse(extra.user_data).latest_season;
     var nextEpsiode = data.item.nextEpisodeAvailableFormatted;
@@ -964,6 +965,7 @@ Svt.decodeShowList = function(data, extra) {
         }
         latestSeasonName = null;
         if (seasons.length > 1) {
+            seasons.reverse();
             if (!useSeasonName) {
                 seasons.sort(function(a, b){
                     return Svt.getSeasonDigits(b)-Svt.getSeasonDigits(a);
@@ -1018,7 +1020,10 @@ Svt.decodeShowList = function(data, extra) {
                     extra.season = (useSeasonName) ?
                         data[j].name :
                         Svt.getSeasonDigits(data[j].name);
-                }
+                } else if (data[j].name != seasonTitle && data[j+1] &&
+                           Svt.isSameSeason(extra.season, data[j+1].name)
+                          )
+                    continue;
                 // Decode upcoming first to avoid messing with multiple episodes
                 // with same episode numbers in case part of a new season.
                 if (upcoming) {
