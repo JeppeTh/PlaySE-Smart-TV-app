@@ -1246,10 +1246,11 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                            videoReferences = data.videoReferences;
 
                        var preferHls = isLiveStream;
+                       var isDrm = data.rights && data.rights.drmCopyProtection;
                        // Seems 2018 and above have some issues about HLS live streams.
                        if (deviceYear > 2017 && Resolution.getTarget(true) != 'Auto')
                            preferHls = false;
-                       Svt.sortStreams(videoReferences, preferHls);
+                       Svt.sortStreams(videoReferences, preferHls, isDrm);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
@@ -1280,9 +1281,14 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                });
 };
 
-Svt.sortStreams = function(streams, preferHls) {
+Svt.sortStreams = function(streams, preferHls, isDrm) {
     var formatList=[];
     for (var i = 0; i < streams.length; i++) {
+        // Some DRM protected dash streams fails.
+        // This is a hacky way determining which ones.
+        // Probably we should always go for HLS in case of DRM...
+        if (isDrm && streams[i].format == 'dash-hbbtv-hevc')
+            preferHls = true;
         formatList.push(streams[i].format);
     }
     streams.sort(function(a, b){
@@ -1319,6 +1325,8 @@ Svt.getStreamRank = function(stream, index_list, preferHls) {
     if (preferHls && stream.format == 'hls-cmaf-live-vtt')
         return -3;
     else if (preferHls && stream.format == 'hls-cmaf-live')
+        return -2;
+    else if (preferHls && stream.format == 'hls-cmaf-full')
         return -2;
     else if (preferHls && stream.format.match(/hls/))
         return -1;
