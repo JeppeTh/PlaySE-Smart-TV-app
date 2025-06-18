@@ -141,6 +141,16 @@ Svt.makeEpisodeLink = function (data, fallback) {
     }
 };
 
+Svt.makeActionsLink = function (data) {
+    if (data && data.video && data.video.svtId) {
+        return Svt.makeApiLink(
+            'VideoModal',
+            '{"abTestVariants":[],"id":"' + data.video.svtId + '","userIsAbroad":false}',
+            '87c77ed0dd2e4abf8a4db753527e88b8df9b716d738294d473b38fab77456d42'
+        );
+    }
+};
+
 Svt.getThumb = function(data, size) {
 
     if (data.images) {
@@ -235,6 +245,7 @@ Svt.getDetailsData = function(url, data) {
     var Variant=null;
     var Related=null;
     var Highlights=null;
+    var ActionsUrl=null;
     try {
         if (url.match(/=ChannelsQuery/)) {
             data = JSON.parse(data.responseText).data.channels.channels;
@@ -260,6 +271,7 @@ Svt.getDetailsData = function(url, data) {
             NotAvailable = (start - getCurrentDate()) > 60*1000;
         } else {
             data = JSON.parse(data.responseText).data.detailsPageByPath;
+            ActionsUrl = Svt.makeActionsLink(data);
             ImgLink = Svt.getThumb(data, 'large');
             Description = data.description;
             NotAvailable = data.isUpcomingLive;
@@ -361,7 +373,8 @@ Svt.getDetailsData = function(url, data) {
             episode_name  : EpisodeName,
             parent_show   : Show,
             related       : Related,
-            highlights    : Highlights
+            highlights    : Highlights,
+            actions_url   : ActionsUrl
     };
 };
 
@@ -428,6 +441,38 @@ Svt.getRelatedData = function(data) {
         }
     }
     return null
+};
+
+Svt.getActions = function(detailsData, actionsCb) {
+    if (detailsData.actions_url) {
+        httpRequest(detailsData.actions_url,
+                    {cb:function(status,data) {
+                        data = JSON.parse(data).data;
+                        var actions = [];
+                        if (data.playerPage && data.playerPage.intro) {
+                            actions.push({type  : 'intro',
+                                          start : data.playerPage.intro.startSeconds,
+                                          end   : data.playerPage.intro.endSeconds
+                                         });
+                        }
+                        data = data.playQueue;
+                        if (data.whenToDisplaySkipToNext) {
+                            if (data.nextToPlay)
+                                actions.push({type  : 'next',
+                                              start : data.whenToDisplaySkipToNext
+                                             });
+                            else if (data.endScreen && data.endScreen.upcomingEpisodeHeading) {
+                                actions.push({type  : 'info',
+                                              start : data.whenToDisplaySkipToNext,
+                                              text  : data.endScreen.upcomingEpisodeHeading.text
+                                             });
+                            }
+                        }
+                        data = null;
+                        if (actions.length > 0)
+                            actionsCb(actions);
+                    }});
+    }
 };
 
 Svt.getUrl = function(tag, extra) {

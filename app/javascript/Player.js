@@ -2,6 +2,7 @@ var skipTime = 0;
 var skipTimeInProgress = false;
 var highlightsIndex = 0;
 var osdTimer;
+var actionTimer;
 var topOsdLocked = false;
 var clockTimer;
 var skipTimer;
@@ -16,6 +17,7 @@ var videoBw = null;
 var lastPos = 0;
 var videoUrl;
 var videoData = {};
+var videoActions = {};
 var detailsUrl;
 var requestedUrl = null;
 var backgroundLoading = false;
@@ -313,6 +315,8 @@ Player.pauseVideo = function() {
 Player.stopVideo = function(keep_playing) {
     this.state = this.STOPPED;
     requestedUrl = null;
+    Player.hideAction();
+    videoActions = {};
     startup = false;
     Subtitles.stop();
     Player.storeResumeInfo();
@@ -506,16 +510,21 @@ Player.OnRenderingComplete = function() {
         keepPlaying = true;
         Player.stopVideo(keepPlaying);
         keepPlaying = (Buttons.playItem() != -1);
-    } else if (Player.repeat == Player.REPEAT_ALL) {
+    } else if (Player.repeat != Player.REPEAT_OFF) {
         // playNextItem will stop video if there's a next
-        keepPlaying = (Buttons.playNextItem(1) != -1);
-    } else if (Player.repeat == Player.REPEAT_BACK) {
-        // playNextItem will stop video if there's a next
-        keepPlaying = (Buttons.playNextItem(-1) != -1);
+        keepPlaying = Player.playNext();
     }
     // Check if we need to stop. E.g. no repeat or repeat reached the end.
     if (!keepPlaying)
         Player.stopVideo(keepPlaying);
+};
+
+Player.playNext = function() {
+    if (Player.repeat == Player.REPEAT_ALL) {
+        return (Buttons.playNextItem(1) != -1);
+    } else {
+        return (Buttons.playNextItem(-1) != -1);
+    }
 };
 
 Player.getResumeList = function() {
@@ -586,6 +595,7 @@ Player.showControls = function(){
     Player.infoActive = true;
     if (!startup)
         Player.setResolutionText(Player.GetResolution());
+    Player.hideAction();
     $('.topoverlayresolution').show();
     $('.video-wrapper').show();
     $('.video-footer').show();
@@ -629,6 +639,7 @@ Player.hideControls = function(){
         topOsdLocked = false;
         Player.setTopOSDText();
     }
+    Player.showAction();
     // Log('hide controls');
 };
 
@@ -658,6 +669,8 @@ Player.setDetailsData = function(details) {
 Player.keyReturn = function() {
     if (ccTime!=0 && (Player.detailsActive || Player.infoActive))
         Player.hideDetailedInfo();
+    else if ($('.action').is(':visible'))
+        Player.hideAction();
     else
 	Player.stopVideo();
 };
@@ -667,6 +680,13 @@ Player.keyEnter = function() {
         $('.bottomoverlaybig').html('Resuming');
         startup = resumeTime-10;
         Player.playIfReady();
+    } else if (Player.isActionActive('intro')) {
+        Player.hideAction();
+        skipTime = videoActions.current.end*1000;
+        Player.skipInVideo();
+    } else if (Player.isActionActive('next')) {
+        Player.hideAction();
+        Player.playNext();
     } else if(!$('.bottomoverlaybig').html().match(/Resuming/)) {
         Player.togglePause();
     }
@@ -722,6 +742,7 @@ Player.SetCurTime = function(time) {
 	    Subtitles.setCur(ccTime);
         }
         Player.refreshStartData(Details.fetchedDetails);
+        Player.checkActions(time);
         // Seem onStreamInfoReady isn't invoked in case new stream in playlist is chosen.
         // Ignore to check BW since it seems it reacts on new data instead of buffered data. 
         // I.e. it's updated before resolution... 
@@ -951,6 +972,97 @@ Player.selectHighlight = function() {
     Player.exitHighlights(true);
 };
 
+Player.initActions = function() {
+    if (Details.fetchedDetails && ! videoActions.url) {
+        var url = requestedUrl;
+        var cb = function(actions) {Player.setActions(url, actions);};
+        Channel.getActions(Details.fetchedDetails, cb);
+        videoActions.url = url
+    }
+};
+
+Player.setActions = function(url, actions) {
+    if (url == videoActions.url) {
+        alert(JSON.stringify(actions));
+        videoActions.list = actions;
+    }
+};
+
+Player.checkActions = function(time) {
+    Player.initActions();
+    Player.checkActionStop(time);
+    Player.checkActionStart(time);
+};
+
+Player.checkActionStop = function(time) {
+    var current = videoActions.current;
+    if (current) {
+        if (! Player.isWithinAction(time,current)) {
+            Player.hideAction();
+            delete videoActions['current'];
+        }
+    }
+};
+
+Player.checkActionStart = function(time) {
+    if (!videoActions.current && videoActions.list &&
+        !Player.detailsActive && !Player.infoActive
+       ) {
+        for (var i in videoActions.list) {
+            var action = videoActions.list[i];
+            if (Player.isWithinAction(time, action)) {
+                if (action.type == 'next' &&
+                    ! myLocation.match('showList.html'))
+                    continue;
+                videoActions.current = action;
+                Player.showAction();
+                break;
+            }
+        }
+    }
+};
+
+Player.isWithinAction = function(time, action) {
+    return time >= action.start*1000 &&
+        (!action.end || time < action.end*1000);
+}
+
+Player.showAction = function() {
+    if (videoActions.current) {
+        window.clearTimeout(actionTimer);
+        var text, timeout=10*1000;
+        if (videoActions.current.type == 'intro')
+            text = 'Skip';
+        else if (videoActions.current.type == 'next') {
+            if (Player.repeat == Player.REPEAT_ALL ||
+                Player.repeat == Player.REPEAT_BACK
+               )
+                window.setTimeout(function() {
+                    if (Player.isActionActive('next'))
+                        Player.playNext();
+                }, 3000);
+            text = 'Next';
+        }
+        else if (videoActions.current.type == 'info') {
+            text = videoActions.current.text;
+            timeout = 5*1000;
+        }
+        $('.action').html(text);
+        $('.action').show();
+        actionTimer = window.setTimeout(Player.hideAction, timeout);
+    }
+};
+
+Player.hideAction = function() {
+    window.clearTimeout(actionTimer);
+    $('.action').hide();
+};
+
+Player.isActionActive = function(type) {
+    return $('.action').is(':visible') && videoActions.current &&
+        videoActions.current.type == type;
+};
+
 Player.BwToString = function(bw) {
     if (!bw)
         return null;
@@ -973,6 +1085,7 @@ Player.OnStreamInfoReady = function(forced) {
     this.setTotalTime();
     Player.updateTopOSD(oldTopOsd);
     Player.selectInitialAudio();
+    Player.initActions();
     Player.markHighlights();
 };
 
@@ -1341,6 +1454,7 @@ Player.startPlayer = function(url, isLive, start) {
     lastPos = 0;
     videoBw = null;
     videoData = {};
+    videoActions = {};
     bufferCompleteCount = 0;
     Player.skipState = -1;
     Player.srtState = -1;

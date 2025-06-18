@@ -1508,7 +1508,8 @@ small {
 }
 
 .topoverlaybig,
-.bottomoverlaybig {
+.bottomoverlaybig,
+.action {
     position: absolute;
     top: 340px;
     left: 0;
@@ -1525,8 +1526,14 @@ small {
     padding: 0 10px;
 }
 
-.bottomoverlaybig {
+.bottomoverlaybig,
+.action {
     top: 400px;
+}
+
+.action {
+    left: auto;
+    right: 0;
 }
 
 .muteoverlay {

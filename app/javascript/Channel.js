@@ -237,6 +237,11 @@ Channel.getDetailsData = function(url, data, user_data) {
     return this.impl.getDetailsData(url, data, user_data);
 };
 
+Channel.getActions = function(detailsData, cb) {
+    if (this.impl.getActions)
+        return this.impl.getActions(detailsData, cb);
+};
+
 Channel.getPlayUrl = function(url, isLive) {
     this.impl.getPlayUrl(url, isLive);
 };
