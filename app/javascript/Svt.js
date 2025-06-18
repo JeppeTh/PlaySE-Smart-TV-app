@@ -1331,6 +1331,8 @@ Svt.getStreamRank = function(stream, index_list, srtUrl) {
             base = base*10;
         else if (stream.format.match(/dash-hbbtv/))
             base = 100;
+        else if (stream.format == 'dash')
+            base = 50;
         return base + index_list.indexOf(stream.format);
     }
 };
