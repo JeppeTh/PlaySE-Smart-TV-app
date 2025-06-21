@@ -1304,6 +1304,7 @@ Tv4.getDetailsData = function(url, data, user_data) {
     var Episode=null;
     var EpisodeName = null;
     var Related;
+    var ActionsUrl=null;
     try {
         // alert(JSON.stringify(JSON.parse(data.responseText)));
         data = JSON.parse(data.responseText).data.media;
@@ -1322,6 +1323,7 @@ Tv4.getDetailsData = function(url, data, user_data) {
         if (data.video) {
             VideoLength = dataLengthToVideoLength(null, data.video.duration.seconds);
             isLive = data.video.isLiveContent && !Tv4.hasEnded(data.video);
+            ActionsUrl = Tv4.makeStreamUrl(data.video.id, 'mpd');
         } else {
             isLive = !Tv4.hasEnded(data);
             if (data.isLiveContent && data.liveEventEnd) {
@@ -1397,7 +1399,8 @@ Tv4.getDetailsData = function(url, data, user_data) {
             episode       : Episode,
             episode_name  : EpisodeName,
             parent_show   : Show,
-            related       : Related
+            related       : Related,
+            actions_url   : ActionsUrl
     };
 };
 
@@ -1429,6 +1432,34 @@ Tv4.getShowData = function(url, data, user_data) {
             thumb       : DetailsImgLink,
             related     : Related
            };
+};
+
+Tv4.getActions = function(detailsData, actionsCb) {
+    if (detailsData.actions_url) {
+        httpRequest(RedirectIfEmulator(detailsData.actions_url),
+                    {cb:function(status,data) {
+                        data = JSON.parse(data).items;
+                        var actions = [];
+                        for (var i in data) {
+                            if (data[i].categoryName == 'Recap' ||
+                                data[i].categoryName == 'Title')
+                                actions.push({type  : 'intro',
+                                              start : data[i].timeBegin,
+                                              end   : data[i].timeEnd
+                                             });
+                            else if (data[i].categoryName == 'End credits')
+                                actions.push({type  : 'next',
+                                              start : data[i].timeBegin,
+                                              end   : data[i].timeEnd
+                                             });
+                        }
+                        data = null;
+                        if (actions.length > 0)
+                            actionsCb(actions);
+                    },
+                     headers:Tv4.getHeaders()
+                    });
+    }
 };
 
 Tv4.getShowUrl = function(url) {
@@ -1474,17 +1505,18 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
                      isLive,
                      hlsUrl,
                      streams,
-                     function(stream, srtUrl, live, drm, useOffset) {
+                     function(stream, srtUrl, thumbsUrl, live, drm, useOffset) {
                          if (!stream) {
                              $('.bottomoverlaybig').html('Not Available!');
                          } else {
                              Resolution.getCorrectStream(RedirectIfEmulator(stream),
                                                          RedirectIfEmulator(srtUrl),
-                                                         {useBitrates:true,
+                                                         {previewThumbStream:thumbsUrl,
+                                                          isLive:live,
                                                           license:drm && drm.license,
                                                           customdata:drm && drm.customData,
-                                                          isLive:live,
-                                                          use_offset:useOffset
+                                                          use_offset:useOffset,
+                                                          useBitrates:true
                                                          });
                          }
                      }
@@ -1509,15 +1541,20 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                        }
                        streams.shift();
                        if (!isLive) {
+                           var thumbsUrl = data.thumbnails;
+                           if (thumbsUrl) {
+                               thumbsUrl.sort(function(a, b) {return a.width-b.width});
+                               thumbsUrl = RedirectIfEmulator(thumbsUrl[0].url);
+                           };
                            Tv4.getSrtUrl(data,
                                          hlsUrl,
                                          function(srtUrl) {
-                                             cb(stream, srtUrl, isLive, drm);
+                                             cb(stream, srtUrl, thumbsUrl, isLive, drm);
                                          }
                                         );
                        } else {
                            // Use offset for live shows with 'startOver'
-                           cb(stream, null, isLive, drm, use_offset);
+                           cb(stream, null, null, isLive, drm, use_offset);
                        }
                    }
                },

@@ -483,6 +483,7 @@ Player.OnBufferingComplete = function() {
     if (skipTime == skipTimeInProgress) {
         Player.hidePreviewThumb(); // Just in case...
         this.skipState = -1;
+        if (this.state == this.PAUSED) ccTime = skipTime;
         skipTime = 0;
         skipTimeInProgress = false;
     }
@@ -520,11 +521,11 @@ Player.OnRenderingComplete = function() {
 };
 
 Player.playNext = function() {
-    if (Player.repeat == Player.REPEAT_ALL) {
-        return (Buttons.playNextItem(1) != -1);
-    } else {
-        return (Buttons.playNextItem(-1) != -1);
-    }
+    return Buttons.playNextItem(Player.getNextDirection()) != -1;
+};
+
+Player.getNextDirection = function() {
+    return (Player.repeat == Player.REPEAT_ALL) ? 1 : -1;
 };
 
 Player.getResumeList = function() {
@@ -683,6 +684,7 @@ Player.keyEnter = function() {
     } else if (Player.isActionActive('intro')) {
         Player.hideAction();
         skipTime = videoActions.current.end*1000;
+        Player.skipState = Player.FORWARD;
         Player.skipInVideo();
     } else if (Player.isActionActive('next')) {
         Player.hideAction();
@@ -730,6 +732,7 @@ Player.SetCurTime = function(time) {
                 }
             }
             Player.setResolution(Player.GetResolution());
+            Player.cachePreviewThumbItems(time);
 	} else
             resumeTime = +time/1000;
 	ccTime = +time + Player.offset;
@@ -804,10 +807,16 @@ Player.initPreviewThumb = function() {
         var scale = $('.previewThumb').width()/videoData.previewThumb.width;
         $('.previewThumbScale').css('zoom', Math.round(scale*100)/100);
         $('.previewThumbContainer .previewThumbImg').css('margin', 0);
-        $('.previewThumbImg').attr('src', videoData.previewThumb.src);
+        if (videoData.previewThumb.src)
+            $('.previewThumbImg').attr('src', videoData.previewThumb.src);
+        else
+            $('.previewThumbImg').attr('src', videoData.previewThumb.items[0].src);
     } else {
         $('.previewThumbImg').attr('src', '');
-        if (videoData.previewThumbStream) {
+        if (videoData.previewThumbStream &&
+            videoData.previewThumbStream.match('.vtt')) {
+            Player.initVttPreviewThumb(videoData.previewThumbStream);
+        } else if (videoData.previewThumbStream) {
             var thumbStream = videoData.previewThumbStream;
             httpRequest(thumbStream,
                         {cb:function(status, data) {
@@ -826,6 +835,56 @@ Player.initPreviewThumb = function() {
                        )
         }
     }
+};
+
+Player.initVttPreviewThumb = function(url) {
+    httpRequest(url,
+                {cb:function(status, data) {
+                    var prefix = null;
+                    var meta = {};
+                    var entry, rows, columns, duration
+                    var previous={}, thumb, start;
+                    data = data.split(/\n\n/);
+                    while (!data[0].match('xywh=')) data.shift();
+                    entry = data[0].match(/(^[^  ]+)#xywh=[0-9]+,[0-9]+,([0-9]+),([0-9]+)/m);
+                    thumb = entry[1];
+                    if (!thumb.match(/^http/)) {
+                        prefix = getUrlPrefix(url);
+                    };
+                    meta = {current:0, width:+entry[2], height:+entry[3]};
+                    meta.items = [];
+                    for (var i in data) {
+                        thumb = data[i].match(/(^[^  ]+)#/m);
+                        if (thumb)
+                            thumb = thumb[1];
+                        else
+                            break;
+                        if (prefix) thumb = prefix + thumb;
+                        start = Subtitles.srtTimeToMS(data[i].split('\n')[0]);
+                        if (thumb == previous.src) {
+                            if (!meta.duration) {
+                                meta.duration = start - previous.start;
+                            }
+                            continue;
+                        }
+                        previous = {start:start, src:thumb};
+                        meta.items.push({start:start, src:thumb});
+                    }
+                    loadImage(meta.items[0].src,
+                              function(img) {
+                                  if (img && !img.failed) {
+                                      meta.columns = img.width/meta.width;
+                                      meta.rows    = img.height/meta.height;
+                                      videoData.previewThumbStream = null;
+                                      videoData.previewThumb = meta;
+                                      if (meta.items.length > 1)
+                                          loadImage(meta.items[1].src);
+                                      Player.initPreviewThumb();
+                                  }
+                              },
+                              1000
+                             );
+                }});
 };
 
 Player.updatePreviewThumb = function(time, progress, skipStep) {
@@ -856,8 +915,15 @@ Player.updatePreviewThumb = function(time, progress, skipStep) {
                                                          );
                 loadImage(img);
             }
-        } else{
+        } else {
             var preview = videoData.previewThumb;
+            if (preview.items) {
+                preview = Player.setPreviewThumbItem(time, preview);
+                var previewItem = preview.items[preview.current];
+                if ($('.previewThumbImg').attr('src') != previewItem.src)
+                    $('.previewThumbImg').attr('src', previewItem.src);
+                time = time - previewItem.start;
+            }
             var index = Math.ceil(time/preview.duration);
             var row = Math.floor(index/preview.columns);
             var column = index % preview.columns;
@@ -866,6 +932,45 @@ Player.updatePreviewThumb = function(time, progress, skipStep) {
                 $('.previewThumbContainer .previewThumbImg').css('margin', margin);
             }
             $('.previewThumb').show();
+        }
+    }
+};
+
+Player.setPreviewThumbItem = function(time, preview) {
+    var next = (preview.current < preview.items.length-1) ? preview.current+1 : null;
+    if (time >= preview.items[preview.current].time &&
+        (!next || time < preview.items[next].time))
+        return preview;
+    for (var i in preview.items) {
+        if (time >= preview.items[i].start)
+            preview.current = +i;
+        else {
+            loadImage(preview.items[i].src);
+            break;
+        }
+    }
+    if (preview.current > 0)
+        loadImage(preview.items[preview.current-1].src);
+    return preview;
+};
+
+Player.cachePreviewThumbItems = function(time) {
+    if (videoData.previewThumb.items) {
+        var preview = videoData.previewThumb;
+        var current = preview.current;
+        preview = Player.setPreviewThumbItem(time, preview);
+        if (preview.current != current)
+            $('.previewThumbImg').attr('src', preview.items[preview.current].src);
+        var next = (preview.current < preview.items.length-1) ? preview.current+1 : null;
+        if (next) {
+            var currentUrl = requestedUrl;
+            window.setTimeout(
+                function() {
+                    if (Player.checkPlayUrlStillValid(currentUrl))
+                        Player.cachePreviewThumbItems(ccTime);
+                },
+                preview.items[next].start - time + 500
+            );
         }
     }
 };
@@ -1012,7 +1117,10 @@ Player.checkActionStart = function(time) {
             var action = videoActions.list[i];
             if (Player.isWithinAction(time, action)) {
                 if (action.type == 'next' &&
-                    ! myLocation.match('showList.html'))
+                    !(myLocation.match('showList.html') &&
+                      Buttons.hasNextItem(Player.getNextDirection(), true)
+                     )
+                   )
                     continue;
                 videoActions.current = action;
                 Player.showAction();

@@ -993,6 +993,13 @@ Buttons.findPriorItem = function(play, noLoad) {
     }
 };
 
+Buttons.hasNextItem = function(direction, play) {
+    if (direction == 1)
+        return this.findNextItem(play, true) != -1;
+    else
+        return this.findPriorItem(play, true) != -1;
+};
+
 Buttons.runNextItem = function(direction, play) {
     var tmpItem;
     if (direction == 1)
