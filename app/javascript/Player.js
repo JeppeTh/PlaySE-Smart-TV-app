@@ -26,6 +26,8 @@ var smute = 0;
 var retries = 0;
 var SEPARATOR = '&nbsp;&nbsp;&nbsp;&nbsp;';
 var useSef=true;
+var previewThumbNext = new Image();
+var previewThumbPrevious = new Image();
 
 var Player = {
     plugin : null,
@@ -329,6 +331,7 @@ Player.stopVideo = function(keep_playing) {
     Player.enableScreenSaver();
     window.clearTimeout(detailsTimer);
     window.clearTimeout(skipTimer);
+    previewThumbNext.src = previewThumbPrevious.src = null;
     this.skipState = -1;
     this.srtState = -1;
     if (Player.plugin)
@@ -732,7 +735,7 @@ Player.SetCurTime = function(time) {
                 }
             }
             Player.setResolution(Player.GetResolution());
-            Player.cachePreviewThumbItems(time);
+            Player.refreshPreviewThumbItem(time);
 	} else
             resumeTime = +time/1000;
 	ccTime = +time + Player.offset;
@@ -798,7 +801,7 @@ Player.initPreviewThumb = function() {
         $('.previewThumbContainer').css('width', '100%');
         $('.previewThumbContainer').css('height', '100%');
         $('.previewThumbScale').css('zoom', 1);
-        $('.previewThumbContainer .previewThumbImg').css('margin', 0);
+        $('.previewThumbContainer').css('margin', 0);
         $('.previewThumbImg').attr('src', '');
     } else if (videoData.previewThumb) {
         $('.previewThumb').css('left', 0);
@@ -806,11 +809,13 @@ Player.initPreviewThumb = function() {
         $('.previewThumbContainer').css('height', videoData.previewThumb.height);
         var scale = $('.previewThumb').width()/videoData.previewThumb.width;
         $('.previewThumbScale').css('zoom', Math.round(scale*100)/100);
-        $('.previewThumbContainer .previewThumbImg').css('margin', 0);
+        $('.previewThumbContainer').css('margin', 0);
         if (videoData.previewThumb.src)
             $('.previewThumbImg').attr('src', videoData.previewThumb.src);
-        else
+        else {
             $('.previewThumbImg').attr('src', videoData.previewThumb.items[0].src);
+            Player.cacheAdjacentPreviewThumbItems(videoData.previewThumb);
+        }
     } else {
         $('.previewThumbImg').attr('src', '');
         if (videoData.previewThumbStream &&
@@ -881,8 +886,7 @@ Player.initVttPreviewThumb = function(url) {
                                           loadImage(meta.items[1].src);
                                       Player.initPreviewThumb();
                                   }
-                              },
-                              1000
+                              }
                              );
                 }});
 };
@@ -918,56 +922,66 @@ Player.updatePreviewThumb = function(time, progress, skipStep) {
         } else {
             var preview = videoData.previewThumb;
             if (preview.items) {
-                preview = Player.setPreviewThumbItem(time, preview);
+                preview = Player.selectPreviewThumbItem(time, preview);
                 var previewItem = preview.items[preview.current];
-                if ($('.previewThumbImg').attr('src') != previewItem.src)
-                    $('.previewThumbImg').attr('src', previewItem.src);
                 time = time - previewItem.start;
+                if ($('.previewThumbImg').attr('src') != previewItem.src) {
+                    $('.previewThumbImg').hide().attr('src', previewItem.src);
+                    loadImage(previewItem.src, function(){$('.previewThumbImg').show()});
+                    Player.cacheAdjacentPreviewThumbItems(preview);
+                }
             }
             var index = Math.ceil(time/preview.duration);
             var row = Math.floor(index/preview.columns);
             var column = index % preview.columns;
             if (row < preview.rows) {
                 var margin = (-row*preview.height) + 'px 0 0 ' + (-column*preview.width) + 'px';
-                $('.previewThumbContainer .previewThumbImg').css('margin', margin);
+                $('.previewThumbContainer').css('margin', margin);
             }
             $('.previewThumb').show();
         }
     }
 };
 
-Player.setPreviewThumbItem = function(time, preview) {
+Player.selectPreviewThumbItem = function(time, preview) {
     var next = (preview.current < preview.items.length-1) ? preview.current+1 : null;
-    if (time >= preview.items[preview.current].time &&
-        (!next || time < preview.items[next].time))
+    if (time >= preview.items[preview.current].start &&
+        (!next || time < preview.items[next].start))
         return preview;
     for (var i in preview.items) {
         if (time >= preview.items[i].start)
             preview.current = +i;
-        else {
-            loadImage(preview.items[i].src);
+        else
             break;
-        }
     }
-    if (preview.current > 0)
-        loadImage(preview.items[preview.current-1].src);
     return preview;
 };
 
-Player.cachePreviewThumbItems = function(time) {
+Player.cacheAdjacentPreviewThumbItems = function(preview) {
+    var next = (preview.current < preview.items.length-1) ? preview.current+1 : null;
+    if (next)
+        previewThumbNext.src = preview.items[next].src;
+
+    if (preview.current > 0)
+        previewThumbPrevious.src = preview.items[preview.current-1].src;
+};
+
+Player.refreshPreviewThumbItem = function(time) {
     if (videoData.previewThumb.items) {
         var preview = videoData.previewThumb;
         var current = preview.current;
-        preview = Player.setPreviewThumbItem(time, preview);
-        if (preview.current != current)
+        preview = Player.selectPreviewThumbItem(time, preview);
+        if (preview.current != current) {
             $('.previewThumbImg').attr('src', preview.items[preview.current].src);
+            Player.cacheAdjacentPreviewThumbItems(preview);
+        };
         var next = (preview.current < preview.items.length-1) ? preview.current+1 : null;
         if (next) {
             var currentUrl = requestedUrl;
             window.setTimeout(
                 function() {
                     if (Player.checkPlayUrlStillValid(currentUrl))
-                        Player.cachePreviewThumbItems(ccTime);
+                        Player.refreshPreviewThumbItem(ccTime);
                 },
                 preview.items[next].start - time + 500
             );

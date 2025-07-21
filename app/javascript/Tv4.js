@@ -1725,7 +1725,7 @@ Tv4.fixThumb = function(thumb, factor) {
 
     if (!factor) factor = 1;
     var width = Math.round(factor*THUMB_WIDTH);
-    return RedirectIfEmulator(addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb));
+    return RedirectTls(addUrlParam('https://imageproxy.a2d.tv/?width=' + width, 'source', thumb));
 };
 
 Tv4.decodeThumb = function(thumb) {
