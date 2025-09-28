@@ -760,7 +760,7 @@ Svt.decodeCategoryDetail = function (data, extra) {
     var Name = getUrlParam(getLocation(extra.refresh), 'catName');
     var Slug = decodeURIComponent(getLocation(extra.refresh)).match(/id":"([^"]+)"/)[1];
     var DetailIndex = Svt.getCategoryDetailIndex();
-    var variables = null;
+    var variables = JSON.parse(getUrlParam(extra.url,'variables') || {});
 
     // Check if Svt.category_details are up to data
     if (DetailIndex.current != 0) {
@@ -787,14 +787,18 @@ Svt.decodeCategoryDetail = function (data, extra) {
     data = data && data.lazyLoadedTabs;
 
     if (DetailIndex.current == 0) {
-        if (data && data.length > 0 && data[0].slug != 'all') {
-            // In case of History resume/Details we end up directly in A-Ö (tab=all)
-            variables = getUrlParam(extra.url,'variables') || {};
-            if (JSON.parse(variables).tab == 'all')
-                DetailIndex.current = 1;
-            else
-                // Start by initiating the tabs.
-                Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
+        if (variables.tab == 'all') {
+            for (var i in data) {
+                if (data[i].slug == 'all') {
+                    data[0] = data[i];
+                    break;
+                }
+            }
+        }
+        if (data && data.length > 0 && data[0].slug != 'all')
+        {
+            // Start by initiating the tabs.
+            Svt.decodeCategoryTabs(Name, Slug, data, extra.url);
         } else {
             // This category has no tabs.
             Svt.category_details = [];
@@ -811,10 +815,18 @@ Svt.decodeCategoryDetail = function (data, extra) {
                     break;
                 }
             }
-        }
-        else
+        } else
             data = data && data[0];
-        data = data && data.selections[0].items;
+        if (data.slug == 'all') {
+            data = data.selections;
+            for (var k in data) {
+                if (data[k].selectionType == 'all') {
+                    data = data[k].items;
+                    break;
+                }
+            }
+        } else
+            data.selections[0].items;
     } else if (DetailIndex.current == 0) {
         // Recommended + Popular
         data = data && data[0].selections;
@@ -836,7 +848,9 @@ Svt.decodeCategoryDetail = function (data, extra) {
         // Other Tabs
         data = data[0].selections;
         for (var k=0; k < data.length; k++) {
-            if (Current.id == data[k].id) {
+            if (Current.id == data[k].id ||
+                (Current.id == "all" && data[k].selectionType == Current.id)
+               ) {
                 data = data[k].items;
                 break;
             }
