@@ -1146,7 +1146,7 @@ Player.checkActionStart = function(time) {
 
 Player.isWithinAction = function(time, action) {
     return time >= action.start*1000 &&
-        (!action.end || time < action.end*1000);
+        (!action.end || (time+10000) < action.end*1000);
 }
 
 Player.showAction = function() {
