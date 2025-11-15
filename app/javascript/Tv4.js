@@ -45,13 +45,15 @@ Tv4.login = function(cb, attempts) {
 
     if (refresh_token) {
         Tv4.syncAuth(use_sync,
-                     httpRequest('https://avod-auth-alb.a2d.tv/oauth/refresh',
+                     httpRequest('https://auth.tv4.a2d.tv/v2/auth/token',
                                  {cb: function(status,data) {
                                      Tv4.handleAuthResult(data, cb);
                                  },
                                   sync : use_sync,
-                                  headers : [{key:'content-type', value:'application/json'}],
-                                  params: '{"refresh_token":"' + refresh_token + '", "client_id":"tv4-web", "profile_id":"' + Tv4.getProfileId() + '"}'
+                                  headers : [{key:'content-type', value:'application/json'},
+                                             {key:'Client-Name', value:'tv4-web'}
+                                            ],
+                                  params: '{"grant_type":"refresh_token","refresh_token":"' + refresh_token + '","profile_id":"' + Tv4.getProfileId() + '"}'
                                  }
                                 )
                     );
