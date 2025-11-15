@@ -33,7 +33,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                null,
                {cbComplete:function(status, data) {
                    var streams, is_hls = videoUrl.match(/\.m3u8/);
-                   if (status == 'error' | !data.responseText || data.responseText.length == 0) {
+                   if (status == 'error' || !data.responseText || data.responseText.length == 0) {
                        Log('Failed to read stream, use Auto and hope for the best');
                        target = 'Auto';
                    } else {
@@ -108,7 +108,8 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                    extra.cb();
                },
                 headers:Channel.getHeaders(),
-                no_cache:extra.no_cache
+                no_cache:extra.no_cache,
+                dont_show_errors: true
                }
               );
 };

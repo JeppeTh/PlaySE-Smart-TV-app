@@ -748,7 +748,7 @@ Player.SetCurTime = function(time) {
 	    Subtitles.setCur(ccTime);
         }
         Player.refreshStartData(Details.fetchedDetails);
-        Player.checkActions(time);
+        Player.checkActions(+time);
         // Seem onStreamInfoReady isn't invoked in case new stream in playlist is chosen.
         // Ignore to check BW since it seems it reacts on new data instead of buffered data. 
         // I.e. it's updated before resolution... 
