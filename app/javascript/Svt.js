@@ -1270,7 +1270,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        // Seems 2018 and above have some issues about HLS live streams.
                        if (deviceYear > 2017 && Resolution.getTarget(true) != 'Auto')
                            preferHls = false;
-                       Svt.sortStreams(videoReferences, preferHls, isDrm);
+                       Svt.sortStreams(videoReferences, preferHls, isDrm, data.uhd);
                        videoReferences = Svt.stripDuplicatStreams(videoReferences);
                        for (var j = 0; j < videoReferences.length; j++) {
                            alert('format:' + videoReferences[j].format);
@@ -1301,7 +1301,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                });
 };
 
-Svt.sortStreams = function(streams, preferHls, isDrm) {
+Svt.sortStreams = function(streams, preferHls, isDrm, isUhd) {
     var formatList=[];
     for (var i = 0; i < streams.length; i++) {
         // Some DRM protected dash streams fails.
@@ -1320,19 +1320,18 @@ Svt.sortStreams = function(streams, preferHls, isDrm) {
             return 1;
 
         case 0:
-            var rank_a = Svt.getStreamRank(a,formatList,preferHls);
-            var rank_b = Svt.getStreamRank(b,formatList,preferHls);
+            var rank_a = Svt.getStreamRank(a,formatList,preferHls,isUhd);
+            var rank_b = Svt.getStreamRank(b,formatList,preferHls,isUhd);
             return (rank_a < rank_b) ? -1 : 1;
         }
     });
 };
 
-Svt.checkFormat = function (a, b, isLive) {
+Svt.checkFormat = function (a, b, preferHls) {
     var is_a_dash = (a.format.match(/dash/) != null);
     var is_b_dash = (b.format.match(/dash/) != null);
 
-    // Prefer dash unless isLive
-    if (isLive || (is_a_dash == is_b_dash))
+    if (preferHls || (is_a_dash == is_b_dash))
         return 0;
     else if (is_a_dash)
         return -1;
@@ -1340,7 +1339,7 @@ Svt.checkFormat = function (a, b, isLive) {
         return 1;
 };
 
-Svt.getStreamRank = function(stream, index_list, preferHls) {
+Svt.getStreamRank = function(stream, index_list, preferHls, isUhd) {
 
     if (preferHls && stream.format == 'hls-cmaf-live-vtt')
         return -3;
@@ -1349,6 +1348,8 @@ Svt.getStreamRank = function(stream, index_list, preferHls) {
     else if (preferHls && stream.format == 'hls-cmaf-full')
         return -2;
     else if (preferHls && stream.format.match(/hls/))
+        return -1;
+    else if (isUhd && stream.format == 'dash-hbbtv-hevc' && deviceYear > 2017)
         return -1;
     else if (stream.format == 'dash-avc-51')
         return 0;
