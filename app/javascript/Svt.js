@@ -283,12 +283,11 @@ Svt.getDetailsData = function(url, data) {
                         label : Svt.getNextAirDay(data)
                        };
             } else if (data.categories && data.categories.length > 0) {
-                Show = data.categories[0];
-                Show = {name        : Show.heading,
-                        url         : Svt.makeGenreLink(Show, '"all"'),
+                Show = {name        : data.item.name,
+                        url         : Svt.makeEpisodeLink(data.item),
                         thumb       : Svt.getThumb(data, 'small'),
                         large_thumb : ImgLink,
-                        is_category : true
+                        is_movie    : true
                        };
                 if (Svt.getRelatedData(data))
                     Related = makeRelatedLink(url);
@@ -871,6 +870,13 @@ Svt.decodeCategoryDetail = function (data, extra) {
             }
         }
     } else {
+        if (Svt.category_detail_max_index == 0) {
+            data.sort(function(a, b) {
+                if (b.heading.toLowerCase() > a.heading.toLowerCase())
+                    return -1;
+                return 1;
+            });
+        }
         Svt.decode(data, extra);
     }
     if (extra.cbComplete)
