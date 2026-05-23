@@ -746,11 +746,10 @@ function httpRequest(url, extra) {
             xhr.abort();
         }, extra.timeout);
     }
-    xhr.onreadystatechange = function () {
-        // Log('xhr.readyState: '+ xhr.readyState);
-        if (!extra.sync && xhr.readyState == 4) {
-            handleHttpResult(url, timer, extra, 
-                             {data:     xhr.responseText,
+    xhr.onload = function () {
+        if (!extra.sync) {
+            handleHttpResult(url, timer, extra,
+                             {data:     xhr.response || xhr.responseText,
                               status:   xhr.status,
                               location: xhr.getResponseHeader('location'),
                               xhr     : xhr
@@ -763,10 +762,12 @@ function httpRequest(url, extra) {
         url = addUrlParam(url, '_', new Date().getTime());
         alert('no cache url:' + url);
     }
+    if (extra.responseType)
+        xhr.responseType = extra.responseType;
     if (extra.params) {
         // alert('POST Request params: '+ extra.params);
         xhr.open('POST', url, !extra.sync);
-        if (!getContentType(extra))
+        if (!extra.no_type && !getContentType(extra))
             xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
     } else
         xhr.open('GET', url, !extra.sync);
@@ -815,7 +816,7 @@ function handleHttpResult(url, timer, extra, result) {
         // else
         //     alert('Failure:' + url + ' status: + result.status);
     }
-    if (extra.sync) {
+    if (extra.sync && !extra.cb) {
         result.success = isHttpStatusOk(result.status);
         if (result.status != 302)
             result.location = null;
@@ -1050,8 +1051,9 @@ function itemToLink(Item, UrlParams) {
             myTitle = Item.show + ' - ' + Item.name;
         if (myTitle) {
             myTitle = myTitle.replace(/\bs[^.s]+song\b\s*[0-9]+\s*-\s*/i,'');
+            myTitle = myTitle.replace(/(s[0-9]+e[0-9]+\.Avsnitt [0-9]+)[\-. 	]*.*/i,'$1');
             myTitle = 'mytitle=' + escape(myTitle);
-            Item.link_prefix = Item.link_prefix.replace(/ilink/, myTitle + '&ilink'); 
+            Item.link_prefix = Item.link_prefix.replace(/ilink/, myTitle + '&ilink');
         }
     }
 

@@ -22,6 +22,7 @@ var detailsUrl;
 var requestedUrl = null;
 var backgroundLoading = false;
 var startup = false;
+var liveStartup = false;
 var smute = 0;
 var retries = 0;
 var SEPARATOR = '&nbsp;&nbsp;&nbsp;&nbsp;';
@@ -117,27 +118,28 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     var myTitle = itemSelected.find('.ilink').attr('href').match(/[?&](mytitle[^&]+)/);
     if (myTitle) {
         myTitle = myTitle[1];
-        videoData.key.id = myTitle.replace(/mytitle=/,'');
     } else {
         // Happens when Show Info is missing.
         Log('No myTitle in link!!');
         myTitle = escape($('.topoverlaybig').html().replace(/[^:]+: /, ''));
         myTitle = 'mytitle=' + myTitle;
     }
+    videoData.key.id = myTitle.replace(/mytitle=/,'');
     if (extra.redirect_mpd)
         url = Channel.redirectMpd(url);
 
-    videoUrl                = url;
-    videoData.component     = videoUrl.match(/\|COMPONENT=([^|]+)/);
-    videoData.component     = videoData.component && videoData.component[1];
-    videoData.bitrates      = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
-    videoData.url           = videoUrl;
-    videoData.audio_streams = extra.audio_streams;
-    videoData.audio_idx     = extra.audio_idx;
-    videoData.subtitles_idx = extra.subtitles_idx;
-    videoData.use_offset    = extra.use_offset;
-    videoData.license       = extra.license;
-    videoData.custom_data   = extra.customdata;
+    videoUrl                 = url;
+    videoData.component      = videoUrl.match(/\|COMPONENT=([^|]+)/);
+    videoData.component      = videoData.component && videoData.component[1];
+    videoData.bitrates       = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
+    videoData.url            = videoUrl;
+    videoData.audio_streams  = extra.audio_streams;
+    videoData.audio_idx      = extra.audio_idx;
+    videoData.subtitles_idx  = extra.subtitles_idx;
+    videoData.use_offset     = extra.use_offset;
+    videoData.drm            = extra.drm;
+    videoData.live_seek      = extra.live_seek;
+    videoData.can_start_over = extra.can_start_over;
     if (deviceYear > 2011) {
         if (extra.previewThumb)
             videoData.previewThumb = extra.previewThumb;
@@ -146,8 +148,8 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     }
     Log('VIDEO URL: ' + videoUrl);
     Player.audioIdx = (videoData.audio_idx) ? -1 : 0;
-    // Log('LICENSE URL: ' + videoData.license);
-    // Log('CustomData:' + videoData.custom_data);
+    // Log('LICENSE URL: ' + videoData.drm.license);
+    // Log('CustomData:' + videoData.drm.custom_data);
 };
 
 Player.setDuration = function(duration) {
@@ -236,8 +238,11 @@ Player.playVideo = function() {
         resumeTime = this.getStoredResumeTime();
 
         delayedPlayTimer = 0;
-        if (resumeTime) {
-            $('.bottomoverlaybig').html('Press ENTER to resume');
+        if (resumeTime || videoData.can_start_over) {
+            if (resumeTime)
+                $('.bottomoverlaybig').html('Press ENTER to resume');
+            else
+                $('.bottomoverlaybig').html('Press ENTER to play from start');
             // Give some extra seconds to resume
             window.clearTimeout(delayedPlayTimer);
             delayedPlayTimer = window.setTimeout(function() {
@@ -279,7 +284,7 @@ Player.playIfReady = function() {
             // Can resume have been chosen after delayedPlayTimer expired?
             Player.startPlayback(startup);
         } else if (!delayedPlayTimer || delayedPlayTimer == -1) {
-            Player.startPlayback();
+            Player.startPlayback(liveStartup);
         }
     }
 };
@@ -319,7 +324,7 @@ Player.stopVideo = function(keep_playing) {
     requestedUrl = null;
     Player.hideAction();
     videoActions = {};
-    startup = false;
+    startup = liveStartup = false;
     Subtitles.stop();
     Player.storeResumeInfo();
     Subtitles.clear();
@@ -358,6 +363,10 @@ Player.reloadVideo = function(time) {
     if (time)
         ccTime = time;
     lastPos = Math.floor((ccTime-Player.offset) / 1000.0);
+    if (liveStartup) lastPos = liveStartup;
+    if (Player.isLive) {
+        liveStartup = lastPos;
+    }
     Player.disableScreenSaver();
     Player.setFrontPanelText(Player.FRONT_DISPLAY_PLAY);
     Player.plugin.reload(videoData, Player.isLive, lastPos);
@@ -425,8 +434,8 @@ Player.skipBackward = function(time) {
 	skipTime = ccTime;
     }
     skipTime = +skipTime - time;
-    if(+skipTime < Player.offset){
-	skipTime = Player.offset;
+    if(+skipTime < 0){
+	skipTime = 0;
     }
     this.skipState = this.REWIND;
     this.updateSeekBar(skipTime, -time);
@@ -553,7 +562,7 @@ Player.removeResumeInfo = function(key) {
 Player.storeResumeInfo = function() {
     if (delayedPlayTimer > 0)
         return;
-    if (videoData.key && resumeTime > 20 && !Player.isLive) {
+    if (videoData.key && resumeTime > 20 && (!Player.isLive || videoData.can_start_over)) {
         Log('Player.storeResumeInfo, resumeTime:' + resumeTime + ' duration:' + Player.GetDuration() + ' videoData.key:' + JSON.stringify(videoData.key) + ' !Player.isLive:' + !Player.isLive);
         var percentage = Math.floor(100*resumeTime/(Player.GetDuration()/1000));
         // Update history with resumeTime
@@ -569,7 +578,7 @@ Player.storeResumeInfo = function() {
 };
 
 Player.getStoredResumeTime = function() {
-    if (!Player.isLive && videoData.key) {
+    if ((!Player.isLive || videoData.can_start_over) && videoData.key) {
         var resumeList = Player.getResumeList();
         for (var i = 0; i < resumeList.length; i++) {
             if ((videoData.key.id && resumeList[i].id==videoData.key.id) ||
@@ -618,6 +627,7 @@ Player.setClock = function() {
 };
 
 Player.playbackStarted = function() {
+    retries = 0;
     // Log('Player.playbackStarted')
     if (backgroundLoading) {
         $('#outer').hide();
@@ -680,9 +690,16 @@ Player.keyReturn = function() {
 };
 
 Player.keyEnter = function() {
-    if ($('.bottomoverlaybig').html().match(/Press ENTER/)) {
+    if ($('.bottomoverlaybig').html().match(/Press ENTER.*start/)) {
+        $('.bottomoverlaybig').html('From start');
+        liveStartup = 10;
+        Player.playIfReady();
+    } else if ($('.bottomoverlaybig').html().match(/Press ENTER/)) {
         $('.bottomoverlaybig').html('Resuming');
-        startup = resumeTime-10;
+        if (Player.isLive)
+            liveStartup = resumeTime-10;
+        else
+            startup = resumeTime-10;
         Player.playIfReady();
     } else if (Player.isActionActive('intro')) {
         Player.hideAction();
@@ -692,7 +709,7 @@ Player.keyEnter = function() {
     } else if (Player.isActionActive('next')) {
         Player.hideAction();
         Player.playNext();
-    } else if(!$('.bottomoverlaybig').html().match(/Resuming/)) {
+    } else if(!$('.bottomoverlaybig').html().match(/Resuming|From start/)) {
         Player.togglePause();
     }
 };
@@ -724,7 +741,6 @@ Player.SetCurTime = function(time) {
                 // resuming - wait
                 return;
             }
-            Player.playbackStarted();
 	    startup = false;
             // work-around for samsung bug. Mute sound first after the player started.
 	    Audio.setCurrentMode(smute);
@@ -734,9 +750,15 @@ Player.SetCurTime = function(time) {
                     Player.updateOffset(Player.start);
                 }
             }
-            Player.setResolution(Player.GetResolution());
             Player.refreshPreviewThumbItem(time);
-	} else
+            if (liveStartup) return;
+            Player.playbackStarted();
+            Player.setResolution(Player.GetResolution());
+	} else if (liveStartup) {
+            Player.playbackStarted();
+            Player.setResolution(Player.GetResolution());
+            liveStartup = false;
+        } else
             resumeTime = +time/1000;
 	ccTime = +time + Player.offset;
 	if(this.skipState == -1 && !$('.highlightThumb').is(':visible')) {
@@ -845,6 +867,8 @@ Player.initPreviewThumb = function() {
 Player.initVttPreviewThumb = function(url) {
     httpRequest(url,
                 {cb:function(status, data) {
+                    if (!isHttpStatusOk(status))
+                        return;
                     var prefix = null;
                     var meta = {};
                     var entry, rows, columns, duration
@@ -967,7 +991,7 @@ Player.cacheAdjacentPreviewThumbItems = function(preview) {
 };
 
 Player.refreshPreviewThumbItem = function(time) {
-    if (videoData.previewThumb.items) {
+    if (videoData.previewThumb && videoData.previewThumb.items) {
         var preview = videoData.previewThumb;
         var current = preview.current;
         preview = Player.selectPreviewThumbItem(time, preview);
@@ -1092,17 +1116,17 @@ Player.selectHighlight = function() {
 };
 
 Player.initActions = function() {
-    if (Details.fetchedDetails && ! videoActions.url) {
+    if (Details.fetchedDetails && !videoActions.url) {
         var url = requestedUrl;
+        videoActions.url = url;
         var cb = function(actions) {Player.setActions(url, actions);};
         Channel.getActions(Details.fetchedDetails, cb);
-        videoActions.url = url
     }
 };
 
 Player.setActions = function(url, actions) {
     if (url == videoActions.url) {
-        alert(JSON.stringify(actions));
+        alert('Actions:' + JSON.stringify(actions));
         videoActions.list = actions;
     }
 };
@@ -1306,24 +1330,15 @@ Player.retryVideo = function (text, max) {
         max = 1;
 
     if (retries < max ) {
-        // Check if we should reload or not.
         loadingStart();
-        $.ajax({type: 'GET',
-	        // url: 'http://188.40.102.5/recommended.ashx',
-                url: 'http://www.svtplay.se',
-	        timeout: 5000,
-	        success: function(data, status, xhr) {
-                    var time = (resumeTime) ? (resumeTime-10)*1000 : null;
-		    Log('Success:' + this.url + ' resumeTime:' + time);
-                    $('.bottomoverlaybig').html('Re-connecting'); 
-                    Player.showControls();
-                    Channel.refreshPlayUrl(function(){Player.reloadVideo(time);});
-	        },
-	        error: function(XMLHttpRequest, textStatus, errorThrown) {
-		    Log('Failure:' + this.url);
-                    Player.PlaybackFailed(text);
-	        }
-	       });
+        if (videoData.live_seek && !liveStartup && ccTime)
+            liveStartup = Math.floor(ccTime/1000);
+        var time = (resumeTime) ? (resumeTime-10)*1000 : liveStartup*1000;
+	Log('Success:' + this.url + ' resumeTime:' + time + ' liveStartup:' + liveStartup);
+        $('.bottomoverlaybig').html('Re-connecting');
+        Player.showControls();
+        Player.resetForOffset();
+        Channel.refreshPlayUrl(function(){Player.reloadVideo(time);});
     } else {
         Player.PlaybackFailed(text);
     }
@@ -1392,6 +1407,17 @@ Player.PlaybackFailed = function(text) {
         loadingStop();
         Player.showControls();
         Player.enableScreenSaver();
+    }
+};
+
+Player.resetForOffset = function() {
+    if (videoData.live_seek && !liveStartup && ccTime) {
+        liveStartup = Math.floor(ccTime/1000);
+    }
+    if (Player.isLive) {
+        startup = true;
+        Player.offset = 0;
+        ccTime = 0;
     }
 };
 
@@ -1562,6 +1588,7 @@ Player.startPlayer = function(url, isLive, start) {
     Buttons.setKeyHandleID(2);
 
     startup = true;
+    liveStartup = false;
     retries = 0;
     window.clearTimeout(detailsTimer);
     Player.start = start;

@@ -5,6 +5,10 @@ var SefPlayer = {
     is_hls: false,
 
     resume_jump: null,
+    live_start: null,
+    time_offset: null,
+    current_time: null,
+    stream_ensured: null,
     check_resolution_changes: false,
     resolution: null,
 
@@ -59,7 +63,7 @@ SefPlayer.createOld = function() {
         }
     };
     SefPlayer.player.OnCurrentPlayTime = 'SefPlayer.SetCurTime';
-    SefPlayer.player.OnStreamInfoReady = 'Player.OnStreamInfoReady';
+    SefPlayer.player.OnStreamInfoReady = 'SefPlayer.OnStreamInfoReady';
     SefPlayer.player.OnBufferingStart = 'Player.OnBufferingStart';
     SefPlayer.player.OnBufferingProgress = 'Player.OnBufferingProgress';
     SefPlayer.player.OnBufferingComplete = 'SefPlayer.OnBufferingComplete'
@@ -82,15 +86,27 @@ SefPlayer.load = function(videoData) {
     else
         SefPlayer.player.Execute('SetDisplayArea', 0, 0, 1, 1);
     SefPlayer.player.Execute('InitPlayer', videoData.url);
-    if (videoData.license) {
-        if (videoData.custom_data) {
-            SefPlayer.player.Execute('SetPlayerProperty', 3, videoData.custom_data, videoData.custom_data.length);
+    if (videoData.drm && videoData.drm.license) {
+        if (videoData.drm.customData) {
+            SefPlayer.player.Execute('SetPlayerProperty',
+                                     3,
+                                     videoData.drm.customData,
+                                     videoData.drm.customData.length
+                                    );
         }
-        SefPlayer.player.Execute('SetPlayerProperty', 4, videoData.license, videoData.license.length);
+        SefPlayer.player.Execute('SetPlayerProperty',
+                                 4,
+                                 videoData.drm.license,
+                                 videoData.drm.license.length
+                                );
     }
     SefPlayer.stream = videoData.url;
     SefPlayer.is_hls = (videoData.component == 'HLS');
     SefPlayer.resume_jump = null;
+    SefPlayer.live_start = null;
+    SefPlayer.time_offset = null;
+    SefPlayer.current_time = null;
+    SefPlayer.stream_ensured = false;
     SefPlayer.check_resolution_changes = false;
 
     // TODO must perhaps invoked after OnStreamInfoReady - ignore until needed.
@@ -105,6 +121,11 @@ SefPlayer.load = function(videoData) {
 };
 
 SefPlayer.play = function(isLive, seconds) {
+    if (isLive && seconds) {
+        $('.video-background').show();
+        SefPlayer.live_start = seconds*1000;
+        seconds = 0;
+    }
     if (!seconds) seconds = 0;
     if (Resolution.getTarget(isLive) == 'Auto') {
         // Seems Auto and at least HLS has issues with resume...
@@ -130,11 +151,26 @@ SefPlayer.pause = function() {
 };
 
 SefPlayer.skip = function(milliSeconds) {
-    var seconds = +milliSeconds/1000;
-    if (seconds > 0)
+    var seconds = Math.floor(+milliSeconds/1000);
+    if (seconds > 0) {
+        seconds = SefPlayer.ensureWithinLiveWindow(seconds);
         SefPlayer.player.Execute('JumpForward', seconds);
-    else
+    } else
         SefPlayer.player.Execute('JumpBackward', -seconds);
+};
+
+SefPlayer.ensureWithinLiveWindow = function(seconds) {
+    try {
+        if (Player.isLive) {
+            var live_end = SefPlayer.player.Execute('GetDuration') - 1000;
+            if (seconds*1000 > (live_end - SefPlayer.current_time)) {
+                seconds = Math.floor((live_end - SefPlayer.current_time)/1000);
+            }
+        }
+    } catch (e) {
+        Log('SefPlayer.ensureWithinLiveWindow: ' + e);
+    }
+    return seconds;
 };
 
 SefPlayer.stop = function() {
@@ -153,6 +189,7 @@ SefPlayer.getResolution  = function() {
 };
 
 SefPlayer.getDuration  = function() {
+    if (videoData.use_offset) return 0;
     return SefPlayer.player.Execute('GetDuration');
 };
 
@@ -306,24 +343,26 @@ SefPlayer.OnEvent = function(EventType, param1, param2) {
         Player.OnRenderingComplete();
         break;
     case 9: //OnStreamInfoReady();
-        Player.OnStreamInfoReady();
+        SefPlayer.OnStreamInfoReady();
         break;
     case 11: //OnBufferingStart();
+        if (SefPlayer.live_start) return;
         Player.OnBufferingStart();
         break;
     case 12: //OnBufferingComplete();
-        Player.OnBufferingComplete();
+        SefPlayer.OnBufferingComplete();
         break;
     case 13: //OnBufferingProgress();
+        if (SefPlayer.live_start) return;
         Player.OnBufferingProgress(param1);
         break;
     case 14: //SetCurTime(param1);
-        Player.SetCurTime(param1);
+        SefPlayer.SetCurTime(param1);
         break;
         //'15' : 'AD_START',
         //'16' : 'AD_END',
     case 17: // 'RESOLUTION_CHANGED'
-        Player.OnStreamInfoReady(true);
+        SefPlayer.OnStreamInfoReady(true);
         break;
     case 18: // 'BITRATE_CHANGED'
         // Ignore BW since it seems it reacts on new data instead of buffered data. 
@@ -343,12 +382,13 @@ SefPlayer.OnEvent = function(EventType, param1, param2) {
 };
 
 SefPlayer.OnBufferingComplete = function() {
+    SefPlayer.stream_ensured = true;
+    if (SefPlayer.live_start !== null) return;
     Player.OnBufferingComplete();
-    // OnRenderingStart is not triggered by old player
-    SefPlayer.OnRenderingStart();
 };
 
 SefPlayer.OnRenderingStart = function() {
+    if (SefPlayer.live_start !== null) return;
     if (SefPlayer.resume_jump) {
         Log('SefPlayer.resume_jump:' + SefPlayer.resume_jump);
         SefPlayer.skip(SefPlayer.resume_jump*1000);
@@ -358,7 +398,34 @@ SefPlayer.OnRenderingStart = function() {
     }
 };
 
+SefPlayer.OnStreamInfoReady = function(forced) {
+    if (SefPlayer.live_start !== null) return;
+    Player.OnStreamInfoReady(forced);
+};
+
 SefPlayer.SetCurTime = function(time) {
+    if (!SefPlayer.stream_ensured && SefPlayer.live_start !== null) return;
+    SefPlayer.current_time = time;
+    if (SefPlayer.time_offset === null) {
+        if (videoData.use_offset)
+            SefPlayer.time_offset = time;
+        else
+            SefPlayer.time_offset = 0;
+    }
+
+    Player.SetCurTime(time-SefPlayer.time_offset);
+    if (SefPlayer.live_start) {
+        if (videoData.use_offset)
+            SefPlayer.skip(-(Player.offset - SefPlayer.live_start));
+        else
+            SefPlayer.skip(-(time - SefPlayer.live_start));
+        SefPlayer.live_start = 0;
+        SefPlayer.stream_ensured = false;
+        return
+    } else if (SefPlayer.live_start === 0) {
+        $('.video-background').hide();
+        SefPlayer.live_start = null;
+    }
     if (SefPlayer.check_resolution_changes) {
         var resolution = SefPlayer.getResolution();
         if (resolution != SefPlayer.resolution) {
@@ -366,7 +433,6 @@ SefPlayer.SetCurTime = function(time) {
             Player.OnStreamInfoReady(true);
         }
     }
-    Player.SetCurTime(time);
 };
 
 function GetMaxVideoWidth() {

@@ -11,10 +11,10 @@ var SPORT_FIELDS = 'fragment SportEventFieldsLight on SportEvent{title id league
 var CLIP_FIELDS = 'fragment ClipFieldsLight on Clip {id title clipVideo: video {...VideoFields} images {main16x9 {...ImageFieldsLight}} playableFrom {readableDistance} parent {... on ClipParentSeriesLink {id title} ... on ClipParentMovieLink {id title}}}';
 var VIDEO_FIELDS = 'fragment VideoFields on Video {id duration {seconds} isLiveContent access {hasAccess} isDrmProtected}';
 var EPISODE_FIELDS = 'fragment EpisodeFields on Episode{id title extendedTitle isLiveContent isStartOverEnabled series{id title} images{main16x9{...ImageFieldsLight}} liveEventEnd{isoString} playableUntil{isoString} playableFrom{isoString} video{...VideoFields} upsell{ tierId}}';
-var EPISODE_VIDEO_FIELDS = 'fragment EpisodeVideoFields on Episode{id title extendedTitle isLiveContent liveEventEnd{isoString} series{title id} synopsis{medium} images{main16x9{ ...ImageFieldsLight}} video{ ...VideoFields} playableFrom{isoString} playableUntil{isoString}}';
+var EPISODE_VIDEO_FIELDS = 'fragment EpisodeVideoFields on Episode{id title extendedTitle isLiveContent liveEventEnd{isoString} duration {seconds} series{title id} synopsis{medium} images{main16x9{ ...ImageFieldsLight}} video{ ...VideoFields} playableFrom{isoString} playableUntil{isoString}}';
 var CHANNEL_FIELDS = 'fragment ChannelFields on Channel{id title description tagline type images{main16x9{...ImageFieldsLight}} access{hasAccess} epg{end start title images{main16x9{...ImageFieldsLight}}}}';
-var MOVIE_VIDEO_FIELDS = 'fragment MovieVideoFields on Movie{id title liveEventEnd{isoString} isLiveContent synopsis{medium} images{main16x9{ ...ImageFieldsLight sourceEncoded}} video{ ...VideoFields} playableFrom{isoString} playableUntil{isoString}}';
-var SPORT_VIDEO_FIELDS = 'fragment SportEventVideoFields on SportEvent{title id isLiveContent isDrmProtected access{hasAccess} synopsis{medium} images{main16x9{...ImageFieldsLight sourceEncoded}} playableUntil{isoString} playableFrom{isoString} liveEventEnd{isoString}}';
+var MOVIE_VIDEO_FIELDS = 'fragment MovieVideoFields on Movie{id title liveEventEnd{isoString} isLiveContent synopsis{medium} images{main16x9{ ...ImageFieldsLight sourceEncoded}} duration {seconds} video{ ...VideoFields} playableFrom{isoString} playableUntil{isoString}}';
+var SPORT_VIDEO_FIELDS = 'fragment SportEventVideoFields on SportEvent{title id isLiveContent isDrmProtected access{hasAccess} synopsis{medium} images{main16x9{...ImageFieldsLight sourceEncoded}} duration {seconds} playableUntil{isoString} playableFrom{isoString} liveEventEnd{isoString}}';
 var CHANNEL_VIDEO_FIELDS = 'fragment ChannelVideoFields on Channel{title id description isDrmProtected access{hasAccess} epg{end start title type synopsis{medium} images{main16x9{sourceEncoded}}} images{main16x9{ ...ImageFieldsLight sourceEncoded}}}';
 var MEDIA_FIELDS = SERIES_FIELDS + MOVIE_FIELDS + SPORT_FIELDS + CLIP_FIELDS + VIDEO_FIELDS + IMAGE_FIELDS + LABEL_FIELDS;
 
@@ -28,7 +28,9 @@ var Tv4 = {
     live_panels: [],
     live_id: null,
     token: null,
-    failedUpgrades: []
+    failedUpgrades: [],
+    play_extra:null,
+    alt_urls:[]
 };
 
 Tv4.login = function(cb, attempts) {
@@ -44,19 +46,17 @@ Tv4.login = function(cb, attempts) {
     var refresh_token = Tv4.getRefreshToken();
 
     if (refresh_token) {
-        Tv4.syncAuth(use_sync,
-                     httpRequest('https://auth.tv4.a2d.tv/v2/auth/token',
-                                 {cb: function(status,data) {
-                                     Tv4.handleAuthResult(data, cb);
-                                 },
-                                  sync : use_sync,
-                                  headers : [{key:'content-type', value:'application/json'},
-                                             {key:'Client-Name', value:'tv4-web'}
-                                            ],
-                                  params: '{"grant_type":"refresh_token","refresh_token":"' + refresh_token + '","profile_id":"' + Tv4.getProfileId() + '"}'
-                                 }
-                                )
-                    );
+        httpRequest('https://auth.tv4.a2d.tv/v2/auth/token',
+                    {cb: function(status,data) {
+                        Tv4.handleAuthResult(data, cb);
+                    },
+                     sync : use_sync,
+                     headers : [{key:'content-type', value:'application/json'},
+                                {key:'Client-Name', value:'tv4-web'}
+                               ],
+                     params: '{"grant_type":"refresh_token","refresh_token":"' + refresh_token + '"}'
+                    }
+                   );
     } else {
         if (attempts < 4)
             window.setTimeout(function(){Tv4.login(cb, attempts+1);}, 1000);
@@ -84,10 +84,6 @@ Tv4.readConfig = function(tag) {
     var regexp = new RegExp(tag + '> *([^< ]+)');
     config = config.match(regexp);
     return config && config[1];
-};
-
-Tv4.syncAuth = function (use_sync, result) {
-    if (use_sync) Tv4.handleAuthResult(result.data);
 };
 
 Tv4.handleAuthResult = function(data, cb) {
@@ -1322,17 +1318,14 @@ Tv4.getDetailsData = function(url, data, user_data) {
         AirDate = data.playableFrom && timeToDate(data.playableFrom.isoString);
         AvailDate = data.playableUntil && timeToDate(data.playableUntil.isoString);
         NotAvailable = ((AirDate - getCurrentDate()) > 60*1000);
-        if (data.video) {
-            VideoLength = dataLengthToVideoLength(null, data.video.duration.seconds);
-            isLive = data.video.isLiveContent && !Tv4.hasEnded(data.video);
-            ActionsUrl = Tv4.makeStreamUrl(data.video.id, 'mpd');
-        } else {
-            isLive = !Tv4.hasEnded(data);
-            if (data.isLiveContent && data.liveEventEnd) {
-                VideoLength = timeToDate(data.liveEventEnd.isoString) - AirDate;
-                VideoLength = dataLengthToVideoLength(null,Math.round(VideoLength/1000));
-            }
-        }
+        var meta = (data.video) ? data.video : data;
+        isLive = meta.isLiveContent && !Tv4.hasEnded(meta);
+        if (meta.isLiveContent && meta.liveEventEnd) {
+            VideoLength = timeToDate(meta.liveEventEnd.isoString) - AirDate;
+            VideoLength = dataLengthToVideoLength(null,Math.round(VideoLength/1000));
+        } else if (meta.duration)
+            VideoLength = dataLengthToVideoLength(null, meta.duration.seconds);
+        ActionsUrl = Tv4.makeStreamUrl(meta.id, 'mpd');
         if (data.epg && data.epg.length > 0) {
             Start = timeToDate(data.epg[0].start);
             var end   = timeToDate(data.epg[0].end);
@@ -1357,15 +1350,16 @@ Tv4.getDetailsData = function(url, data, user_data) {
                     url   : Tv4.makeShowLink(Show.id),
                     thumb : Tv4.fixThumb(Show.images)
                    };
-        } else if (data.video && data.video.duration.seconds > (10*60)) {
+        } else if (meta.duration && meta.duration.seconds > (10*60)) {
             // Assume movie
             Show = {name        : Name,
                     url         : Tv4.makeVideoLink(data),
                     thumb       : DetailsImgLink,
                     large_thumb : Tv4.fixThumb(data, BACKGROUND_THUMB_FACTOR),
-                    is_movie    : true
+                    is_movie    : true,
+                    is_live     : isLive
                    };
-            Related = Tv4.makeRelatedLink(data.id);
+            Related = data.video && Tv4.makeRelatedLink(data.id);
         }
         Season = Tv4.determineSeason(data);
         Episode = Tv4.determineEpisode(data);
@@ -1498,65 +1492,75 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
             asset = JSON.parse(getUrlParam(streamUrl,'variables')).id;
         }
     }
-    var wmdrmUrl = Tv4.makeStreamUrl(asset, 'wmdrm');
-    var mpdUrl = Tv4.makeStreamUrl(asset, 'mpd');
-    var hlsUrl = Tv4.makeStreamUrl(asset, 'hls', isLive);
-    var streams = (isLive) ? [wmdrmUrl,hlsUrl,mpdUrl] : [mpdUrl,wmdrmUrl,hlsUrl];
+    var wmdrmUrl  = Tv4.makeStreamUrl(asset, 'wmdrm');
+    var mpdUrl    = Tv4.makeStreamUrl(asset, 'mpd');
+    var mpdDrmUrl = Tv4.makeStreamUrl(asset, 'mpd_widevine');
+    var hlsUrl    = Tv4.makeStreamUrl(asset, 'hls', isLive);
+    var streams   = (isLive) ? [wmdrmUrl, mpdUrl] : [mpdUrl, wmdrmUrl];
 
     Tv4.selectStream(streamUrl,
                      isLive,
                      hlsUrl,
                      streams,
-                     function(stream, srtUrl, thumbsUrl, live, drm, useOffset) {
+                     function(stream, srtUrl) {
                          if (!stream) {
                              $('.bottomoverlaybig').html('Not Available!');
                          } else {
                              Resolution.getCorrectStream(RedirectIfEmulator(stream),
                                                          RedirectIfEmulator(srtUrl),
-                                                         {previewThumbStream:thumbsUrl,
-                                                          isLive:live,
-                                                          license:drm && drm.license,
-                                                          customdata:drm && drm.customData,
-                                                          use_offset:useOffset,
-                                                          useBitrates:true
-                                                         });
+                                                         Tv4.play_extra
+                                                        );
                          }
                      }
                     );
 };
 
-Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
+Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb, tryAlt) {
     requestUrl(RedirectIfEmulator(streams[0]),
                function(status, data) {
                    if (Player.checkPlayUrlStillValid(streamUrl)) {
                        // alert(JSON.stringify(JSON.parse(data.responseText)));
                        data = JSON.parse(data.responseText);
                        isLive = isLive || data.metadata.isLive;
-                       var use_offset = (data.metadata.type == 'channel');
-                       data = data.playbackItem;
-                       var stream = Tv4.addStreamingFilter(data.manifestUrl, isLive);
-                       use_offset = use_offset || (data.startoverManifestUrl != null);
                        var drm = Tv4.getDrm(data);
-                       if (drm && streams.length > 1 && !streams[0].match(/mss/)) {
+                       var stream = Tv4.getStreamUrl(data);
+                       if (!tryAlt && drm && streams.length > 1 && !stream.match('Manifest')) {
+                           streams.push(streams[0]);
                            streams.shift();
                            return Tv4.selectStream(streamUrl, isLive, hlsUrl, streams, cb);
                        }
+                       stream = Tv4.addStreamingFilter(stream, isLive);
+                       var isChannel = (data.metadata.type == 'channel');
+                       var use_offset = (data.metadata.type == 'channel');
+                       var use_offset =
+                           isChannel || (isLive && !stream.match('Manifest'));
                        streams.shift();
-                       if (!isLive) {
+                       Tv4.alt_urls = streams;
+                       Tv4.play_extra = {hls_url: hlsUrl,
+                                         stream_url: streamUrl,
+                                         isLive: isLive,
+                                         drm: drm,
+                                         use_offset: isLive && use_offset,
+                                         useBitrates: true,
+                                         live_seek: true,
+                                         can_start_over: isLive && !isChannel
+                                        };
+                       if (isLive) {
+                           cb(stream, null)
+                       } else{
+                           data = data.playbackItem;
                            var thumbsUrl = data.thumbnails;
-                           if (thumbsUrl) {
+                           if (thumbsUrl && thumbsUrl.length > 0) {
                                thumbsUrl.sort(function(a, b) {return a.width-b.width});
                                thumbsUrl = RedirectIfEmulator(thumbsUrl[0].url);
+                               Tv4.play_extra.previewThumbStream = thumbsUrl;
                            };
                            Tv4.getSrtUrl(data,
                                          hlsUrl,
                                          function(srtUrl) {
-                                             cb(stream, srtUrl, thumbsUrl, isLive, drm);
+                                             cb(stream, srtUrl);
                                          }
                                         );
-                       } else {
-                           // Use offset for live shows with 'startOver'
-                           cb(stream, null, null, isLive, drm, use_offset);
                        }
                    }
                },
@@ -1565,7 +1569,7 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                 cbError:function(status, data) {
                     if (streams.length > 1) {
                         streams.shift();
-                        Tv4.selectStream(streamUrl, isLive, hlsUrl, streams, cb);
+                        Tv4.selectStream(streamUrl, isLive, hlsUrl, streams, cb, true);
                     } else {
                         Tv4.popUpError(data);
                         Log('Tv4.getPlayUrl something went wrong: ' + data.responseText);
@@ -1575,25 +1579,50 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
               );
 };
 
+Tv4.getStreamUrl = function(data) {
+    var stream = data.playbackItem.manifestUrl;
+    if ((data.metadata.type != 'channel' ||
+         data.metadata.title.match(/Fotboll|Sport|Tennis|Motor/)
+        ) &&
+        data.playbackItem.license &&
+        data.playbackItem.license.type == 'playready' &&
+        data.playbackItem.license.castlabsAssetId &&
+        stream.match('/content/')
+       )
+    {
+        var assetId = data.playbackItem.license.castlabsAssetId;
+        assetId = assetId.replace(/[^0-9]/g,'');
+        stream = stream.replace(/\/content\/.*/,'');
+        return stream + '/asset/' + assetId + '.isml/Manifest';
+    }
+    return stream;
+};
+
 Tv4.getDrm = function(data) {
+    var sessionId = data.sessionId;
+    data = data.playbackItem;
     var license = data.license && data.license.castlabsServer;
     var customData = data.license && data.license.castlabsToken;
+
     if (customData) {
-        data.auth = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
-        data.auth.authToken = customData;
-        customData = btoa(JSON.stringify(data.auth));
+        if (data.license.type == 'playready') {
+            data.auth = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
+            data.auth.authToken = customData;
+            customData = btoa(JSON.stringify(data.auth));
+            sessionId = null;
+        }
     }
-    if (license && customData)
-        return {license:RedirectIfEmulator(license), customData:customData};
+    if (license || customData)
+        return {license:RedirectIfEmulator(license), customData:customData, sessionId:sessionId};
     else
         return null;
 };
 
 Tv4.addStreamingFilter = function(stream, isLive) {
-    if (isLive) return stream;
+    if (isLive || stream.match('/content/v2/')) return stream;
     return addUrlParam(stream,
                        'filter',
-                       '(type=="video" || ((count(type=="audio") > 1 && (systemLanguage=="eng" || systemLanguage=="swe")) || (count(type=="audio")==1 && type=="audio")))'
+                       '(type=="video" || ((count(type=="audio") > 2 && (systemLanguage=="eng" || systemLanguage=="swe")) || (count(type=="audio") < 3 && type=="audio")))'
                       );
 };
 
@@ -1601,16 +1630,20 @@ Tv4.makeStreamUrl = function(asset, Type, isLive) {
     var protocol;
     switch (Type) {
     case 'wmdrm':
-        protocol = '&device=samsung-orsay&protocol=mss';
+        protocol = '&device=samsung-orsay&protocol=mss&drm=playready';
         break;
     case 'mpd':
-        protocol = '&device=browser&protocol=dash';
+        protocol = '&device=browser&protocol=dash&drm=playready';
+        break;
+    case 'mpd_widevine':
+        protocol = '&device=browser&protocol=dash&drm=widevine';
         break;
     case 'hls':
-        protocol = '&device=browser&protocol=hls&is_live=' + Boolean(isLive);
+        // protocol = '&device=browser&protocol=hls&drm=playready';
+        protocol = '&device=browser&protocol=hls&drm=widevine';
         break;
     }
-    return 'https://playback2.a2d.tv/play/' + asset + '?service=tv4play&drm=playready' + protocol;
+    return 'https://playback2.a2d.tv/play/' + asset + '?service=tv4play' + protocol + '&is_live=' + Boolean(isLive);
 };
 
 Tv4.getSrtUrl = function (data, hlsUrl, cb) {
@@ -1648,6 +1681,25 @@ Tv4.getSrtUrl = function (data, hlsUrl, cb) {
                 }
                }
               );
+};
+
+Tv4.tryAltPlayUrl = function(failedUrl, cb) {
+    if (Tv4.alt_urls.length == 0)
+        return false;
+    Tv4.selectStream(Tv4.play_extra.stream_url,
+                     Tv4.play_extra.isLive,
+                     Tv4.play_extra.hls_url,
+                     Tv4.alt_urls,
+                     function(stream, srtUrl) {
+                         Tv4.play_extra.cb = cb;
+                         Resolution.getCorrectStream(RedirectIfEmulator(stream),
+                                                     RedirectIfEmulator(srtUrl),
+                                                     Tv4.play_extra
+                                                    );
+                     },
+                     true
+                    );
+    return true;
 };
 
 Tv4.popUpError = function(data) {
@@ -1825,6 +1877,11 @@ Tv4.getSeasonQuery = function(id, offset) {
     offset = offset || 0;
     return '{"query": "query SeasonEpisodes($input: SeasonEpisodesInput!, $seasonId: ID!){ season(id: $seasonId){ id numberOfEpisodes episodes(input: $input){initialSortOrder pageInfo{ ...PageInfoFields} items{ ...EpisodeFieldsFull}}}}fragment EpisodeFieldsFull on Episode{...EpisodeFields synopsis{medium}  upsell{tierId}}' + PAGE_INFO_FIELDS + EPISODE_FIELDS + IMAGE_LIGHT_FIELDS + VIDEO_FIELDS + '", "variables": {"seasonId":"' + id + '","input":{"limit":100,"offset":' + offset + ', "sortOrder":"DESC"}}, "operationName": "SeasonEpisodes"}';
 };
+
+// {"id":"b1d9170ebc56a2e3ec75","includeProgress":true}
+// extensions
+// {"clientLibrary":{"name":"@apollo/client","version":"4.1.6"},"persistedQuery":{"version":1,"sha256Hash":"93c164826047a6d85a9e458f5eb612e78fbeab860ed07bbea9d84bbb8189771f"}}
+
 
 Tv4.getVideoQuery = function(id) {
     return '{"query": "query Video($id: ID!){media(id: $id){... on SportEvent{...SportEventVideoFields} ... on Channel{...ChannelVideoFields} ... on Movie{...MovieVideoFields} ... on Episode{...EpisodeVideoFields} ... on Clip{...ClipVideoFields}}}fragment ClipVideoFields on Clip{id title images{main16x9{...ImageFieldsLight sourceEncoded}} playableFrom{isoString} parent{... on ClipParentSeriesLink{id title} ... on ClipParentMovieLink{id title}} clipVideo: video{ ...VideoFields} description playableUntil{isoString}}' + MOVIE_VIDEO_FIELDS + SPORT_VIDEO_FIELDS + CHANNEL_VIDEO_FIELDS + VIDEO_FIELDS + EPISODE_VIDEO_FIELDS + IMAGE_LIGHT_FIELDS + '", "variables":{"id":"' + id + '"},"operationName":"Video"}';

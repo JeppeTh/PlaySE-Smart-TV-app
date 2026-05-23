@@ -44,7 +44,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                            streams = Resolution.getHlsStreams(videoUrl, data, prefix);
                        } else if (videoUrl.match(/\.mpd/)) {
                            streams = Resolution.getHasStreams(videoUrl, data, prefix);
-                       } else if (videoUrl.match(/\.ism/)) {
+                       } else if (videoUrl.match(/(\.ism|\/Manifest$)/)) {
                            streams = Resolution.getIsmStreams(videoUrl, data, prefix);
                        }
                        extra.audio_streams = streams.audio_streams;
@@ -101,9 +101,8 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        videoUrl = videoUrl + '|COMPONENT=HLS';
                    else if (videoUrl.match(/\.mpd/))
                        videoUrl = videoUrl + '|COMPONENT=HAS';
-                   else if (videoUrl.match(/\.ism/)) {
+                   else if (videoUrl.match(/(\.ism|\/Manifest)/))
                        videoUrl = videoUrl + '|COMPONENT=WMDRM';
-                   }
                    Player.setVideoURL(master, videoUrl, srtUrl, extra);
                    extra.cb();
                },
@@ -204,7 +203,7 @@ Resolution.getIsmStreams = function (videoUrl, data, prefix) {
 Resolution.getHasStreams = function (videoUrl, data, prefix) {
     data = data.responseText;
     var name, codec, audio_streams=[], thumb;
-    data = (data.match(/contentType/)) ? data.split(/contentType/mg) : data.split(/mimeType/mg);
+    data = (data.match(/contentType.*video/)) ? data.split(/contentType/mg) : data.split(/mimeType/mg);
     var swe_audio_idx = null;
     for (var h in data) {
         if (data[h].match(/^[^=]?=.*audio/i)) {

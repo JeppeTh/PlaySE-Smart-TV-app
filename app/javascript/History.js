@@ -250,6 +250,8 @@ History.decodeMain = function(data, extra) {
                     link_prefix: '<a href="details.html?' + UrlParams + '&ilink=',
                     thumb: Shows[j].thumb,
                     background: Shows[j].large_thumb,
+                    is_live: Shows[j].is_live,
+                    is_running: Shows[j].is_live,
                     percentage: History.fixResumePercentage(Shows[j].watched)
                    });
         } else if (Shows[j].is_category)
@@ -341,7 +343,7 @@ History.getDButtonText = function(language) {
 };
 
 History.addShow = function(details, percentage) {
-    if (!details || details.is_live || details.is_channel || !details.parent_show)
+    if (!details || details.is_channel || !details.parent_show)
         return;
 
     // Keep old percentage in case none provided. At least consistent behaviour with how
@@ -367,6 +369,7 @@ History.addShow = function(details, percentage) {
                         episode_name : details.episode_name,
                         is_category  : details.parent_show.is_category,
                         is_movie     : details.parent_show.is_movie,
+                        is_live      : details.parent_show.is_live,
                         watched      : percentage
                        });
     Config.save('History', savedShows.slice(0,30));
