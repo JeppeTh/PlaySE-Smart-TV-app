@@ -1248,7 +1248,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
 
                        for (var k = 0; k < subtitleReferences.length; k++) {
 		           Log('subtitleReferences:' + subtitleReferences[k].url);
-                           srtUrl = subtitleReferences[k].url;
+                           srtUrl = subtitleReferences[k].url.toHttp();
                            if (subtitleReferences[k].label &&
                                subtitleReferences[k].label.match(/allt/i)
                               )
@@ -1270,7 +1270,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        if (data.thumbnailMap) {
                            extra.previewThumb =
                            {
-                               src:      data.thumbnailMap.url,
+                               src:      data.thumbnailMap.url.toHttp(),
                                width:    data.thumbnailMap.thumbnailwidth,
                                height:   data.thumbnailMap.thumbnailheight,
                                rows:     data.thumbnailMap.rows,
