@@ -627,7 +627,7 @@ Svt.decodeMain = function(data, extra) {
             data[k].analyticsIdentifiers.listType == 'redaktionell')
             continue;
 
-        if (data[k].id.match(/toplist/i)) {
+        if (data[k].id.match(/popul/i)) {
             PopularIndex = k;
             continue;
         }
