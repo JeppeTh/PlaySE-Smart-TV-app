@@ -1278,6 +1278,7 @@ Svt.getPlayUrl = function(url, isLive, streamUrl) {
                        }
                        alert('video_urls:' + video_urls);
                        extra.is_live_stream = isLiveStream;
+                       extra.is_seekable_live = isLiveStream && !extra.is_channel;
                        if (data.thumbnailMap) {
                            extra.previewThumb =
                            {
@@ -1388,11 +1389,18 @@ Svt.stripDuplicatStreams = function(streams) {
 
 Svt.playUrl = function() {
     if (Svt.play_args.urls[0].match(/\.(m3u8|mpd)/)) {
+        var use_offset = Svt.play_args.extra.use_offset;
         Svt.play_args.extra.use_vjs =
             Svt.play_args.urls[0].match(/\.m3u8/) ||
             // Seems AvPlayer handles DASH better > 2017.
             (Svt.play_args.extra.is_live_stream && deviceYear < 2018);
         Svt.play_args.extra.modify_stream = Svt.play_args.urls[0].match(/fmp4\.m3u8/);
+        use_offset = use_offset ||
+            (Svt.play_args.extra.is_live_stream &&
+             Svt.play_args.urls[0].match('.mpd') &&
+             !Svt.play_args.extra.use_vjs
+            );
+        Svt.play_args.extra.use_offset = use_offset;
 	Resolution.getCorrectStream(Svt.play_args.urls[0],
                                     Svt.play_args.srt_url,
                                     Svt.play_args.extra

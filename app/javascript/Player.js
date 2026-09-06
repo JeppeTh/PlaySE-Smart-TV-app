@@ -129,19 +129,19 @@ Player.setVideoURL = function(master, url, srtUrl, extra) {
     }
     videoData.key.id = myTitle.replace(/mytitle=/,'');
 
-    videoUrl                 = url;
-    videoData.component      = videoUrl.match(/\|COMPONENT=([^|]+)/);
-    videoData.component      = videoData.component && videoData.component[1];
-    videoData.bitrates       = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
-    videoData.url            = videoUrl.replace(/\|.+/,'');
-    videoData.audio_streams  = extra.audio_streams;
-    videoData.stream_content = extra.stream_content;
-    videoData.audio_idx      = extra.audio_idx;
-    videoData.subtitles_idx  = extra.subtitles_idx;
-    videoData.use_offset     = extra.use_offset;
-    videoData.drm            = extra.drm;
-    videoData.live_seek      = extra.live_seek;
-    videoData.can_start_over = extra.can_start_over;
+    videoUrl                   = url;
+    videoData.component        = videoUrl.match(/\|COMPONENT=([^|]+)/);
+    videoData.component        = videoData.component && videoData.component[1];
+    videoData.bitrates         = videoUrl.replace(/\|COMPONENT=[^|]+/,'').replace(/^[^|]+\|?/,'');
+    videoData.url              = videoUrl.replace(/\|.+/,'');
+    videoData.audio_streams    = extra.audio_streams;
+    videoData.stream_content   = extra.stream_content;
+    videoData.audio_idx        = extra.audio_idx;
+    videoData.subtitles_idx    = extra.subtitles_idx;
+    videoData.use_offset       = extra.use_offset;
+    videoData.drm              = extra.drm;
+    videoData.live_seek        = extra.live_seek;
+    videoData.is_seekable_live = extra.is_seekable_live;
     if (deviceYear > 2011) {
         if (extra.previewThumb)
             videoData.previewThumb = extra.previewThumb;
@@ -228,19 +228,17 @@ Player.playVideo = function() {
         resumeTime = this.getStoredResumeTime();
 
         delayedPlayTimer = 0;
-        if (resumeTime || videoData.can_start_over) {
-            if (resumeTime)
+        var FromStartFun = function() {
+            $('.bottomoverlaybig').html('Press ENTER to play from start');
+            Player.startDelayedPlayTimer();
+        };
+        if (resumeTime || videoData.is_seekable_live) {
+            if (resumeTime) {
                 $('.bottomoverlaybig').html('Press ENTER to resume');
-            else
-                $('.bottomoverlaybig').html('Press ENTER to play from start');
-            // Give some extra seconds to resume
-            window.clearTimeout(delayedPlayTimer);
-            delayedPlayTimer = window.setTimeout(function() {
-                                                     delayedPlayTimer = -1;
-                                                     Player.playIfReady();
-                                                 }, 
-                                                 2000
-                                                );
+                var DelayFun = (videoData.is_seekable_live) ? FromStartFun : null;
+                Player.startDelayedPlayTimer(DelayFun);
+            } else
+                FromStartFun();
         }
         // Fetch subtitles before playback.
         // Seems http requests interfer with start of playback
@@ -258,16 +256,30 @@ Player.playVideo = function() {
     }
 };
 
-Player.playIfReady = function() {
+Player.startDelayedPlayTimer = function(Fun) {
+    window.clearTimeout(delayedPlayTimer);
+    if (!Fun)
+        Fun = function() {
+            delayedPlayTimer = 0;
+            Player.playIfReady();
+        };
+    delayedPlayTimer = window.setTimeout(Fun, 2000);
+};
+
+Player.playIfReady = function(stopTimer) {
+    if (stopTimer) {
+        window.clearTimeout(delayedPlayTimer);
+        delayedPlayTimer = 0;
+    }
     if (Player.srtState == -1) {
         if (startup && startup !== true) {
             // Resuming
-            window.clearTimeout(delayedPlayTimer);
-            delayedPlayTimer = 0;
             // Can resume have been chosen after delayedPlayTimer expired?
             Player.startPlayback(startup);
-        } else if (!delayedPlayTimer || delayedPlayTimer == -1) {
+        } else if (liveStartup) {
             Player.startPlayback(liveStartup);
+        } else if (!delayedPlayTimer) {
+            Player.startPlayback();
         }
     }
 };
@@ -387,6 +399,9 @@ Player.retrySkip = function(failedSkip) {
 };
 
 Player.skipForward = function(time) {
+    if (!Player.checkSeekable())
+        return;
+
     var duration = this.GetDuration();
     if(this.skipState == -1) {
         if (((+ccTime + time) > +duration) && (+ccTime <= +duration)) {
@@ -401,6 +416,8 @@ Player.skipForward = function(time) {
     window.clearTimeout(skipTimer);
     this.showControls();
     skipTime = +skipTime + time;
+    if (Player.isLive && Player.plugin.getLiveDuration())
+        skipTime = Math.min(skipTime, Player.plugin.getLiveDuration()-1000);
     this.skipState = this.FORWARD;
     // Log('forward skipTime: ' + skipTime);
     this.updateSeekBar(skipTime, time);
@@ -416,6 +433,8 @@ Player.skipLongForwardVideo = function(longMinutes) {
 };
 
 Player.skipBackward = function(time) {
+    if (!Player.checkSeekable())
+        return;
     window.clearTimeout(skipTimer);
     this.showControls();
     if(this.skipState == -1){
@@ -436,6 +455,15 @@ Player.skipBackwardVideo = function() {
 
 Player.skipLongBackwardVideo = function(longMinutes) {
     this.skipBackward(longMinutes*60*1000);
+};
+
+Player.checkSeekable = function() {
+    if (Player.isLive && !videoData.is_seekable_live) {
+        Player.showControls();
+        Player.refreshOsdTimer(3000);
+        return false;
+    }
+    return true;
 };
 
 // Global functions called directly by the player 
@@ -470,7 +498,6 @@ Player.OnBufferingProgress = function(percent) {
 Player.OnBufferingComplete = function() {
     Log('OnBufferingComplete');
     $('.bottomoverlaybig').html('');
-    retries = 0;
     if (startup)
         Player.OnRenderingStart();
 
@@ -549,8 +576,8 @@ Player.removeResumeInfo = function(key) {
 Player.storeResumeInfo = function() {
     if (delayedPlayTimer > 0)
         return;
-    if (videoData.key && resumeTime > 20 && (!Player.isLive || videoData.can_start_over)) {
-        Log('Player.storeResumeInfo, resumeTime:' + resumeTime + ' duration:' + Player.GetDuration() + ' videoData.key:' + JSON.stringify(videoData.key) + ' !Player.isLive:' + !Player.isLive);
+    if (videoData.key && resumeTime > 20 && (!Player.isLive || videoData.is_seekable_live)) {
+        // Log('Player.storeResumeInfo, resumeTime:' + resumeTime + ' duration:' + Player.GetDuration() + ' videoData.key:' + JSON.stringify(videoData.key) + ' !Player.isLive:' + !Player.isLive);
         var percentage = Math.floor(100*resumeTime/(Player.GetDuration()/1000));
         // Update history with resumeTime
         History.addShow(Details.fetchedDetails, percentage);
@@ -565,7 +592,7 @@ Player.storeResumeInfo = function() {
 };
 
 Player.getStoredResumeTime = function() {
-    if ((!Player.isLive || videoData.can_start_over) && videoData.key) {
+    if ((!Player.isLive || videoData.is_seekable_live) && videoData.key) {
         var resumeList = Player.getResumeList();
         for (var i = 0; i < resumeList.length; i++) {
             if ((videoData.key.id && resumeList[i].id==videoData.key.id) ||
@@ -577,7 +604,7 @@ Player.getStoredResumeTime = function() {
     return null;
 };
 
-Player.showControls = function(){
+Player.showControls = function() {
 
     window.clearTimeout(osdTimer);
     if (Player.infoActive)
@@ -614,7 +641,6 @@ Player.setClock = function() {
 };
 
 Player.playbackStarted = function() {
-    retries = 0;
     Player.OnRenderingStart();
     // Log('Player.playbackStarted');
     $('#video-container').show();
@@ -682,14 +708,14 @@ Player.keyEnter = function() {
     if ($('.bottomoverlaybig').html().match(/Press ENTER.*start/)) {
         $('.bottomoverlaybig').html('From start');
         liveStartup = 10;
-        Player.playIfReady();
+        Player.playIfReady(true);
     } else if ($('.bottomoverlaybig').html().match(/Press ENTER/)) {
         $('.bottomoverlaybig').html('Resuming');
         if (Player.isLive)
             liveStartup = resumeTime-10;
         else
             startup = resumeTime-10;
-        Player.playIfReady();
+        Player.playIfReady(true);
     } else if (Player.isActionActive('intro')) {
         Player.hideAction();
         skipTime = videoActions.current.end*1000;
@@ -739,12 +765,14 @@ Player.SetCurTime = function(time) {
             }
             Player.refreshPreviewThumbItem(time);
             if (liveStartup) return;
+            retries = 0;
             Player.playbackStarted();
             Player.setResolution(Player.GetResolution());
 	} else if (liveStartup) {
             Player.playbackStarted();
             Player.setResolution(Player.GetResolution());
             liveStartup = false;
+            retries = 0;
         } else
             resumeTime = +time/1000;
 	ccTime = +time + Player.offset;
@@ -1298,8 +1326,8 @@ Player.showHelp = function () {
     }
 };
 
-Player.OnConnectionFailed = function() {
-    Log('OnConnectionFailed');
+Player.OnConnectionFailed = function(error) {
+    Log('OnConnectionFailed: ' + error);
     Player.OnNetworkDisconnected('Connection Failed!');
     // Player.checkHls(function(){Player.OnNetworkDisconnected('Connection Failed!');}, 'OnConnectionFailed');
 };
@@ -1349,28 +1377,6 @@ Player.OnRenderError = function(number) {
         var text = 'Can\'t play this. Error: ' + number;
         Player.PlaybackFailed(text);
         // Player.checkHls(function(){Player.PlaybackFailed(text);}, text);
-    }
-};
-
-Player.checkHls = function(OtherCalback, text) {
-    // Seems stop before OnBufferingStart gives e.g. OnRenderError
-    // Can also happen in case 'resume' is chosen too late...
-    if (Player.state != Player.STOPPED && delayedPlayTimer != -1) {
-        if (videoData.component=='HLS' && !videoUrl.match(/\/downgradehls\//)) {
-            var thisVideoUrl = videoUrl;
-            Player.getHlsVersion(videoUrl.replace(/\|.+/,''),
-                                 function(hls_version) {
-                                     if (hls_version && hls_version > 3) {
-                                         var text = 'HLS Version ' + hls_version + ' unsupported.';
-                                         Player.PlaybackFailed(text);
-                                     } else {
-                                         OtherCalback();
-                                     }
-                                 }
-                                );
-        } else {
-            OtherCalback();
-        }
     }
 };
 
@@ -1705,7 +1711,8 @@ Player.hideVideoBackground = function() {
 };
 
 Player.refreshStartData = function(details) {
-    if (videoData.use_offset && details && details.start != 0 && details.start != Player.start) {
+    if (!details) return;
+    if (videoData.use_offset && details.start != 0 && details.start != Player.start) {
         Log('refreshStartData, new start:' + details.start + ' old start:' + Player.start);
         Player.setNowPlaying(details.title);
         Player.pluginDuration = Player.plugin.getDuration();

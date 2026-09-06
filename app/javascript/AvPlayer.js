@@ -59,14 +59,45 @@ var AvPlayer = {
                     AvPlayer.time_offset = 0;
                 Log('AvPlayer initial time: ' + currentTime + ' use_offset: ' + videoData.use_offset + ' time_offset:' + AvPlayer.time_offset);
             }
-            Player.SetCurTime(currentTime-AvPlayer.time_offset);
+            if (AvPlayer.delayed_skip_state < 1)
+                Player.SetCurTime(currentTime-AvPlayer.time_offset);
+
             if (AvPlayer.delayed_skip) {
                 AvPlayer.pause();
-                AvPlayer.skip(AvPlayer.delayed_skip, webapis.avplay.play);
-                AvPlayer.delayed_skip = 0;
-                AvPlayer.stream_ensured = false;
+                if (!videoData.drm || videoData.component == 'WMDRM')
+                    AvPlayer.delayed_skip_state = 2;
+
+                switch (AvPlayer.delayed_skip_state) {
+                case 0:
+                    Log('AvPlayer jump back');
+                    AvPlayer.delayed_skip_state = 10;
+                    webapis.avplay.jumpBackward(60000, function() {
+                        webapis.avplay.play();
+                        AvPlayer.delayed_skip_state = 1;
+                    });
+                    break;
+                case 1:
+                    Log('AvPlayer jump forward');
+                    AvPlayer.delayed_skip_state = 10;
+                    webapis.avplay.jumpForward(60000, function() {
+                        webapis.avplay.play();
+                        AvPlayer.delayed_skip_state = 2;
+                    });
+                    break;
+                case 2:
+                    Log('AvPlayer jump actual');
+                    AvPlayer.delayed_skip_state = -1;
+                    AvPlayer.skip(AvPlayer.delayed_skip, webapis.avplay.play);
+                    AvPlayer.delayed_skip = 0;
+                    AvPlayer.stream_ensured = false;;
+                    break;
+                default:
+                    Log('AvPlayer skipping');
+                    break;
+                }
                 return;
             } else if (AvPlayer.delayed_skip === 0) {
+                Log('AvPlayer showing');
                 $('.video-background').hide();
                 AvPlayer.delayed_skip = null
             };
@@ -94,15 +125,16 @@ var AvPlayer = {
         onevent: function(eventType, eventData) {
             try{
                 switch (eventType) {
-                case 'UNKNOWN_OTHER_EVENT_FROM_PLAYER':
-                case 'PLAYER_MSG_NONE':
-                    if (videoData.drm && videoData.drm.session_id)
-                        break;
                 case 'PLAYER_MSG_RESOLUTION_CHANGED':
                 case 'PLAYER_MSG_BITRATE_CHANGE':
                     if (AvPlayer.delayed_skip === null)
                         Player.OnStreamInfoReady(true);
                     break;
+
+                case 'UNKNOWN_OTHER_EVENT_FROM_PLAYER':
+                // case 'PLAYER_MSG_NONE':
+                    if (videoData.drm)
+                        break;
                 default:
                     Log('onevent:' + eventType);
                     break;
@@ -147,6 +179,7 @@ var AvPlayer = {
     time_offset : 0,
     stream_ensured : false,
     delayed_skip : null,
+    delayed_skip_state : 0,
     load_error : null,
     error_during_pause: false,
     pause_failed: null
@@ -176,12 +209,16 @@ function installWidevineLicense(drmData) {
         httpRequest(videoData.drm.license,
                     {cb:function(status,data,xhr) {
                         if (isHttpStatusOk(status)) {
-                            var licenseParam =
-                                drmData.session_id +
-                                'PARAM_START_POSITION' +
-                                arrayBufferToBase64(data) +
-                                'PARAM_START_POSITION';
-                            Log('setDrm widevine_license_data result:' + webapis.avplay.setDrm('WIDEVINE_CDM', 'widevine_license_data', licenseParam));
+                            if (videoData.drm.sessionId) {
+                                var licenseParam =
+                                    drmData.session_id +
+                                    'PARAM_START_POSITION' +
+                                    arrayBufferToBase64(data) +
+                                    'PARAM_START_POSITION';
+                                Log('setDrm widevine_license_data result:' + webapis.avplay.setDrm('WIDEVINE_CDM', 'widevine_license_data', licenseParam));
+                            } else {
+                                Log('setDrm InstallLicense result:' + webapis.avplay.setDrm('PLAYREADY', 'InstallLicense', arrayBufferToBase64(data)));
+                            }
                         }
                     },
                      params: base64ToArrayBuffer(drmData.challenge),
@@ -214,8 +251,10 @@ AvPlayer.create = function() {
 
 AvPlayer.remove = function() {
     try {
-        if (this.player && webapis)
+        if (this.player && webapis) {
             webapis.avplay.stop();
+            webapis.avplay.close();
+        }
     } catch (e) {
         Log('AvPlayer.remove:' + e);
     }
@@ -237,6 +276,7 @@ AvPlayer.load = function(videoData) {
         AvPlayer.time_offset = null;
         AvPlayer.stream_ensured = false;
         AvPlayer.delayed_skip = null;
+        AvPlayer.delayed_skip_state = 0;
         AvPlayer.load_error = null;
         AvPlayer.error_during_pause = false;
         webapis.avplay.open(videoData.url);
@@ -265,11 +305,11 @@ AvPlayer.load = function(videoData) {
 AvPlayer.loadDrm = function() {
     if (videoData.drm) {
         if (videoData.drm.sessionId) {
-            if (tizenVersion >= 55) {
+            if (tizenVersion >= 50) {
                 var drm = {'DataType':'MPEG-DASH',
                            'AppSession':videoData.drm.sessionId
                           };
-                Log('setDrm DataType result:' + webapis.avplay.setDrm('WIDEVINE_CDM', 'SetProperties', JSON.stringify(drm)));
+                Log('setDrm result:' + webapis.avplay.setDrm('WIDEVINE_CDM', 'SetProperties', JSON.stringify(drm)));
             } else {
                 Log('setDrm Initialize result:' + webapis.avplay.setDrm('WIDEVINE_CDM', 'Initialize', ''));
                 Log('setDrm widevine_app_session result:' + webapis.avplay.setDrm('WIDEVINE_CDM', 'widevine_app_session', videoData.drm.sessionId));
@@ -277,10 +317,12 @@ AvPlayer.loadDrm = function() {
             }
         } else {
             var drm = {'DeleteLicenseAfterUse':true,
-                       'LicenseServer':videoData.drm.license,
-                       'CustomData':videoData.drm.customData
+                       'GetChallenge': false,
+                       'LicenseServer': videoData.drm.license,
+                       'CustomData': videoData.drm.customData,
+                       'HttpHeader': videoData.drm.headers
                       };
-            Log('setDrm Properties result:' + webapis.avplay.setDrm('PLAYREADY', 'SetProperties', JSON.stringify(drm)) + ' ' + videoData.drm.license);
+            Log('setDrm Properties result:' + webapis.avplay.setDrm('PLAYREADY', 'SetProperties', JSON.stringify(drm)));
         }
     }
 };
@@ -289,14 +331,14 @@ AvPlayer.play = function(isLive, seconds) {
     if (AvPlayer.load_error) {
         window.setTimeout(function(){Player.PlaybackFailed(AvPlayer.load_error);},0);
     } else {
-        if (seconds && seconds > 0) {
+        if (seconds) {
             if (isLive) {
                 $('.video-background').show();
                 AvPlayer.delayed_skip = seconds*1000;
-            } else
+            } else if (seconds > 0)
                 AvPlayer.skip(seconds*1000);
         }
-        webapis.avplay.prepareAsync(webapis.avplay.play, Player.OnConnectionFailed);
+        webapis.avplay.prepareAsync(webapis.avplay.play, function(e) { window.setTimeout(function() {Player.OnConnectionFailed(e);}, 1000)});
     }
 };
 
@@ -323,34 +365,40 @@ AvPlayer.skip = function(milliSeconds, successCb) {
         if (milliSeconds > +liveWindow[1]) {
             milliSeconds = +liveWindow[1] - 1000;
         }
-        // Ignore startTime in case it seems invalid
-        if (milliSeconds < +liveWindow[0] && +liveWindow[0] < +liveWindow[1]) {
-            milliSeconds = +liveWindow[0]+100;
+        if (!videoData.is_seekable_live) {
+            // Ignore startTime in case it seems invalid
+            if (milliSeconds < +liveWindow[0] && +liveWindow[0] < +liveWindow[1]) {
+                milliSeconds = +liveWindow[0]+100;
+            }
         }
     }
-    successCb = (successCb) ? successCb : null;
-    if (isLive && videoData.component == 'HAS') {
-        AvPlayer.jump(milliSeconds, successCb);
+    successCb = (successCb) ? successCb : AvPlayer.seekOk;
+    if (isLive) {
+        AvPlayer.jump(milliSeconds, successCb, AvPlayer.seekFailed);
     } else {
         webapis.avplay.seekTo(milliSeconds, successCb, AvPlayer.seekFailed);
     }
 };
 
-AvPlayer.jump = function(milliSeconds, successCb) {
+AvPlayer.jump = function(milliSeconds, successCb, failureCb) {
     var now = webapis.avplay.getCurrentTime();
+    Log('AvPlayer.jump: ' + milliSeconds + ' currentTime:' + now);
     if (now > milliSeconds) {
-        webapis.avplay.jumpBackward(now-milliSeconds, successCb, AvPlayer.seekFailed);
+        Log('AvPlayer.jump: ' + (now-milliSeconds) + ' ' + ((now - AvPlayer.time_offset) - Player.offset - milliSeconds));
+        webapis.avplay.jumpBackward(now-milliSeconds, successCb, failureCb);
     } else {
-        webapis.avplay.jumpForward(milliSeconds-now, successCb, AvPlayer.seekFailed);
+        Log('AvPlayer.jump: ' + (milliSeconds-now));
+        webapis.avplay.jumpForward(milliSeconds-now, successCb, failureCb);
     }
 };
 
+AvPlayer.seekOk = function(Any) {
+    // Log('AvPlayer.seekOk:' + Any);
+};
+
 AvPlayer.seekFailed = function(Error) {
-    if (AvPlayer.isLive()) {
-        Player.reloadVideo();
-    } else {
-        Player.OnRenderError(Error);
-    }
+    Log('AvPlayer.seekFailed:' + Error);
+    Player.reloadVideo();
 };
 
 AvPlayer.stop = function() {
@@ -380,7 +428,7 @@ AvPlayer.getLiveDuration  = function() {
     if (AvPlayer.isLive()) {
         var liveWindow = AvPlayer.getStreamingProperty('GET_LIVE_DURATION').split('|');
         if (liveWindow && liveWindow.length > 1) {
-            return +liveWindow[1] - AvPlayer.time_offset;
+            return +liveWindow[1] - AvPlayer.time_offset + Player.offset;
         }
     }
     return 0;
@@ -448,6 +496,7 @@ AvPlayer.hasSubtitles = function() {
     var tracks = webapis.avplay.getTotalTrackInfo();
     for (var i=0; i < tracks.length; i++) {
         if (tracks[i].type == 'TEXT') {
+            Log('set text track' + tracks[i].index + ': ' + webapis.avplay.setSelectTrack('TEXT',tracks[i].index));
             return true;
         }
     }

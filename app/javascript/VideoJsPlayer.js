@@ -55,8 +55,8 @@ VideoJsPlayer.init = function() {
     var resources;
     if (deviceYear > 2017) {
         resources =
-            ['https://cdnjs.cloudflare.com/ajax/libs/video.js/8.22.0/video.min.js',
-             'https://cdnjs.cloudflare.com/ajax/libs/videojs-flash/2.2.1/videojs-flash.min.js',
+            ['https://cdnjs.cloudflare.com/ajax/libs/video.js/8.23.9/video.min.js',
+             'https://cdn.jsdelivr.net/npm/videojs-contrib-eme@5.5.2/dist/videojs-contrib-eme.min.js',
              'https://cdnjs.cloudflare.com/ajax/libs/m3u8-parser/7.2.0/m3u8-parser.min.js'
             ];
     } else {
@@ -64,7 +64,8 @@ VideoJsPlayer.init = function() {
             ['https://cdnjs.cloudflare.com/ajax/libs/js-polyfills/0.1.43/polyfill.min.js',
              'https://cdnjs.cloudflare.com/ajax/libs/video.js/7.21.6/video.js',
              'https://unpkg.com/@videojs/http-streaming@3.17.0/dist/videojs-http-streaming.min.js',
-             'https://cdnjs.cloudflare.com/ajax/libs/videojs-flash/2.2.1/videojs-flash.min.js',
+             // 'https://unpkg.com/@videojs/http-streaming@3.17.5/dist/videojs-http-streaming.min.js',
+             'https://cdn.jsdelivr.net/npm/videojs-contrib-eme@3.11.2/dist/videojs-contrib-eme.min.js',
              'https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-quality-levels/2.0.9/videojs-contrib-quality-levels.min.js',
              'https://cdnjs.cloudflare.com/ajax/libs/m3u8-parser/4.3.0/m3u8-parser.min.js'
             ];
@@ -103,7 +104,7 @@ VideoJsPlayer.isLoaded = function() {
         return true;
     else if (VideoJsPlayer.init_retries == 0) {
         VideoJsPlayer.init_retries = 1;
-        VideoJsPlayer.init()
+        VideoJsPlayer.init();
     }
     return false;
 };
@@ -161,8 +162,25 @@ VideoJsPlayer.create = function(UseNative) {
     //     alert('audio change');
     // });
 
-    VideoJsPlayer.tech({IWillNotUseThisInPlugins:true}).on('usage', function(e){
-        VideoJsLog('usage:' + e.name);
+    VideoJsPlayer.tech().on('usage', function(e){
+        if (e.name != 'vhs-subtitle-download-exclusion')
+            VideoJsLog('usage:' + e.name);
+        if (e.name == 'vhs-unknown-waiting' &&
+            videoData.drm &&
+            VideoJsPlayer.state == VideoJsPlayer.STATE_STARTED &&
+            VideoJsPlayer.isWithinBuffer()
+           ) {
+            $('.bottomoverlaybig').html('Reloading');
+            Player.showControls();
+            VideoJsPlayer.reload(videoData, Player.isLive, VideoJsPlayer.player.currentTime() + 3);
+        }
+    });
+    VideoJsPlayer.tech().on('error', function(e){
+        Log('error: ' + e);
+        if (VideoJsPlayer.player && VideoJsPlayer.player.error)
+            VideoJsLog('techerror:' + JSON.stringify({code:VideoJsPlayer.player.error.code, message:VideoJsPlayer.player.error.message}));
+        else
+            VideoJsLog('techerror:' + e);
     });
 
     VideoJsPlayer.player.qualityLevels().on('addqualitylevel', function(event) {
@@ -173,6 +191,14 @@ VideoJsPlayer.create = function(UseNative) {
         VideoJsLog('change, selectedIndex:' + VideoJsPlayer.player.qualityLevels().selectedIndex_);
         Player.OnStreamInfoReady(true);
     });
+};
+
+VideoJsPlayer.isWithinBuffer = function() {
+    var buffer = VideoJsPlayer.player.buffered();
+    if (buffer.length > 0) {
+        var ct = VideoJsPlayer.player.currentTime();
+        return ct >= buffer.start(0) && ct <= buffer.end(0);
+    }
 };
 
 VideoJsPlayer.subscribeEvent = function(Event) {
@@ -197,15 +223,24 @@ VideoJsPlayer.On = function (Event, e) {
         // Avoid loop - and also avoid aborting a reload...
         window.setTimeout(function() {
             if (VideoJsPlayer.aborted)
-                VideoJsPlayer.stop()
+                VideoJsPlayer.stop();
         }, 0);
         return;
     }
 
+    if (e.currentTarget && e.currentTarget.error)
+        Log('currentTarget.error: ' + e.currentTarget.error);
+
     if (Event == 'loadedmetadata')
         VideoJsPlayer.metaDataLoaded();
     else if (Event == 'error') {
-        e = VideoJsPlayer.player.error().code + '-' + VideoJsPlayer.player.error().message;
+        if (VideoJsPlayer.player.error) {
+            try {
+                e = VideoJsPlayer.player.error().code + '-' + VideoJsPlayer.player.error().message;
+            } catch (error) {
+                e = JSON.stringify({code:VideoJsPlayer.player.error.code, message:VideoJsPlayer.player.error.message})
+            }
+        }
         return VideoJsPlayer.abort(function(){Player.OnRenderError(e);});
     };
 
@@ -224,6 +259,17 @@ VideoJsPlayer.On = function (Event, e) {
         else
             VideoJsPlayer.player.pause();
         return;
+    }
+
+    if (Event == 'canplaythrough') {
+        const ms = VhsTech().mediaSource;
+        for (var i = 0; i < ms.sourceBuffers.length; i++) {
+            const sb = ms.sourceBuffers[i];
+            hookSourceBuffer(sb, i);
+        }
+        var seek = VideoJsPlayer.player.seekable();
+        var seekEnd = (seek.length > 0) ? seek.end(seek.length-1) : 0;
+        VideoJsLog('start:' + seek.start(0) + ' end:' + seekEnd + ' l:' + seek.length  + ' duration:' + VideoJsPlayer.getDuration());
     }
 
     switch (Event) {
@@ -252,6 +298,7 @@ VideoJsPlayer.On = function (Event, e) {
                 // Seek rest
                 VideoJsPlayer.skip(VideoJsPlayer.resuming, true);
             } else {
+                $('.video-background').hide();
                 VideoJsPlayer.resume_seeking_started = false;
                 VideoJsPlayer.resuming = false;
                 VideoJsPlayer.player.play();
@@ -290,6 +337,23 @@ VideoJsPlayer.metaDataLoaded = function() {
     // Log('master:' + JSON.stringify(VhsTech().playlists.master));
 
     VideoJsPlayer.selectStream();
+
+    var audioTrackList = VideoJsPlayer.player.audioTracks();
+    if (audioTrackList.length > 1) {
+        for (var i=0; i < audioTrackList.length; i++) {
+            Log('Audiotrack: ' + audioTrackList[i].label + ' ' + audioTrackList[i].enabled);
+            if (audioTrackList[i].enabled) {
+                if (audioTrackList[i].label.match('alternate'))
+                    audioTrackList[i].enabled = false;
+                else
+                    break;
+            } else {
+                if (!audioTrackList[i].label.match('alternate'))
+                    audioTrackList[i].enabled = true;
+                break;
+            }
+        }
+    }
 
     Player.OnStreamInfoReady(true);
     VideoJsPlayer.initMetaDataChange();
@@ -333,7 +397,7 @@ VideoJsPlayer.selectStream = function() {
                     wantedBr = bitrates[i-1];
                     break;
                 } else if (i == (bitrates.length-1))
-                    wantedBr = bitrates[i]
+                    wantedBr = bitrates[i];
             }
         }
         for (var i=0; i < levels.length; i++)
@@ -360,6 +424,7 @@ VideoJsPlayer.load = function(videoData) {
     VideoJsPlayer.has_subtitles = false;
     VideoJsPlayer.resume_seeking_started = false;
     VideoJsPlayer.aborted = false;
+    var keySystems = null;
     var src = videoData.url;
     var type = 'application/x-mpegURL';
     var parser = new m3u8Parser.Parser();
@@ -371,12 +436,90 @@ VideoJsPlayer.load = function(videoData) {
         type = 'application/vnd.videojs.vhs+json';
     } else if (videoData.component == 'HAS')
         type = 'application/dash+xml';
+    if (videoData.drm) {
+        var drmEvents = ['licenserequestattempted',
+                         'waitingforkey',
+                         'keystatuschange',
+                         'keysessioncreated',
+                         'encrypted'
+                        ];
+        for (j in drmEvents) {
+            subscribeDrmEvent(drmEvents[j]);
+        }
+
+        Log('EME init:' + VideoJsPlayer.player.eme());
+        checkSupport();
+        supported = [{
+            initDataTypes: ['cenc'],
+            videoCapabilities: [
+                {
+                    contentType: 'video/mp4; codecs="avc1.640020"'
+                },
+                {
+                    contentType: 'video/mp4; codecs="avc1.42E01E"',
+                    encryptionScheme: 'cbcs'
+                }
+            ],
+            audioCapabilities: [{
+                contentType: 'audio/mp4; codecs="mp4a.40.2"'
+            }]
+        }];
+        if (videoData.drm.sessionId) {
+            keySystems = {
+                'com.widevine.alpha': {
+                    url: videoData.drm.license,
+                    supportedConfigurations: supported,
+                    licenseHeaders: {
+                        'x-dt-auth-token': videoData.drm.customData
+                    }
+                },
+                'com.widevine.fps':{
+                    url: videoData.drm.license,
+                    supportedConfigurations: supported,
+                    licenseHeaders: {
+                        'x-dt-auth-token': videoData.drm.customData
+                    }
+                },
+                'com.widevine.fps.1_0':{
+                    url: videoData.drm.license,
+                    supportedConfigurations: supported,
+                    licenseHeaders: {
+                        'x-dt-auth-token': videoData.drm.customData
+                    }
+                }
+            };
+        } else {
+            keySystems = {
+                'com.microsoft.playready': {
+                    url: videoData.drm.license,
+                    supportedConfigurations: supported,
+                    licenseHeaders: {
+                        'x-dt-auth-token': videoData.drm.customData
+                    },
+                    getKey: function(emeOptions, uri, buffer, callback) {
+                        Log("getKey called: " + uri + " " + emeOptions);
+                    }
+                }
+            };
+        }
+        VideoJsPlayer.player.eme.initializeMediaKeys({keySystems:keySystems}, function(error){Log('res:'+error + JSON.stringify(JSON.parse(keySystems)));}, false);
+    }
     VideoJsPlayer.player.src({src:src,
                               type:type,
                               withCredentials:true,
                               handleManifestRedirects:true,
-                              cacheEncryptionKeys:true
+                              cacheEncryptionKeys:true,
+                              keySystems: keySystems
                              });
+    if (keySystems &&
+        VideoJsPlayer.player.eme &&
+        VideoJsPlayer.player.eme.detectSupportedCDMs
+       )
+        VideoJsPlayer.player.eme.detectSupportedCDMs()
+        .then(function(supportedCDMs) {
+            // Sample output: {fairplay: false, playready: false, widevine: true, clearkey: true}
+            Log('supportedCDMs:' + JSON.stringify(supportedCDMs));
+        });
 
     var headers = Channel.getHeaders() || [];
     var ua = null;
@@ -398,6 +541,9 @@ VideoJsPlayer.load = function(videoData) {
 };
 
 VideoJsPlayer.play = function(isLive, seconds) {
+    Log('VideoJsPlayer.play isLive: ' + isLive + ' seconds: ' + seconds);
+    if (isLive && seconds) $('.video-background').show();
+
     var milliSeconds = (seconds) ? seconds*1000 : seconds;
     if (!milliSeconds && isLive && !videoData.use_offset && deviceYear < 2018) {
         milliSeconds = 'end';
@@ -414,6 +560,7 @@ VideoJsPlayer.play = function(isLive, seconds) {
 };
 
 VideoJsPlayer.startPlayback = function() {
+    Log('VideoJsPlayer.startPlayback resuming: ' + VideoJsPlayer.resuming);
     if (VideoJsPlayer.resuming)
         VideoJsPlayer.skip(VideoJsPlayer.resuming);
     else
@@ -662,7 +809,7 @@ VideoJsPlayer.logHistory = function(debug) {
     var history = videojs.log.history();
     videojs.log.history.clear();
     for (var i=0;i < history.length;i++) {
-        history[i] = JSON.stringify(history[i]).substring(0,150);
+        history[i] = JSON.stringify(history[i]).substring(0,250);
         if (debug || !history[i].match(/DEBUG/))
             Log(history[i])
     }
@@ -695,12 +842,103 @@ VideoJsPlayer.logStats = function() {
 };
 
 function VhsTech() {
-    if (VideoJsPlayer.tech().vhs)
-        return VideoJsPlayer.tech().vhs
-    else
-        return VideoJsPlayer.tech().hls
+    return VideoJsPlayer.tech().vhs || VideoJsPlayer.tech().hls;
+}
+
+function rangesToJSON(ranges) {
+  var result = [];
+
+  for (var i = 0; ranges && i < ranges.length; i++) {
+    result.push({
+      start: ranges.start(i),
+      end: ranges.end(i)
+    });
+  }
+
+  return result;
 }
 
 function VideoJsLog(Message) {
-    Log(Message + ' State:' + VideoJsPlayer.player.readyState() + ' Currenttime:' + VideoJsPlayer.player.currentTime() + ' VS:' + VideoJsPlayer.state);
+    const p = VideoJsPlayer.player;
+    Log(Message + ' ' + JSON.stringify({time: p.currentTime(),
+                                        paused: p.paused(),
+                                        readyState: p.readyState(),
+                                        networkState: p.networkState(),
+                                        buffered: rangesToJSON(p.buffered()),
+                                        seekable: rangesToJSON(p.seekable())// ,
+                                        // vhsStats: vhs && vhs.stats
+                                       }));
+}
+
+function checkSupport() {
+    try {
+        navigator.requestMediaKeySystemAccess(
+            'com.widevine.alpha',
+            [{
+                initDataTypes: ['cenc'],
+                videoCapabilities: [{
+                    contentType: 'video/mp4; codecs="avc1.64001f"',
+                    encryptionScheme: 'cbcs'
+                }]
+            }]
+        ).then(function(x) {Log('CBCS SUPPORTED' + x)}).catch(function(e) { Log('1 FAILED' + e) });
+        navigator.requestMediaKeySystemAccess(
+            'com.widevine.alpha',
+            [{
+                initDataTypes: ['cenc'],
+                videoCapabilities: [{
+                    contentType: 'video/mp4; codecs="avc1.640020"'
+                }]
+            }]
+        ).then(function(x) { Log('WIDEVINE SUPPORTED' + x) }).catch(function(e) {Log('1 FAILED' + e)});
+        navigator.requestMediaKeySystemAccess(
+            'com.microsoft.playready',
+            [{
+                initDataTypes: ['cenc'],
+                videoCapabilities: [{
+                    contentType: 'video/mp4; codecs="avc1.640020"'
+                }]
+            }]
+        ).then(function(x) { Log('PLAYREADY SUPPORTED' + x) }).catch(function(e) { Log('2 FAILED' + e) });
+    } catch (e) {
+        Log('checkSupport: ' + e);
+    }
+}
+
+function hookSourceBuffer(sb, index) {
+
+    if (sb.__debugHooked) {
+        return;
+    }
+    sb.__debugHooked = true;
+
+    const oldRemove = sb.remove.bind(sb);
+
+    sb.remove = function(start, end) {
+        try {
+            var ct = VideoJsPlayer.player.currentTime();
+            if (!VideoJsPlayer.reseting &&
+                !VideoJsPlayer.resuming &&
+                Player.skipState == -1
+               ) {
+                ct = ct - 5;
+                if (ct > 0 && ct > start && ct < end) {
+                    end = ct;
+                }
+            }
+        } catch (e) {
+            Log('hookSourceBuffer error:' + e);
+        }
+        return oldRemove(start, end);
+    };
+}
+
+function subscribeDrmEvent(eventName) {
+    Log('Subscribe to ' + eventName);
+    VideoJsPlayer.tech().on(eventName,
+                            function(e) {
+                                Log('DrmEvent: ' + eventName);
+                                VideoJsPlayer.On(eventName, e);
+                            }
+                           );
 }

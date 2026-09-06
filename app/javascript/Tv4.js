@@ -1352,8 +1352,9 @@ Tv4.getDetailsData = function(url, data, user_data) {
             VideoLength = dataLengthToVideoLength(null,Math.round(VideoLength/1000));
         } else if (meta.duration)
             VideoLength = dataLengthToVideoLength(null, meta.duration.seconds);
-        ActionsUrl = Tv4.makeStreamUrl(meta.id, 'mpd');
+        ActionsUrl = Tv4.makeStreamUrl(meta.id, 'mpd_playready');
         if (data.epg && data.epg.length > 0) {
+            isLive = true;
             Start = timeToDate(data.epg[0].start);
             var end   = timeToDate(data.epg[0].end);
             DetailsImgLink = Tv4.fixThumb(data.epg[0], DETAILS_THUMB_FACTOR);
@@ -1520,12 +1521,14 @@ Tv4.getPlayUrl = function(streamUrl, isLive) {
         }
     }
     var wmdrmUrl  = Tv4.makeStreamUrl(asset, 'wmdrm');
-    var mpdUrl    = Tv4.makeStreamUrl(asset, 'mpd');
-    var mpdDrmUrl = Tv4.makeStreamUrl(asset, 'mpd_widevine');
+    var mpdWUrl    = Tv4.makeStreamUrl(asset, 'mpd_widevine');
+    var mpdPUrl = Tv4.makeStreamUrl(asset, 'mpd_playready');
     var hlsUrl    = Tv4.makeStreamUrl(asset, 'hls', isLive);
     var streams   = (isLive) ?
-        [wmdrmUrl, mpdUrl, mpdDrmUrl, hlsUrl] :
-        [mpdUrl, wmdrmUrl, mpdDrmUrl, hlsUrl];
+        [wmdrmUrl, mpdPUrl, mpdWUrl, hlsUrl] :
+        [mpdPUrl, wmdrmUrl, mpdWUrl, hlsUrl];
+
+    Tv4.play_extra = null;
 
     Tv4.selectStream(streamUrl,
                      isLive,
@@ -1549,16 +1552,22 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                        data = JSON.parse(data.responseText);
                        isLive = isLive || data.metadata.isLive;
                        var drm = Tv4.getDrm(data);
-                       var stream = Tv4.getStreamUrl(data);
+                       var stream = data.playbackItem.manifestUrl;
+                       if (isLive && data.playbackItem.originUrl)
+                           stream = data.playbackItem.originUrl;
                        streams.shift();
-                       if (stream.match('/content/') && streams.length > 0)
+                       // AvPlayer requires .ism(l).
+                       // Adding dummy ism seems to be supported by Tv4 - but doesn't work well..
+                       if (stream.match('Manifest') && !stream.match('.ism'))
                            return Tv4.selectStream(streamUrl, isLive, hlsUrl, streams, cb);
                        stream = Tv4.addStreamingFilter(stream, isLive);
                        var isChannel = (data.metadata.type == 'channel');
                        var use_offset = (data.metadata.type == 'channel');
                        var use_offset =
-                           isChannel || (isLive && !stream.match('Manifest'));
+                           isChannel ||
+                           (isLive && !stream.match('Manifest') && !stream.match('m3u8'));
                        Tv4.alt_urls = streams;
+                       var UseVjs = stream.match(/m3u8/);
                        Tv4.play_extra = {hls_url: hlsUrl,
                                          stream_url: streamUrl,
                                          isLive: isLive,
@@ -1566,8 +1575,9 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
                                          use_offset: isLive && use_offset,
                                          useBitrates: true,
                                          live_seek: true,
-                                         use_vjs: !drm && stream.match(/m3u8/),
-                                         can_start_over: isLive && !isChannel
+                                         use_vjs: UseVjs,
+                                         modify_stream: UseVjs,
+                                         is_seekable_live: deviceYear > 2017 && isLive && !isChannel
                                         };
                        if (isLive) {
                            cb(stream, null)
@@ -1607,47 +1617,34 @@ Tv4.selectStream  = function(streamUrl, isLive, hlsUrl, streams, cb) {
               );
 };
 
-Tv4.getStreamUrl = function(data) {
-    var stream = data.playbackItem.manifestUrl;
-    if ((data.metadata.type != 'channel' ||
-         data.metadata.title.match(/Fotboll|Sport|Tennis|Motor/)
-        ) &&
-        data.playbackItem.license &&
-        data.playbackItem.license.type == 'playready' &&
-        data.playbackItem.license.castlabsAssetId &&
-        stream.match('/content/')
-       )
-    {
-        var assetId = data.playbackItem.license.castlabsAssetId;
-        assetId = assetId.replace(/[^0-9]/g,'');
-        stream = stream.replace(/\/content\/.*/,'');
-        return stream + '/asset/' + assetId + '.isml/Manifest';
-    }
-    return stream;
-};
-
 Tv4.getDrm = function(data) {
     var sessionId = data.sessionId;
     data = data.playbackItem;
     var license = data.license && data.license.castlabsServer;
     var customData = data.license && data.license.castlabsToken;
+    var httpHeaders = null;
 
     if (customData) {
         if (data.license.type == 'playready') {
-            data.auth = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
-            data.auth.authToken = customData;
-            customData = btoa(JSON.stringify(data.auth));
             sessionId = null;
+            if (data.type == 'ism') {
+                data.auth = JSON.parse(JSON.parse(atob(customData.split('.')[1])).optData);
+                data.auth.authToken = customData;
+                customData = btoa(JSON.stringify(data.auth));
+            } else
+                httpHeaders = 'x-dt-auth-token:' + customData;
         }
     }
     if (license || customData)
-        return {license:license, customData:customData, sessionId:sessionId};
+        return {license:license, headers:httpHeaders, customData:customData, sessionId:sessionId};
     else
         return null;
 };
 
 Tv4.addStreamingFilter = function(stream, isLive) {
-    if (isLive || stream.match('/content/v2/')) return stream;
+    if (isLive || stream.match('/content/'))
+        return stream;
+
     return addUrlParam(stream,
                        'filter',
                        '(type=="video" || ((count(type=="audio") > 2 && (systemLanguage=="eng" || systemLanguage=="swe")) || (count(type=="audio") < 3 && type=="audio")))'
@@ -1660,18 +1657,18 @@ Tv4.makeStreamUrl = function(asset, Type, isLive) {
     case 'wmdrm':
         protocol = '&device=samsung-orsay&protocol=mss&drm=playready';
         break;
-    case 'mpd':
-        protocol = '&device=browser&protocol=dash&drm=playready';
-        break;
     case 'mpd_widevine':
         protocol = '&device=browser&protocol=dash&drm=widevine';
+        break;
+    case 'mpd_playready':
+        protocol = '&device=browser&protocol=dash&drm=playready';
         break;
     case 'hls':
         // protocol = '&device=browser&protocol=hls&drm=playready';
         protocol = '&device=browser&protocol=hls&drm=widevine';
         break;
     }
-    return 'https://playback2.a2d.tv/play/' + asset + '?service=tv4play' + protocol + '&is_live=' + Boolean(isLive);
+    return 'https://playback2.a2d.tv/play/' + asset + '?service=tv4play' + protocol;
 };
 
 Tv4.getSrtUrl = function (data, hlsUrl, cb) {
@@ -1957,6 +1954,24 @@ Tv4.getListSearchQuery = function(query, type, limit) {
 
 Tv4.getSearchQuery = function(query) {
     return '{"query":"query PanelSearch($input: PanelSearchInput!, $limit: Int!, $offset: Int!, $shouldFetchMovieSeries: Boolean!, $shouldFetchMovieSeriesUpsell: Boolean!, $shouldFetchClip: Boolean!, $shouldFetchPage: Boolean!, $shouldFetchSportEvent: Boolean!, $shouldFetchSportEventUpsell: Boolean!) {panelSearch(input: $input) {data {movieSeries @include(if: $shouldFetchMovieSeries) {id title content(input: {limit: $limit, offset: $offset}) {items {... on MediaPanelSeriesItem {series {...SeriesFieldsLight}} ... on MediaPanelMovieItem {movie {...MovieFieldsLight}}} pageInfo {...PageInfoFields}}} movieSeriesUpsell @include(if: $shouldFetchMovieSeriesUpsell) {id title content(input: {limit: $limit, offset: $offset}) {items {... on MediaPanelSeriesItem {series {...SeriesFieldsLight}} ... on MediaPanelMovieItem {movie {...MovieFieldsLight}}} pageInfo {...PageInfoFields}}} clip @include(if: $shouldFetchClip) {id title content(input: {limit: $limit, offset: $offset}) {items {clip {...ClipFieldsLight}} pageInfo {...PageInfoFields}}} page @include(if: $shouldFetchPage) {id title content(input: {limit: $limit, offset: $offset}) {items {... on PagePanelPageItem {page {...PageListFields}}} pageInfo {...PageInfoFields}}} sportEvent @include(if: $shouldFetchSportEvent) {id title content(input: {limit: $limit, offset: $offset}) {items {sportEvent {...SportEventFieldsLight}} pageInfo {...PageInfoFields}}} sportEventUpsell @include(if: $shouldFetchSportEventUpsell) {id title content(input: {limit: $limit, offset: $offset}) {items {sportEvent {...SportEventFieldsLight}} pageInfo {...PageInfoFields}}}} pageInfo {totalCountAll {clips movies pages series sportEvents}} order}}' + PAGE_INFO_FIELDS + PAGE_LIST_FIELDS + MEDIA_FIELDS + '","operationName":"PanelSearch","variables":{"limit":10,"offset":0,"shouldFetchMovieSeries":true,"shouldFetchMovieSeriesUpsell":false,"shouldFetchClip":true,"shouldFetchPage":false,"shouldFetchSportEvent":true,"shouldFetchSportEventUpsell":false,"input":{"query":"' + query + '"}}}';
+};
+
+Tv4.modifyStream = function (urlPrefix, stream) {
+    if (stream.match('<MPD')) {
+        // stream = stream.replace(/((^ +)<AdaptationSet)/m,'$2<BaseURL>'+urlPrefix+'</BaseURL>\n$1');
+        // stream = stream.replace(/(initialization=")/mg,'$1'+urlPrefix);
+    } else {
+        stream = stream.replace(/KEYID=[^"]([^,]+),/mg, 'KEYID="$1"');
+        stream = stream.replace(/^#EXT-X-SESSION-KEY(:.*urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed.*)/m, '#EXT-X-SESSION-KEEP'+'$1');
+        stream = stream.replace(/^#EXT-X-SESSION-KEY.*/mg, '');
+        stream = stream.replace('EXT-X-SESSION-KEEP', 'EXT-X-SESSION-KEY');
+
+        stream = stream.replace(/URI="([^h])/mg,'URI="'+urlPrefix+'$1');
+        stream = stream.replace(/^([^h#]{2}.+$)/mg,urlPrefix+'$1');
+        alert(stream);
+    }
+    // alert(stream);
+    return stream;
 };
 
 // TODO

@@ -44,7 +44,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                            streams = Resolution.getHlsStreams(videoUrl, data, prefix);
                        } else if (videoUrl.match(/\.mpd/)) {
                            streams = Resolution.getHasStreams(videoUrl, data, prefix);
-                       } else if (videoUrl.match(/(\.ism|\/Manifest$)/)) {
+                       } else if (videoUrl.match(/(\.ism|\/Manifest(\?.*)?$)/)) {
                            streams = Resolution.getIsmStreams(videoUrl, data, prefix);
                        }
                        extra.audio_streams = streams.audio_streams;
@@ -110,6 +110,7 @@ Resolution.getCorrectStream = function(videoUrl, srtUrl, extra) {
                        var urlPrefix = getUrlPrefix(videoUrl);
                        extra.stream_content = Channel.modifyStream(urlPrefix,data.responseText);
                    }
+                   if (streams.skip_drm) extra.drm = null;
                    Player.setVideoURL(master, videoUrl, srtUrl, extra);
                    extra.cb();
                },
@@ -158,6 +159,7 @@ Resolution.getHlsStreams = function (videoUrl, data, prefix) {
 };
 
 Resolution.getIsmStreams = function (videoUrl, data, prefix) {
+    var skip_drm = !data.responseText.match('<Protection>');
     data = data.responseText.replace(/StreamIndex[	 ]*\r?\n/gm,'StreamIndex');
     // Log('ISM content: ' + data);
     data = data.split(/StreamIndex.+="video"/);
@@ -203,7 +205,8 @@ Resolution.getIsmStreams = function (videoUrl, data, prefix) {
     return {streams: streams,
             audio_streams: languages,
             audio_idx: swe_audio_idx,
-            subtitles_idx: swe_subtitles_idx
+            subtitles_idx: swe_subtitles_idx,
+            skip_drm : skip_drm
            };
 };
 
